@@ -1,0 +1,64 @@
+# .github/workflows/market_alerts.yml
+# =====================================================
+# Runs cloud_alert_engine.py every 30 min
+# Mon-Fri, 3:30 AM - 11:30 AM UTC = 9:00 AM - 5:00 PM IST
+#
+# Setup:
+#   1. Create private GitHub repo (e.g. "multibagger-alerts")
+#   2. Add these files to repo root:
+#        cloud_alert_engine.py
+#        watchlist_for_cloud.csv   (copy from ENGINE_CORE/data_internal/)
+#        seen_alerts.json          (create empty: {} )
+#   3. Add GitHub Secrets (repo Settings → Secrets → Actions):
+#        WA_TOKEN       Meta WhatsApp Cloud API Bearer token
+#        WA_PHONE_ID    Your WhatsApp Business phone number ID
+#        WA_RECIPIENT   Your WhatsApp number: 919876543210
+#   4. Push → Actions tab → should show workflow running
+#
+# To update watchlist after each engine run:
+#   Copy ENGINE_CORE/data_internal/watchlist_for_cloud.csv to repo
+#   git add watchlist_for_cloud.csv && git commit -m "update" && git push
+#   (Or automate with GitHub CLI — see README)
+# =====================================================
+
+name: Market Alerts (BSE → WhatsApp)
+
+on:
+  schedule:
+    # Every 30 min, Mon-Fri, 3:30-11:30 UTC (= 9:00-17:00 IST)
+    - cron: "0,30 3-11 * * 1-5"
+  workflow_dispatch:   # allow manual trigger from Actions tab
+
+jobs:
+  run-alerts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests pandas --quiet
+
+      - name: Run alert engine
+        env:
+          WA_TOKEN:     ${{ secrets.WA_TOKEN }}
+          WA_PHONE_ID:  ${{ secrets.WA_PHONE_ID }}
+          WA_RECIPIENT: ${{ secrets.WA_RECIPIENT }}
+        run: python cloud_alert_engine.py
+
+      - name: Commit updated seen_alerts.json
+        run: |
+          git config user.name  "Alert Bot"
+          git config user.email "alerts@multibagger"
+          git add seen_alerts.json
+          git diff --cached --quiet || git commit -m "seen_alerts update $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push
