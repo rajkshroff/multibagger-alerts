@@ -82,7 +82,7 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
-        run: pip install requests pandas -q
+        run: pip install requests pandas yfinance -q
 
       - name: Run morning brief
         env:
@@ -116,7 +116,7 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
-        run: pip install requests pandas -q
+        run: pip install requests pandas yfinance -q
 
       - name: Run intraday scan
         env:
