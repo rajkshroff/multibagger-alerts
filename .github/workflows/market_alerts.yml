@@ -1,33 +1,17 @@
 # .github/workflows/market_alerts.yml
 # =====================================================
-# Runs cloud_alert_engine.py every 30 min
-# Mon-Fri, 3:30 AM - 11:30 AM UTC = 9:00 AM - 5:00 PM IST
-#
-# Setup:
-#   1. Create private GitHub repo (e.g. "multibagger-alerts")
-#   2. Add these files to repo root:
-#        cloud_alert_engine.py
-#        watchlist_for_cloud.csv   (copy from ENGINE_CORE/data_internal/)
-#        seen_alerts.json          (create empty: {} )
-#   3. Add GitHub Secrets (repo Settings → Secrets → Actions):
-#        WA_TOKEN       Meta WhatsApp Cloud API Bearer token
-#        WA_PHONE_ID    Your WhatsApp Business phone number ID
-#        WA_RECIPIENT   Your WhatsApp number: 919876543210
-#   4. Push → Actions tab → should show workflow running
-#
-# To update watchlist after each engine run:
-#   Copy ENGINE_CORE/data_internal/watchlist_for_cloud.csv to repo
-#   git add watchlist_for_cloud.csv && git commit -m "update" && git push
-#   (Or automate with GitHub CLI — see README)
+# Multibagger Engine — Cloud Alert Engine
+# Runs every 30 min, Mon-Fri, 9am-5pm IST
+# Sends Telegram alerts for BSE filings on your stocks
 # =====================================================
 
-name: Market Alerts (BSE → WhatsApp)
+name: Market Alerts (BSE → Telegram)
 
 on:
   schedule:
-    # Every 30 min, Mon-Fri, 3:30-11:30 UTC (= 9:00-17:00 IST)
+    # Every 30 min, Mon-Fri, 3:30-11:30 UTC = 9:00-17:00 IST
     - cron: "0,30 3-11 * * 1-5"
-  workflow_dispatch:   # allow manual trigger from Actions tab
+  workflow_dispatch:   # manual trigger from Actions tab
 
 jobs:
   run-alerts:
@@ -53,10 +37,13 @@ jobs:
           TELEGRAM_TOKEN:   ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python cloud_alert_engine.py
+
       - name: Commit updated seen_alerts.json
         run: |
           git config user.name  "Alert Bot"
           git config user.email "alerts@multibagger"
           git add seen_alerts.json
-          git diff --cached --quiet || git commit -m "seen_alerts update $(date -u '+%Y-%m-%d %H:%M UTC')"
-          git push
+          git diff --cached --quiet && echo "No changes to commit" && exit 0
+          git pull --rebase origin main || true
+          git commit -m "seen_alerts update $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push || true
