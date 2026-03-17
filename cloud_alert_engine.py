@@ -315,7 +315,7 @@ def fetch_nse_announcements(hours_back: int = 2) -> list:
 def _clean_rss_text(raw: str) -> str:
     """Strip CDATA wrappers, HTML tags, and decode entities."""
     # Remove CDATA: <![CDATA[ ... ]]>
-    text = re.sub(r"<!\[CDATA\[(.*?)\]\]>", r"", raw, flags=re.DOTALL)
+    text = re.sub(r"<!\[CDATA\[(.*?)\]\]>", r"\1", raw, flags=re.DOTALL)
     # Remove remaining HTML tags
     text = re.sub(r"<[^>]+>", "", text)
     # Decode common HTML entities
