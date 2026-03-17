@@ -682,8 +682,6 @@ def run_morning_brief():
         print("  Morning brief sent to Telegram ✅")
     else:
         print("  Morning brief FAILED — Telegram not configured or API error ❌")
-    else:
-        print("  Morning brief FAILED ❌")
 
 
 # ── Entry point ───────────────────────────────────────────────
