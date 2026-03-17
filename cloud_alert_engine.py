@@ -438,121 +438,371 @@ def format_stock_alert(ann: dict, ctx: dict, etype: str, source: str = "BSE") ->
 
 # ── Morning Brief ─────────────────────────────────────────────
 
+def _fetch_global_cues() -> dict:
+    """Fetch global market cues using yfinance. Returns dict of {label: value_str}."""
+    cues = {}
+    tickers = {
+        "Dow":       "^DJI",
+        "Nasdaq":    "^IXIC",
+        "SGX Nifty": "^SGXNIFTY",
+        "Crude":     "BZ=F",
+        "USD/INR":   "USDINR=X",
+        "Gold":      "GC=F",
+    }
+    try:
+        import yfinance as yf
+        for label, ticker in tickers.items():
+            try:
+                t    = yf.Ticker(ticker)
+                hist = t.history(period="2d", interval="1d")
+                if len(hist) >= 2:
+                    prev  = float(hist["Close"].iloc[-2])
+                    curr  = float(hist["Close"].iloc[-1])
+                    chg   = ((curr - prev) / prev) * 100
+                    icon  = "🟢" if chg >= 0 else "🔴"
+                    if label == "Crude":
+                        cues[label] = f"{icon} ${curr:.1f} ({chg:+.1f}%)"
+                    elif label == "USD/INR":
+                        cues[label] = f"{icon} ₹{curr:.2f} ({chg:+.2f}%)"
+                    elif label == "Gold":
+                        cues[label] = f"{icon} ${curr:.0f} ({chg:+.1f}%)"
+                    else:
+                        cues[label] = f"{icon} {curr:,.0f} ({chg:+.1f}%)"
+            except Exception:
+                cues[label] = "—"
+    except ImportError:
+        pass  # yfinance not installed — skip silently
+    return cues
+
+
+def _fetch_fii_dii() -> dict:
+    """Fetch FII/DII provisional data from NSE."""
+    result = {"FII": None, "DII": None, "date": ""}
+    try:
+        url = "https://www.nseindia.com/api/fiidiiTradeReact"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Referer":    "https://www.nseindia.com/",
+            "Accept":     "application/json",
+        }
+        session = requests.Session()
+        session.headers.update(headers)
+        session.get("https://www.nseindia.com", timeout=10)
+        time.sleep(1)
+        r = session.get(url, timeout=15)
+        if r.status_code == 200:
+            data = r.json()
+            # NSE returns list — most recent entry first
+            if isinstance(data, list) and len(data) > 0:
+                latest = data[0]
+                # FII net = buyValue - sellValue
+                fii_buy  = float(latest.get("fiiBuy",  0) or 0)
+                fii_sell = float(latest.get("fiiSell", 0) or 0)
+                dii_buy  = float(latest.get("diiBuy",  0) or 0)
+                dii_sell = float(latest.get("diiSell", 0) or 0)
+                fii_net  = fii_buy - fii_sell
+                dii_net  = dii_buy - dii_sell
+                result["FII"]  = fii_net
+                result["DII"]  = dii_net
+                result["date"] = str(latest.get("date", ""))[:10]
+    except Exception:
+        pass
+    return result
+
+
+def _fetch_fo_ban() -> list:
+    """Fetch F&O ban list from NSE."""
+    try:
+        from datetime import date
+        today = date.today().strftime("%d-%b-%Y").upper()
+        url = f"https://nsearchives.nseindia.com/content/fo/fo_secban.csv"
+        headers = {"User-Agent": "Mozilla/5.0", "Referer": "https://www.nseindia.com/"}
+        r = requests.get(url, headers=headers, timeout=10)
+        if r.status_code == 200:
+            symbols = []
+            for line in r.text.strip().splitlines():
+                sym = line.strip().strip(",")
+                if sym and sym != "Symbol":
+                    symbols.append(sym)
+            return symbols[:10]  # cap at 10
+    except Exception:
+        pass
+    return []
+
+
+def _fetch_results_today() -> list:
+    """Fetch companies announcing results today from BSE."""
+    results = []
+    try:
+        from datetime import date
+        today = date.today().strftime("%Y%m%d")
+        url = (
+            "https://api.bseindia.com/BseIndiaAPI/api/AnnGetData/w"
+            f"?strCat=Result&strPrevDate={today}&strScrip=&strSearch="
+            f"&strToDate={today}&strType=C&subcategory=-1"
+        )
+        headers = {
+            "User-Agent": "Mozilla/5.0",
+            "Referer":    "https://www.bseindia.com/",
+            "Accept":     "application/json",
+        }
+        r = requests.get(url, headers=headers, timeout=15)
+        if r.status_code == 200:
+            data = r.json()
+            anns = data.get("Table", []) or data.get("data", []) or []
+            seen_names = set()
+            for ann in anns[:20]:
+                name = str(ann.get("LONG_NAME", ann.get("long_name",
+                           ann.get("scrip_name", ""))))[:25].strip()
+                if name and name not in seen_names:
+                    results.append(name)
+                    seen_names.add(name)
+            return results[:8]
+    except Exception:
+        pass
+    return []
+
+
+def _fetch_nifty_level() -> str:
+    """Fetch Nifty 50 spot from NSE."""
+    try:
+        url = "https://www.nseindia.com/api/allIndices"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Referer":    "https://www.nseindia.com/",
+            "Accept":     "application/json",
+        }
+        session = requests.Session()
+        session.headers.update(headers)
+        session.get("https://www.nseindia.com", timeout=10)
+        time.sleep(0.5)
+        r = session.get(url, timeout=15)
+        if r.status_code == 200:
+            data = r.json().get("data", [])
+            for idx in data:
+                if idx.get("index") == "NIFTY 50":
+                    last  = float(idx.get("last", 0))
+                    chg   = float(idx.get("percentChange", 0))
+                    icon  = "🟢" if chg >= 0 else "🔴"
+                    return f"{icon} {last:,.0f} ({chg:+.2f}%)"
+    except Exception:
+        pass
+    return "—"
+
+
 def build_morning_brief() -> str:
     today_str = datetime.now().strftime("%A, %d %b %Y")
-    lines     = [
+    lines = [
         f"🌅 <b>MULTIBAGGER MORNING BRIEF</b>",
-        f"{today_str}  |  8:30 AM IST",
+        f"<b>{today_str}  |  8:30 AM IST</b>",
         f"{'═'*34}",
     ]
 
-    # ── Market state ──────────────────────────────────────────
+    # ── 1. Global cues ────────────────────────────────────────
+    try:
+        cues = _fetch_global_cues()
+        if cues:
+            lines.append("")
+            lines.append("<b>🌍 GLOBAL CUES</b>")
+            row1 = []
+            row2 = []
+            for i, (label, val) in enumerate(cues.items()):
+                if i < 3:
+                    row1.append(f"{label}: {val}")
+                else:
+                    row2.append(f"{label}: {val}")
+            if row1: lines.append("  " + "  |  ".join(row1))
+            if row2: lines.append("  " + "  |  ".join(row2))
+    except Exception:
+        pass
+
+    # ── 2. Nifty level ────────────────────────────────────────
+    try:
+        nifty = _fetch_nifty_level()
+        if nifty != "—":
+            lines.append(f"  Nifty 50: {nifty}")
+    except Exception:
+        pass
+
+    # ── 3. Market state (from engine CSV) ─────────────────────
     if MARKET_INTEL_CSV.exists():
         try:
-            mi  = pd.read_csv(MARKET_INTEL_CSV).iloc[0]
-            ms  = str(mi.get("MARKET_STATE","?"))
-            fg  = float(mi.get("FEAR_GREED_SCORE", 0) or 0)
-            fgl = str(mi.get("FEAR_GREED_LABEL","?"))
+            mi   = pd.read_csv(MARKET_INTEL_CSV).iloc[0]
+            ms   = str(mi.get("MARKET_STATE","?"))
+            fg   = float(mi.get("FEAR_GREED_SCORE", 0) or 0)
+            fgl  = str(mi.get("FEAR_GREED_LABEL","?"))
             b200 = float(mi.get("BREADTH_ABOVE_200DMA", 0) or 0)
             b50  = float(mi.get("BREADTH_ABOVE_50DMA",  0) or 0)
             mr1m = float(mi.get("MEDIAN_RETURN_1M", 0) or 0)
-
-            ms_emoji  = {"BULL":"📈","BEAR":"📉","NEUTRAL":"➡️","CAUTION":"⚠️"}.get(ms,"📊")
-            fg_emoji  = ("😱" if fg < 25 else "😨" if fg < 40
-                         else "😐" if fg < 60 else "😊" if fg < 75 else "🤑")
+            ms_emoji = {"BULL":"📈","BEAR":"📉","NEUTRAL":"➡️","CAUTION":"⚠️"}.get(ms,"📊")
+            fg_emoji = ("😱" if fg<25 else "😨" if fg<40 else "😐" if fg<60
+                        else "😊" if fg<75 else "🤑")
             lines += [
                 f"",
-                f"<b>📊 MARKET: {ms_emoji} {ms}</b>",
-                f"Fear &amp; Greed: {fg_emoji} {fgl} ({fg:.0f}/100)",
-                f"Above 200DMA: {b200:.0f}%  |  Above 50DMA: {b50:.0f}%",
-                f"Median 1M return: {mr1m:+.1f}%",
+                f"<b>📊 NSE MARKET: {ms_emoji} {ms}</b>",
+                f"  F&amp;G: {fg_emoji} {fgl} ({fg:.0f}/100)",
+                f"  Above 200DMA: {b200:.0f}%  |  Above 50DMA: {b50:.0f}%",
+                f"  Median 1M: {mr1m:+.1f}%",
             ]
         except Exception as e:
-            lines.append(f"<i>[Market data unavailable: {e}]</i>")
+            lines.append(f"<i>[Market data: {e}]</i>")
 
-    # ── Tier counts ───────────────────────────────────────────
+    # ── 4. FII / DII flow ─────────────────────────────────────
+    try:
+        fii_dii = _fetch_fii_dii()
+        fii = fii_dii.get("FII")
+        dii = fii_dii.get("DII")
+        dt  = fii_dii.get("date","")
+        if fii is not None and dii is not None:
+            fii_icon = "🟢" if fii >= 0 else "🔴"
+            dii_icon = "🟢" if dii >= 0 else "🔴"
+            lines += [
+                f"",
+                f"<b>💰 FII/DII FLOW{' (' + dt + ')' if dt else ''}</b>",
+                f"  FII: {fii_icon} ₹{abs(fii):,.0f} Cr ({'NET BUY' if fii>=0 else 'NET SELL'})",
+                f"  DII: {dii_icon} ₹{abs(dii):,.0f} Cr ({'NET BUY' if dii>=0 else 'NET SELL'})",
+            ]
+    except Exception:
+        pass
+
+    # ── 5. F&O ban list ───────────────────────────────────────
+    try:
+        ban = _fetch_fo_ban()
+        lines.append("")
+        if ban:
+            lines.append(f"<b>🚫 F&amp;O BAN ({len(ban)} stocks)</b>")
+            lines.append(f"  {', '.join(ban)}")
+        else:
+            lines.append("<b>🚫 F&amp;O BAN:</b> None today ✅")
+    except Exception:
+        pass
+
+    # ── 6. Results today ──────────────────────────────────────
+    try:
+        results = _fetch_results_today()
+        lines.append("")
+        if results:
+            lines.append(f"<b>📅 RESULTS TODAY ({len(results)})</b>")
+            lines.append(f"  {', '.join(results)}")
+        else:
+            lines.append("<b>📅 RESULTS TODAY:</b> None scheduled")
+    except Exception:
+        pass
+
+    # ── 7. Engine tier counts ─────────────────────────────────
     if COMPOSITE_CSV.exists():
         try:
-            cs   = pd.read_csv(COMPOSITE_CSV, low_memory=False)
-            tc   = cs["TIER"].value_counts()
+            cs    = pd.read_csv(COMPOSITE_CSV, low_memory=False)
+            tc    = cs["TIER"].value_counts()
             prime  = int(tc.get("PRIME", 0))
             strong = int(tc.get("STRONG", 0))
             wlc    = int(tc.get("WATCHLIST_CONFIRMED", 0))
-
+            wle    = int(tc.get("WATCHLIST_EXTERNAL", 0))
             lines += [
                 f"",
-                f"<b>🏆 ENGINE COUNTS</b>",
-                f"⭐ PRIME: {prime}  |  💪 STRONG: {strong}  |  👀 WL-Confirmed: {wlc}",
+                f"<b>🏆 ENGINE UNIVERSE</b>",
+                f"  ⭐ PRIME: {prime}  |  💪 STRONG: {strong}",
+                f"  👀 WL-Confirmed: {wlc}  |  📋 WL-External: {wle}",
             ]
 
-            # Top 3 ACCUMULATE / BUY stocks
+            # Actionable picks with entry/stop
             action_csv = Path("action_language.csv")
+            comp_csv   = COMPOSITE_CSV
+            entry_map  = {}
+            if comp_csv.exists():
+                cdf = pd.read_csv(comp_csv, low_memory=False)
+                for _, r in cdf.iterrows():
+                    sym = str(r.get("NSE_SYMBOL",""))
+                    entry_map[sym] = {
+                        "entry": str(r.get("ENTRY_ZONE","—")),
+                        "sl":    str(r.get("STOP_LOSS","—")),
+                        "rr":    str(r.get("RISK_REWARD","—")),
+                        "er":    str(r.get("EXPECTED_RETURN","—")),
+                    }
+
             buys = []
             if action_csv.exists():
                 al = pd.read_csv(action_csv, low_memory=False)
                 if "AI_ACTION" in al.columns:
-                    buy_rows = al[al["AI_ACTION"].str.contains("ACCUMULATE|BUY",
-                                   na=False, case=False)].copy()
+                    buy_rows = al[al["AI_ACTION"].str.contains(
+                        "ACCUMULATE|BUY", na=False, case=False)].copy()
                     buy_rows = buy_rows.sort_values("COMPOSITE_SCORE", ascending=False)
-                    for _, r in buy_rows.head(4).iterrows():
-                        sp = str(r.get("SECTOR_PHASE","?"))
+                    for _, r in buy_rows.head(5).iterrows():
+                        sym  = str(r.get("NSE_SYMBOL",""))
+                        tier = str(r.get("MULTIBAGGER_TIER",""))
+                        sc   = int(r.get("COMPOSITE_SCORE",0) or 0)
+                        sp   = str(r.get("SECTOR_PHASE","?"))
                         sp_icon = {"BASING":"⏸️","MID_CYCLE":"🚀","LATE_CYCLE":"⚠️",
                                    "TOPPING":"🔴","CORRECTION":"📉",
                                    "EARLY_RECOVERY":"🌱"}.get(sp,"🔵")
+                        act_icon = "🟢" if "BUY" in str(r.get("AI_ACTION","")) else "🔵"
+                        em = entry_map.get(sym, {})
+                        entry = em.get("entry","—")
+                        sl    = em.get("sl","—")
+                        rr    = em.get("rr","—")
+                        er    = em.get("er","—")
                         buys.append(
-                            f"  {'🟢' if 'BUY' in str(r.get('AI_ACTION','')) else '🔵'} "
-                            f"<b>{r['NSE_SYMBOL']}</b> | {r['MULTIBAGGER_TIER']} "
-                            f"| Score {r['COMPOSITE_SCORE']} | "
-                            f"{sp_icon} {sp}"
+                            f"  {act_icon} <b>{sym}</b> | {tier} | {sc}/100 | {sp_icon}{sp}\n"
+                            f"     Entry:{entry}  SL:{sl}  R:R:{rr}  Exp:{er}"
                         )
 
             if buys:
-                lines += ["", "<b>💡 TODAY'S ACTIONABLE PICKS</b>"] + buys
-            else:
-                lines.append(f"\n<i>No active BUY/ACCUMULATE signals today</i>")
+                lines += ["", "<b>💡 ACTIONABLE PICKS</b>"] + buys
 
         except Exception as e:
-            lines.append(f"<i>[Scores unavailable: {e}]</i>")
+            lines.append(f"<i>[Scores: {e}]</i>")
 
-    # ── Sector cycle highlights ───────────────────────────────
+    # ── 8. Sector pulse ───────────────────────────────────────
     if SECTOR_CYCLE_CSV.exists():
         try:
             sc = pd.read_csv(SECTOR_CYCLE_CSV, low_memory=False)
             if not sc.empty:
-                mid_cyc = sc[sc["CYCLE_PHASE"] == "MID_CYCLE"]
-                topping  = sc[sc["CYCLE_PHASE"] == "TOPPING"]
                 lines.append("")
                 lines.append("<b>🗺️ SECTOR PULSE</b>")
-
-                if not mid_cyc.empty:
-                    best = mid_cyc.sort_values("SECTOR_RS", ascending=False).iloc[0]
-                    lines.append(
-                        f"🚀 BEST: {best['INDUSTRY_GROUP']}"
-                        f" (RS {best['SECTOR_RS']:.1f},"
-                        f" 6M: {best['RETURN_6M_PCT']:+.1f}%)"
-                    )
-
-                if not topping.empty:
-                    worst = topping.sort_values("MOMENTUM_ACCELERATION").iloc[0]
-                    lines.append(
-                        f"🔴 AVOID: {worst['INDUSTRY_GROUP']}"
-                        f" ({worst['MOMENTUM_ACCELERATION']:+.1f}%/mo delta)"
-                    )
-
-                corr_count = len(sc[sc["CYCLE_PHASE"] == "CORRECTION"])
-                lines.append(f"📉 Sectors in CORRECTION: {corr_count}")
+                mid   = sc[sc["CYCLE_PHASE"]=="MID_CYCLE"]
+                early = sc[sc["CYCLE_PHASE"]=="EARLY_RECOVERY"]
+                top   = sc[sc["CYCLE_PHASE"]=="TOPPING"]
+                corr  = sc[sc["CYCLE_PHASE"]=="CORRECTION"]
+                if not mid.empty:
+                    best = mid.sort_values("SECTOR_RS", ascending=False).iloc[0]
+                    lines.append(f"  🚀 BEST: {best['INDUSTRY_GROUP']} "
+                                 f"(RS {best['SECTOR_RS']:.1f}, 6M:{best['RETURN_6M_PCT']:+.1f}%)")
+                if not early.empty:
+                    e2 = early.sort_values("SECTOR_RS", ascending=False).iloc[0]
+                    lines.append(f"  🌱 TURNING: {e2['INDUSTRY_GROUP']}")
+                if not top.empty:
+                    worst = top.sort_values("MOMENTUM_ACCELERATION").iloc[0]
+                    lines.append(f"  🔴 AVOID: {worst['INDUSTRY_GROUP']} "
+                                 f"({worst['MOMENTUM_ACCELERATION']:+.1f}%/mo)")
+                lines.append(f"  📉 In CORRECTION: {len(corr)} sectors")
         except Exception:
             pass
+
+    # ── 9. Early alerts summary ───────────────────────────────
+    wl_path = Path("watchlist_for_cloud.csv")
+    # We use early_alerts if bundled, else skip
+    try:
+        ea_path = Path("early_alerts.csv")
+        if ea_path.exists():
+            ea = pd.read_csv(ea_path)
+            very_high = ea[ea["SEVERITY"]=="VERY_HIGH"]
+            if not very_high.empty:
+                lines.append("")
+                lines.append(f"<b>⚡ INSIDER ALERTS ({len(very_high)} filings)</b>")
+                for _, r in very_high.head(3).iterrows():
+                    sym  = str(r.get("NSE_SYMBOL",""))
+                    det  = str(r.get("ALERT_DETAIL",""))[:60]
+                    lines.append(f"  🔵 <b>{sym}</b>: {det}")
+    except Exception:
+        pass
 
     # ── Footer ────────────────────────────────────────────────
     lines += [
         f"",
         f"{'─'*32}",
-        f"<i>Multibagger Engine v2.2 | Run engine for full refresh</i>",
+        f"<i>Multibagger Engine v2.2  |  {datetime.now().strftime('%H:%M UTC')}</i>",
     ]
     return "\n".join(lines)
-
-
 # ── Intraday scan ─────────────────────────────────────────────
 
 def intraday_scan():
