@@ -316,6 +316,7 @@ def _clean_rss_text(raw: str) -> str:
     """Strip CDATA wrappers, HTML tags, and decode entities."""
     # Remove CDATA: <![CDATA[ ... ]]>
     text = re.sub(r"<!\[CDATA\[(.*?)\]\]>", r"\1", raw, flags=re.DOTALL)
+    text = text.replace("]]>", "").replace("<![CDATA[", "")
     # Remove remaining HTML tags
     text = re.sub(r"<[^>]+>", "", text)
     # Decode common HTML entities
@@ -392,18 +393,21 @@ def build_sector_macro_alert(sector: str, headlines: list,
     if dedup in seen:
         return None
 
-    # Find watchlist stocks in this sector
+    # Find watchlist stocks in this sector — PRIME + STRONG only
+    # WL-CONFIRMED / WL-EXTERNAL macro alerts = noise, skip them
+    HIGH_TIERS = {"PRIME", "STRONG"}
     sector_stocks = [
         ctx for ctx in watchlist.values()
-        if ctx.get("phase","") == sector or
-        sector.lower() in ctx.get("name","").lower()
+        if (ctx.get("phase","") == sector or
+            sector.lower() in ctx.get("name","").lower())
+        and ctx.get("tier","") in HIGH_TIERS
     ]
 
     # Show top 3 affected stocks
     top_stocks = sorted(sector_stocks, key=lambda x: -x.get("score",0))[:3]
 
     if not top_stocks:
-        return None  # no watchlist stocks in this sector → skip
+        return None  # no PRIME/STRONG stocks in this sector → skip
 
     # Build message
     lines = [
@@ -856,7 +860,9 @@ def intraday_scan():
         headline = str(ann.get("HEADLINE", ann.get("headline",
                        ann.get("SubjectLong", ann.get("subject","")))))
         etype    = classify(headline)
-        if etype == "NEWS":
+        # Only alert on high-urgency events — skip routine filings
+        SKIP_TYPES = {"NEWS", "RESULT", "DIVIDEND", "MGMT_CHANGE"}
+        if etype in SKIP_TYPES:
             skipped += 1
             continue
 
@@ -886,7 +892,8 @@ def intraday_scan():
             continue
 
         etype = classify(ann.get("headline",""))
-        if etype == "NEWS":
+        SKIP_TYPES = {"NEWS", "RESULT", "DIVIDEND", "MGMT_CHANGE"}
+        if etype in SKIP_TYPES:
             skipped += 1
             continue
 
