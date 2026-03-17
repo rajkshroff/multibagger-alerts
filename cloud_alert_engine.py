@@ -312,10 +312,24 @@ def fetch_nse_announcements(hours_back: int = 2) -> list:
 
 # ── Macro RSS sector alerts ───────────────────────────────────
 
+def _clean_rss_text(raw: str) -> str:
+    """Strip CDATA wrappers, HTML tags, and decode entities."""
+    # Remove CDATA: <![CDATA[ ... ]]>
+    text = re.sub(r"<!\[CDATA\[(.*?)\]\]>", r"", raw, flags=re.DOTALL)
+    # Remove remaining HTML tags
+    text = re.sub(r"<[^>]+>", "", text)
+    # Decode common HTML entities
+    text = (text.replace("&amp;", "&").replace("&lt;", "<")
+                .replace("&gt;", ">").replace("&quot;", '"')
+                .replace("&#39;", "'").replace("&nbsp;", " "))
+    return text.strip()
+
+
 def fetch_rss_headlines() -> list:
     """
     Fetch headlines from macro RSS feeds.
     Returns list of {title, link, published}
+    Handles CDATA-wrapped titles (ET, Mint, BS all use CDATA).
     """
     headlines = []
     for feed_url in RSS_FEEDS:
@@ -324,19 +338,25 @@ def fetch_rss_headlines() -> list:
                              headers={"User-Agent": "Mozilla/5.0"})
             if r.status_code != 200:
                 continue
-            # Simple XML parse — avoid feedparser dependency
             items = re.findall(r"<item>(.*?)</item>", r.text, re.DOTALL)
-            for item in items[:20]:  # cap per feed
-                title = re.search(r"<title>(.*?)</title>", item)
-                link  = re.search(r"<link>(.*?)</link>", item)
-                pub   = re.search(r"<pubDate>(.*?)</pubDate>", item)
-                if title:
-                    headlines.append({
-                        "title":     re.sub(r"<[^>]+>","", title.group(1)).strip(),
-                        "link":      link.group(1).strip() if link else "",
-                        "published": pub.group(1).strip()[:25] if pub else "",
-                        "source":    feed_url.split("/")[2],
-                    })
+            for item in items[:20]:
+                # Title: match CDATA or plain
+                title_m = re.search(
+                    r"<title>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?</title>",
+                    item, re.DOTALL)
+                link_m  = re.search(r"<link>(.*?)</link>", item, re.DOTALL)
+                pub_m   = re.search(r"<pubDate>(.*?)</pubDate>", item)
+                if not title_m:
+                    continue
+                title_text = _clean_rss_text(title_m.group(1))
+                if not title_text or len(title_text) < 5:
+                    continue  # skip empty or garbage
+                headlines.append({
+                    "title":     title_text[:200],
+                    "link":      _clean_rss_text(link_m.group(1)) if link_m else "",
+                    "published": pub_m.group(1).strip()[:25] if pub_m else "",
+                    "source":    feed_url.split("/")[2],
+                })
         except Exception:
             pass
     print(f"  RSS headlines fetched: {len(headlines)}")
