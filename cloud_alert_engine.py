@@ -42,8 +42,9 @@ except ImportError:
     import pandas as pd
 
 # ── Config ────────────────────────────────────────────────────
-TELEGRAM_TOKEN    = os.environ.get("TELEGRAM_TOKEN", "")
-TELEGRAM_CHAT_ID  = os.environ.get("TELEGRAM_CHAT_ID", "")
+# Strip whitespace — prevents silent failure if secret was pasted with spaces
+TELEGRAM_TOKEN    = os.environ.get("TELEGRAM_TOKEN", "").strip()
+TELEGRAM_CHAT_ID  = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
 SEEN_FILE         = Path("seen_alerts.json")
 WATCHLIST         = Path("watchlist_for_cloud.csv")
 COMPOSITE_CSV     = Path("composite_scores.csv")
@@ -196,18 +197,30 @@ def save_seen(seen: dict):
     SEEN_FILE.write_text(json.dumps(seen, indent=2))
 
 
+def _check_telegram_config():
+    """Print diagnostic on startup so logs always show secret status."""
+    tok_ok  = bool(TELEGRAM_TOKEN)
+    cid_ok  = bool(TELEGRAM_CHAT_ID)
+    tok_len = len(TELEGRAM_TOKEN)
+    cid_val = TELEGRAM_CHAT_ID if cid_ok else "MISSING"
+    print(f"  Telegram config  : TOKEN={'SET (' + str(tok_len) + ' chars)' if tok_ok else 'MISSING'}"
+          f"  CHAT_ID={cid_val}")
+    if not tok_ok or not cid_ok:
+        print(f"  [WARN] Telegram not configured — alerts will NOT be sent.")
+        print(f"  [WARN] Check GitHub Secrets: TELEGRAM_TOKEN + TELEGRAM_CHAT_ID")
+
+
 def send_telegram(message: str) -> bool:
     if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
-        print(f"  [SKIP] Telegram not configured — would send:")
-        print(f"  {message[:200]}")
-        return True  # return True so seen dedup still works in dry-run
+        # Return False — do NOT mark as sent when config is missing
+        return False
     url     = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "HTML"}
     try:
         r = requests.post(url, json=payload, timeout=15)
         if r.status_code == 200:
             return True
-        print(f"  [TG ERROR] {r.status_code}: {r.text[:200]}")
+        print(f"  [TG ERROR] {r.status_code}: {r.text[:300]}")
         return False
     except Exception as e:
         print(f"  [TG ERROR] {e}")
@@ -546,6 +559,7 @@ def intraday_scan():
     print("=" * 60)
     print(f"  INTRADAY SCAN  {datetime.now().strftime('%Y-%m-%d %H:%M UTC')}")
     print("=" * 60)
+    _check_telegram_config()
 
     watchlist = load_watchlist()
     if not watchlist:
@@ -648,6 +662,7 @@ def run_morning_brief():
     print("=" * 60)
     print(f"  MORNING BRIEF  {datetime.now().strftime('%Y-%m-%d %H:%M UTC')}")
     print("=" * 60)
+    _check_telegram_config()
 
     seen  = load_seen()
     today = datetime.now().strftime("%Y-%m-%d")
@@ -664,7 +679,9 @@ def run_morning_brief():
     if send_telegram(msg):
         seen[dedup] = today
         save_seen(seen)
-        print("  Morning brief sent ✅")
+        print("  Morning brief sent to Telegram ✅")
+    else:
+        print("  Morning brief FAILED — Telegram not configured or API error ❌")
     else:
         print("  Morning brief FAILED ❌")
 
