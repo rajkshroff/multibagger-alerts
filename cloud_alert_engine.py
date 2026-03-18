@@ -1,32 +1,28 @@
 #!/usr/bin/env python3
 # ============================================================
-# cloud_alert_engine.py — v2.0
-# SESSION 39: Morning brief + FII/DII + Global cues (yfinance)
+# cloud_alert_engine.py — v2.1
+# SESSION 40 FIXES:
+#   - Morning brief: was 8:25-8:35 (10min window, GitHub Actions
+#     startup could miss it). Now full 8am hour (h==8). Any
+#     30-min cron slot in the 8am hour fires the morning brief.
+#   - Noon heartbeat (12:00-12:30 IST): always sends market state
+#     even when no alerts — proves system is alive.
+#   - Intraday: sends "no alerts" status every 2hrs (10am/2pm/6pm)
+#     so silence = intentional, not broken.
+#   - --test flag: sends test message immediately, bypasses time gates.
+#   - Better console logging for GitHub Actions debug.
 #
 # LOCATION: Multibagger_App/multibagger-alerts/cloud_alert_engine.py
 # TRIGGERED BY: GitHub Actions (alert_engine.yml)
 #   - Morning Brief: 8:30am IST daily (3:00 UTC)
-#   - Intraday Alerts: every 30min, 7am–8pm IST, 7 days
-#
-# SESSION 39 ADDITIONS:
-#   - FII/DII flow (NSEI breadth proxy via yfinance)
-#   - Global cues: Dow/Nasdaq/SGX Nifty/Crude/USDINR
-#   - SECTOR_TURN alerts forwarded from early_alerts.csv
-#   - Market breadth context in morning brief
-#
-# DATA SOURCES (from GitHub repo root — git_sync.cmd pushes these):
-#   composite_scores.csv     — tier + signal per stock
-#   market_intelligence.csv  — breadth + fear/greed
-#   sector_cycle_status.csv  — sector phases
-#   watchlist_for_cloud.csv  — PRIME/STRONG/BeatDown stocks
-#   action_language.csv      — BUY/ACCUMULATE actions
-#   early_alerts.csv         — pre-price signals + SECTOR_TURN
+#   - Intraday Alerts: every 30min, 7am-8pm IST, 7 days
 # ============================================================
 
 import os
 import sys
 import requests
 import json
+import argparse
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -41,6 +37,13 @@ try:
 except ImportError:
     os.system("pip install yfinance -q")
     import yfinance as yf
+
+# ── ARGS ─────────────────────────────────────────────────────
+parser = argparse.ArgumentParser(add_help=False)
+parser.add_argument("--test", action="store_true",
+                    help="Send a test message immediately, bypass time gates")
+args, _ = parser.parse_known_args()
+TEST_MODE = args.test
 
 # ── TELEGRAM CONFIG ──────────────────────────────────────────
 BOT_TOKEN  = os.environ.get("TELEGRAM_BOT_TOKEN", "")
@@ -72,12 +75,36 @@ def ist_hour_min():
     return n.hour, n.minute
 
 def is_morning_brief():
-    """True if we're in the 8:25–8:35am IST window."""
+    """
+    True if we're in the 8am IST hour.
+    WIDENED from 8:25-8:35 → full hour (h==8).
+    GitHub Actions takes 30-60s to start — a 10-min window was
+    too narrow and caused silent failures.
+    Any 30-min cron slot that fires during the 8am hour triggers
+    the morning brief exactly once.
+    """
+    h, _ = ist_hour_min()
+    return h == 8
+
+def is_noon_heartbeat():
+    """
+    True 12:00-12:29 IST.
+    Sends a short market status even with no alerts — proves
+    system is alive. Replaces silence with status.
+    """
     h, m = ist_hour_min()
-    return h == 8 and 25 <= m <= 35
+    return h == 12 and m < 30
+
+def is_status_slot():
+    """
+    True at 10am, 2pm, 6pm IST (first 30 min of those hours).
+    Sends 'no alerts' confirmation so silence = intentional.
+    """
+    h, m = ist_hour_min()
+    return h in (10, 14, 18) and m < 30
 
 def is_market_hours():
-    """True if 7am–8pm IST (inclusive)."""
+    """True if 7am-8pm IST (inclusive)."""
     h, _ = ist_hour_min()
     return 7 <= h <= 20
 
@@ -86,10 +113,14 @@ def is_market_hours():
 def _load(key):
     p = CSV_FILES.get(key)
     if not p or not p.exists():
+        print(f"  [CSV] MISSING: {key} → {p}")
         return pd.DataFrame()
     try:
-        return pd.read_csv(p, low_memory=False)
-    except Exception:
+        df = pd.read_csv(p, low_memory=False)
+        print(f"  [CSV] loaded: {key} → {len(df):,} rows")
+        return df
+    except Exception as e:
+        print(f"  [CSV] FAILED: {key} → {e}")
         return pd.DataFrame()
 
 def _sf(v, default=0.0):
@@ -109,34 +140,31 @@ def _si(v, default=0):
 def send(msg: str, parse_mode: str = "HTML") -> bool:
     """Send a message to Telegram. Returns True on success."""
     if not msg.strip():
+        print("  [send] Empty message — skipping")
         return False
     url  = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     data = {"chat_id": CHAT_ID, "text": msg, "parse_mode": parse_mode}
     try:
         r = requests.post(url, json=data, timeout=15)
         if r.status_code == 200:
+            print(f"  [send] ✅ Sent ({len(msg)} chars)")
             return True
-        print(f"[Telegram] HTTP {r.status_code}: {r.text[:200]}")
+        print(f"  [send] HTTP {r.status_code}: {r.text[:300]}")
         return False
     except Exception as e:
-        print(f"[Telegram] Error: {e}")
+        print(f"  [send] Error: {e}")
         return False
 
 
 # ── GLOBAL CUES (yfinance) ────────────────────────────────────
 GLOBAL_TICKERS = {
-    "Dow Jones":   "^DJI",
-    "Nasdaq":      "^IXIC",
-    "GIFT Nifty":  "GC=F",    # fallback; use SGX proxy
-    "Crude WTI":   "CL=F",
-    "USD/INR":     "USDINR=X",
+    "Dow Jones":  "^DJI",
+    "Nasdaq":     "^IXIC",
+    "Crude WTI":  "CL=F",
+    "USD/INR":    "USDINR=X",
 }
 
-def fetch_global_cues() -> list[str]:
-    """
-    Returns list of formatted lines like:
-    🟢 Dow Jones      42,150.30  (+0.42%)
-    """
+def fetch_global_cues() -> list:
     lines = []
     try:
         for label, ticker in GLOBAL_TICKERS.items():
@@ -157,13 +185,8 @@ def fetch_global_cues() -> list[str]:
     return lines
 
 
-# ── FII/DII PROXY (breadth approach via yfinance) ─────────────
+# ── FII/DII PROXY ─────────────────────────────────────────────
 def fetch_fii_proxy() -> str:
-    """
-    FII/DII actual data is not available freely in real-time.
-    Uses NIFTY 50 vs NIFTY Midcap 100 divergence as a proxy
-    for FII (large-cap) vs DII (mid-cap) flow direction.
-    """
     try:
         nifty  = yf.Ticker("^NSEI").fast_info
         midcap = yf.Ticker("NIFTY_MIDCAP_100.NS").fast_info
@@ -172,7 +195,44 @@ def fetch_fii_proxy() -> str:
         fii_sig = "FII-driven 📈" if n_pct > m_pct + 0.3 else ("DII-driven 📈" if m_pct > n_pct + 0.3 else "Balanced")
         return f"NIFTY50 {n_pct:+.2f}% vs MidCap {m_pct:+.2f}% → {fii_sig}"
     except Exception:
-        return "FII/DII data unavailable"
+        return ""
+
+
+# ── MARKET SUMMARY BLOCK (shared by brief + heartbeat) ────────
+def build_market_summary() -> tuple:
+    """Returns (mstate, summary_text). summary_text is multi-line HTML."""
+    mi = _load("market_intel")
+    mstate = fglabel = "—"
+    fgscore = b200 = b50 = med1m = 0.0
+    sectors_up = 0
+    if not mi.empty:
+        r = mi.iloc[0]
+        mstate    = str(r.get("MARKET_STATE", "—"))
+        fglabel   = str(r.get("FEAR_GREED_LABEL", "—"))
+        fgscore   = _sf(r.get("FEAR_GREED_SCORE", 0))
+        b200      = _sf(r.get("BREADTH_ABOVE_200DMA", 0))
+        b50       = _sf(r.get("BREADTH_ABOVE_50DMA", 0))
+        med1m     = _sf(r.get("MEDIAN_RETURN_1M", 0))
+        sectors_up= _si(r.get("SECTORS_OUTPERFORMING", 0))
+
+    mstate_icon = {"BULL":"🟢","CAUTION":"🟡","BEAR":"🔴"}.get(mstate,"⚪")
+
+    cs = _load("composite")
+    prime = strong = wlc = total = 0
+    if not cs.empty and "TIER" in cs.columns:
+        tc     = cs["TIER"].value_counts()
+        total  = len(cs)
+        prime  = _si(tc.get("PRIME",0))
+        strong = _si(tc.get("STRONG",0))
+        wlc    = _si(tc.get("WATCHLIST_CONFIRMED",0))
+
+    text = (
+        f"{mstate_icon} <b>{mstate}</b> | F&amp;G: {fglabel} ({fgscore:.0f}) | "
+        f"Above 200DMA: {b200:.1f}%\n"
+        f"50DMA: {b50:.1f}% | Median 1M: {med1m:+.1f}% | Outperforming: {sectors_up} sectors\n"
+        f"PRIME <b>{prime}</b> | STRONG <b>{strong}</b> | WLC <b>{wlc}</b> | Universe {total:,}"
+    )
+    return mstate, text
 
 
 # ── MORNING BRIEF ─────────────────────────────────────────────
@@ -180,37 +240,11 @@ def build_morning_brief() -> str:
     n   = now_ist()
     day = n.strftime("%A, %d %b %Y")
 
-    # ── Market state ─────────────────────────────────────────
-    mi  = _load("market_intel")
-    mstate = fglabel = "—"
-    fgscore = 0
-    b200 = b50 = med1m = 0.0
-    sectors_up = 0
-    if not mi.empty:
-        r = mi.iloc[0]
-        mstate   = str(r.get("MARKET_STATE", "—"))
-        fglabel  = str(r.get("FEAR_GREED_LABEL", "—"))
-        fgscore  = _sf(r.get("FEAR_GREED_SCORE", 0))
-        b200     = _sf(r.get("BREADTH_ABOVE_200DMA", 0))
-        b50      = _sf(r.get("BREADTH_ABOVE_50DMA", 0))
-        med1m    = _sf(r.get("MEDIAN_RETURN_1M", 0))
-        sectors_up = _si(r.get("SECTORS_OUTPERFORMING", 0))
+    mstate, mkt_text = build_market_summary()
 
-    mstate_icon = {"BULL": "🟢", "CAUTION": "🟡", "BEAR": "🔴"}.get(mstate, "⚪")
-
-    # ── Tier counts ──────────────────────────────────────────
-    cs  = _load("composite")
-    total = prime = strong = wlc = landmines = 0
-    if not cs.empty and "TIER" in cs.columns:
-        tc      = cs["TIER"].value_counts()
-        total   = len(cs)
-        prime   = _si(tc.get("PRIME", 0))
-        strong  = _si(tc.get("STRONG", 0))
-        wlc     = _si(tc.get("WATCHLIST_CONFIRMED", 0))
-        landmines = _si(tc.get("LANDMINE", 0))
-
-    # ── Actionable picks ─────────────────────────────────────
+    # Actionable picks
     al  = _load("action")
+    cs  = _load("composite")
     picks_lines = []
     if not al.empty and "AI_ACTION" in al.columns:
         buys = al[al["AI_ACTION"].str.contains("BUY|ACCUMULATE", case=False, na=False)]
@@ -218,10 +252,9 @@ def build_morning_brief() -> str:
         for _, r in buys.iterrows():
             sym   = str(r.get("NSE_SYMBOL",""))
             tier  = str(r.get("MULTIBAGGER_TIER",""))
-            score = _si(r.get("COMPOSITE_SCORE", 0))
+            score = _si(r.get("COMPOSITE_SCORE",0))
             act   = str(r.get("AI_ACTION","")).replace("🟢","").replace("✅","").strip()
             phase = str(r.get("SECTOR_PHASE",""))
-            # Entry/SL from composite_scores
             entry = sl = rr = "—"
             if not cs.empty and "NSE_SYMBOL" in cs.columns:
                 match = cs[cs["NSE_SYMBOL"] == sym]
@@ -234,7 +267,7 @@ def build_morning_brief() -> str:
                 f"    ↳ {act}  │  Entry:{entry}  SL:{sl}  R:R:{rr}"
             )
 
-    # ── RECOVERY_WATCH ────────────────────────────────────────
+    # Recovery watch
     bw_lines = []
     if not cs.empty and "BEATEN_DOWN_WATCH" in cs.columns:
         bw = cs[cs["BEATEN_DOWN_WATCH"] == True].sort_values(
@@ -245,8 +278,8 @@ def build_morning_brief() -> str:
             entry = str(r.get("ENTRY_ZONE","—"))
             bw_lines.append(f"  🌱 <code>{sym}</code>  {phase}  Entry:{entry}")
 
-    # ── Early alerts ──────────────────────────────────────────
-    ea  = _load("early_alerts")
+    # Early alerts
+    ea = _load("early_alerts")
     alert_lines = []
     if not ea.empty:
         top = ea.sort_values("SEVERITY", ascending=True).head(5)
@@ -262,59 +295,72 @@ def build_morning_brief() -> str:
             else:
                 alert_lines.append(f"  {icon} [{atyp}] {sym} ({tier})  {det}")
 
-    # ── Sector cycle highlights ───────────────────────────────
+    # Sector cycle highlights
     sc = _load("sector_cycle")
     cycle_lines = []
     if not sc.empty:
-        for phase, icon in [("MID_CYCLE","🚀"),("EARLY_RECOVERY","🌱"),("BASING","⏸️"),("CORRECTION","📉")]:
+        for phase, icon in [("MID_CYCLE","🚀"),("EARLY_RECOVERY","🌱"),
+                             ("BASING","⏸️"),("CORRECTION","📉")]:
             subs = sc[sc["CYCLE_PHASE"] == phase]
             if not subs.empty:
                 names = ", ".join(subs["INDUSTRY_GROUP"].tolist()[:3])
                 cycle_lines.append(f"  {icon} {phase:<18} ({len(subs)}): {names}")
 
-    # ── Global cues ──────────────────────────────────────────
+    # Global cues
     global_lines = fetch_global_cues()
     fii_line     = fetch_fii_proxy()
 
-    # ── Compose message ───────────────────────────────────────
     msg = f"""🇮🇳 <b>MULTIBAGGER ENGINE — MORNING BRIEF</b>
 {day}
-{mstate_icon} Market: <b>{mstate}</b> | F&amp;G: {fglabel} ({fgscore:.0f}) | Above 200DMA: {b200:.1f}%
-Breadth: {b50:.1f}% above 50DMA | Median 1M: {med1m:+.1f}% | Outperforming sectors: {sectors_up}
-
-<b>📊 Universe Counts ({total:,} stocks)</b>
-PRIME {prime} | STRONG {strong} | WL_CONFIRMED {wlc} | LANDMINES {landmines}
+{mkt_text}
 """
     if global_lines:
-        msg += "\n<b>🌍 Global Cues</b>\n" + "\n".join(global_lines) + f"\n{fii_line}\n"
+        msg += "\n<b>🌍 Global Cues</b>\n" + "\n".join(global_lines)
+        if fii_line:
+            msg += f"\n{fii_line}"
+        msg += "\n"
 
     if picks_lines:
         msg += "\n<b>🎯 Actionable Picks (BUY / ACCUMULATE)</b>\n" + "\n".join(picks_lines) + "\n"
 
     if bw_lines:
-        msg += "\n<b>🌱 RECOVERY WATCH (quality in sector correction)</b>\n" + "\n".join(bw_lines) + "\n"
+        msg += "\n<b>🌱 RECOVERY WATCH</b>\n" + "\n".join(bw_lines) + "\n"
 
     if alert_lines:
-        msg += "\n<b>⚡ Early Alerts (pre-price signals)</b>\n" + "\n".join(alert_lines) + "\n"
+        msg += "\n<b>⚡ Early Alerts</b>\n" + "\n".join(alert_lines) + "\n"
 
     if cycle_lines:
         msg += "\n<b>🔄 Sector Cycle</b>\n" + "\n".join(cycle_lines) + "\n"
 
-    msg += f"\n<i>Engine data as of last run. Run engine for fresh data.</i>"
+    msg += f"\n<i>Engine data from last run.</i>"
     return msg
 
 
+# ── NOON HEARTBEAT ────────────────────────────────────────────
+def build_noon_heartbeat() -> str:
+    _, mkt_text = build_market_summary()
+    t = now_ist().strftime("%H:%M IST")
+    ea = _load("early_alerts")
+    alert_count = len(ea) if not ea.empty else 0
+    return (
+        f"💓 <b>MIDDAY STATUS — {t}</b>\n"
+        f"{mkt_text}\n"
+        f"Early alerts in queue: {alert_count}\n"
+        f"<i>Engine running. No action needed unless alerts below.</i>"
+    )
+
+
 # ── INTRADAY ALERTS ───────────────────────────────────────────
-def build_intraday_alerts() -> str | None:
+def build_intraday_alerts(send_status_if_empty: bool = False):
     """
-    Fire intraday alerts ONLY for:
-      ORDER_WIN / PENALTY / RESULT_BEAT / CAPEX / ACQUISITION (from early_alerts)
-      SECTOR_TURN (phase upgrades)
-    For PRIME + STRONG stocks only (tier gate applied inside early_alerts.py)
-    Returns None if nothing worth alerting.
+    Returns alert message string, or status string if send_status_if_empty=True
+    and nothing actionable found, or None if nothing to send.
     """
     ea = _load("early_alerts")
     if ea.empty:
+        if send_status_if_empty:
+            t = now_ist().strftime("%H:%M IST")
+            return f"✅ <b>{t}</b> — Engine alive. No new alerts."
         return None
 
     FIRE_TYPES = {"ORDER_WIN","PENALTY","RESULT_BEAT","CAPEX","ACQUISITION",
@@ -327,12 +373,14 @@ def build_intraday_alerts() -> str | None:
         (ea["TIER"].isin(HIGH_TIERS) | (ea["ALERT_TYPE"] == "SECTOR_TURN"))
     ]
 
-    # Only show alerts from last 24h (avoid re-sending old alerts)
     cutoff = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%d")
     if "ALERT_DATE" in rows.columns:
         rows = rows[rows["ALERT_DATE"].astype(str) >= cutoff]
 
     if rows.empty:
+        if send_status_if_empty:
+            t = now_ist().strftime("%H:%M IST")
+            return f"✅ <b>{t}</b> — Engine alive. No actionable alerts."
         return None
 
     now_str = now_ist().strftime("%H:%M IST")
@@ -355,29 +403,62 @@ def build_intraday_alerts() -> str | None:
 
 # ── MAIN ──────────────────────────────────────────────────────
 def main():
-    print(f"[{now_ist().strftime('%Y-%m-%d %H:%M IST')}] cloud_alert_engine v2.0 starting")
+    now_str = now_ist().strftime("%Y-%m-%d %H:%M:%S IST")
+    h, m = ist_hour_min()
+    print(f"[{now_str}] cloud_alert_engine v2.1 starting")
+    print(f"  IST time: {h:02d}:{m:02d}")
+    print(f"  morning_brief={is_morning_brief()} noon={is_noon_heartbeat()} "
+          f"status_slot={is_status_slot()} market_hours={is_market_hours()}")
+    print(f"  TEST_MODE={TEST_MODE}")
+    print(f"  CSV files present: "
+          + ", ".join(k for k, v in CSV_FILES.items() if v.exists()))
 
     sent = 0
 
+    # ── TEST MODE ─────────────────────────────────────────────
+    if TEST_MODE:
+        print("  → TEST MODE")
+        _, mkt_text = build_market_summary()
+        msg = (
+            f"🧪 <b>MULTIBAGGER — TEST MESSAGE</b>\n"
+            f"{now_ist().strftime('%H:%M IST')}\n"
+            f"{mkt_text}\n"
+            f"<i>System alive. Telegram verified.</i>"
+        )
+        ok = send(msg)
+        print(f"  → Test message sent: {ok}")
+        return
+
+    # ── MORNING BRIEF (8am IST — full hour) ───────────────────
     if is_morning_brief():
         print("  → Morning Brief mode")
         msg = build_morning_brief()
-        if msg:
-            ok = send(msg)
-            print(f"  → Morning Brief sent: {ok}")
-            sent += 1
+        ok = send(msg)
+        print(f"  → Morning Brief sent: {ok}")
+        sent += 1
 
+    # ── NOON HEARTBEAT (12:00-12:29 IST) ──────────────────────
+    elif is_noon_heartbeat():
+        print("  → Noon heartbeat mode")
+        msg = build_noon_heartbeat()
+        ok = send(msg)
+        print(f"  → Noon heartbeat sent: {ok}")
+        sent += 1
+
+    # ── INTRADAY WITH STATUS SLOT ──────────────────────────────
     elif is_market_hours():
-        print("  → Intraday Alert mode")
-        msg = build_intraday_alerts()
+        send_status = is_status_slot()
+        print(f"  → Intraday mode (send_status={send_status})")
+        msg = build_intraday_alerts(send_status_if_empty=send_status)
         if msg:
             ok = send(msg)
-            print(f"  → Intraday alert sent: {ok}")
+            print(f"  → Intraday/status sent: {ok}")
             sent += 1
         else:
-            print("  → No new alerts to send")
+            print("  → No new alerts, no status slot — silent")
+
     else:
-        print(f"  → Outside alert window ({now_ist().strftime('%H:%M IST')}) — sleeping")
+        print(f"  → Outside alert window ({h:02d}:{m:02d} IST) — sleeping")
 
     print(f"  Messages sent: {sent}")
 
