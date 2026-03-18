@@ -46,7 +46,7 @@ args, _ = parser.parse_known_args()
 TEST_MODE = args.test
 
 # ── TELEGRAM CONFIG ──────────────────────────────────────────
-BOT_TOKEN  = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+BOT_TOKEN  = os.environ.get("TELEGRAM_BOT_TOKEN", "") or os.environ.get("TELEGRAM_TOKEN", "")
 CHAT_ID    = os.environ.get("TELEGRAM_CHAT_ID", "")
 
 if not BOT_TOKEN or not CHAT_ID:
