@@ -1,0 +1,117 @@
+name: Multibagger Alert Engine
+
+# ============================================================
+# TRIGGERS:
+#   1. Schedule — every 30min, 7am–8pm IST (1:30–14:30 UTC), 7 days
+#   2. Push     — whenever git_sync.cmd pushes fresh CSVs to this repo
+#                 = auto-runs within 60s of your engine completing
+#   3. Manual   — GitHub UI "Run workflow" button for on-demand
+# ============================================================
+
+on:
+  schedule:
+    # Every 30 min, 7am-8pm IST (UTC+5:30 = subtract 5:30)
+    # 7:00 IST  = 01:30 UTC
+    # 8:00 IST  = 02:30 UTC  (morning brief)
+    # 20:00 IST = 14:30 UTC
+    - cron: '30 1 * * *'    # 7:00 IST  — market pre-open
+    - cron: '0 2 * * *'     # 7:30 IST
+    - cron: '30 2 * * *'    # 8:00 IST  ← MORNING BRIEF
+    - cron: '0 3 * * *'     # 8:30 IST
+    - cron: '30 3 * * *'    # 9:00 IST  — market open
+    - cron: '0 4 * * *'     # 9:30 IST
+    - cron: '30 4 * * *'    # 10:00 IST
+    - cron: '0 5 * * *'     # 10:30 IST
+    - cron: '30 5 * * *'    # 11:00 IST
+    - cron: '0 6 * * *'     # 11:30 IST
+    - cron: '30 6 * * *'    # 12:00 IST
+    - cron: '0 7 * * *'     # 12:30 IST
+    - cron: '30 7 * * *'    # 13:00 IST
+    - cron: '0 8 * * *'     # 13:30 IST
+    - cron: '30 8 * * *'    # 14:00 IST
+    - cron: '0 9 * * *'     # 14:30 IST
+    - cron: '30 9 * * *'    # 15:00 IST — market close window
+    - cron: '0 10 * * *'    # 15:30 IST
+    - cron: '30 10 * * *'   # 16:00 IST
+    - cron: '0 11 * * *'    # 16:30 IST
+    - cron: '30 11 * * *'   # 17:00 IST
+    - cron: '0 12 * * *'    # 17:30 IST
+    - cron: '30 12 * * *'   # 18:00 IST
+    - cron: '0 13 * * *'    # 18:30 IST
+    - cron: '30 13 * * *'   # 19:00 IST
+    - cron: '0 14 * * *'    # 19:30 IST
+    - cron: '30 14 * * *'   # 20:00 IST — end of day
+
+  # ── Auto-trigger when git_sync pushes fresh CSV data ────────
+  # Engine runs → git_sync.cmd pushes → this fires within ~60s
+  # Means: no manual Quick Run click needed to get Telegram alerts
+  push:
+    branches:
+      - main
+    paths:
+      - 'composite_scores.csv'
+      - 'market_intelligence.csv'
+      - 'sector_cycle_status.csv'
+      - 'watchlist_for_cloud.csv'
+      - 'action_language.csv'
+
+  # ── Manual trigger from GitHub UI ───────────────────────────
+  workflow_dispatch:
+    inputs:
+      force_morning_brief:
+        description: 'Force morning brief (even if already sent today)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+# ── Prevent parallel runs — queue instead ────────────────────
+concurrency:
+  group: alert-engine
+  cancel-in-progress: false
+
+jobs:
+  run-alerts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10        # alert engine should finish in < 3 min
+
+    steps:
+      # ── 1. Checkout repo (gets the 5 CSVs) ──────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. Python setup ─────────────────────────────────────
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      # ── 3. Install dependencies ──────────────────────────────
+      - name: Install dependencies
+        run: |
+          pip install requests pandas pytz feedparser --quiet
+
+      # ── 4. Run alert engine ──────────────────────────────────
+      - name: Run cloud_alert_engine.py
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
+          FORCE_MORNING_BRIEF: ${{ github.event.inputs.force_morning_brief || 'false' }}
+          # Tells alert engine this was triggered by a CSV push (fresh data)
+          TRIGGERED_BY: ${{ github.event_name }}
+        run: |
+          python cloud_alert_engine.py
+
+      # ── 5. Log result ────────────────────────────────────────
+      - name: Summary
+        if: always()
+        run: |
+          echo "Trigger    : ${{ github.event_name }}"
+          echo "Run time   : $(date -u '+%Y-%m-%d %H:%M UTC')"
+          echo "IST time   : $(TZ='Asia/Kolkata' date '+%Y-%m-%d %H:%M IST')"
+          if [ "${{ github.event_name }}" == "push" ]; then
+            echo "CSV push   : Fresh engine data detected — alerts fired on new data"
+          fi
