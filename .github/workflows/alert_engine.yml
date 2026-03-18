@@ -97,8 +97,8 @@ jobs:
       # ── 4. Run alert engine ──────────────────────────────────
       - name: Run cloud_alert_engine.py
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_TOKEN:   ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           FORCE_MORNING_BRIEF: ${{ github.event.inputs.force_morning_brief || 'false' }}
           # Tells alert engine this was triggered by a CSV push (fresh data)
           TRIGGERED_BY: ${{ github.event_name }}
