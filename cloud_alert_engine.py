@@ -135,6 +135,20 @@ def _si(v, default=0):
     except Exception:
         return default
 
+ALERT_FRESHNESS_MINUTES = 65   # only fire alerts from CSVs pushed within this window
+                               # prevents cron re-sending same alerts every 30 min
+
+def _csv_is_fresh(key) -> bool:
+    """Return True if the CSV was modified within ALERT_FRESHNESS_MINUTES."""
+    import time
+    p = CSV_FILES.get(key)
+    if not p or not p.exists():
+        return False
+    age_minutes = (time.time() - p.stat().st_mtime) / 60
+    print(f"  [freshness] {key}: {age_minutes:.1f} min old "
+          f"({'FRESH' if age_minutes <= ALERT_FRESHNESS_MINUTES else 'STALE'})")
+    return age_minutes <= ALERT_FRESHNESS_MINUTES
+
 
 # ── TELEGRAM SENDER ──────────────────────────────────────────
 def send(msg: str, parse_mode: str = "HTML") -> bool:
@@ -358,6 +372,17 @@ def build_intraday_alerts(send_status_if_empty: bool = False):
     """
     ea = _load("early_alerts")
     if ea.empty:
+        if send_status_if_empty:
+            t = now_ist().strftime("%H:%M IST")
+            return f"✅ <b>{t}</b> — Engine alive. No new alerts."
+        return None
+
+    # ── FRESHNESS GATE — prevents cron duplicate sends ────────
+    # early_alerts.csv is pushed once per engine run via git_sync.
+    # GitHub push triggers Actions immediately — that run fires alerts.
+    # Subsequent 30-min cron runs find a stale CSV and skip silently.
+    if not _csv_is_fresh("early_alerts"):
+        print("  [intraday] early_alerts.csv stale — skipping (cron dedup)")
         if send_status_if_empty:
             t = now_ist().strftime("%H:%M IST")
             return f"✅ <b>{t}</b> — Engine alive. No new alerts."
