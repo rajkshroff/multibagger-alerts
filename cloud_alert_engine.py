@@ -194,13 +194,8 @@ def _save_seen_hashes(hashes: dict):
     SEEN_HASHES_FILE.write_text(json.dumps(hashes, indent=2), encoding="utf-8")
     # Commit back to repo so next run sees updated hashes
     try:
-        # Set git identity for GitHub Actions runner (no-op if already set)
-        subprocess.run(["git", "config", "user.email", "bot@multibagger-alerts.local"],
-                       cwd=str(REPO), check=False)
-        subprocess.run(["git", "config", "user.name", "Multibagger Alert Bot"],
-                       cwd=str(REPO), check=False)
         subprocess.run(["git", "add", "seen_hashes.json"], cwd=str(REPO), check=True)
-        subprocess.run(["git", "commit", "-m", "chore: update seen alert hashes [skip ci]"],
+        subprocess.run(["git", "commit", "-m", "chore: update seen alert hashes"],
                        cwd=str(REPO), check=True)
         subprocess.run(["git", "push"], cwd=str(REPO), check=True)
         print("  [dedup] seen_hashes.json committed + pushed")
@@ -537,17 +532,6 @@ def main():
           + ", ".join(k for k, v in CSV_FILES.items() if v.exists()))
 
     sent = 0
-
-    # ── FORCE MORNING BRIEF (from workflow_dispatch) ─────────
-    force_brief = os.environ.get("FORCE_MORNING_BRIEF","false").lower() == "true"
-    if force_brief:
-        print("  → FORCE_MORNING_BRIEF mode")
-        msg = build_morning_brief()
-        ok = send(msg)
-        print(f"  → Forced Morning Brief sent: {ok}")
-        if ok:
-            _mark_morning_brief_sent()
-        return
 
     # ── FORCE MORNING BRIEF (from workflow_dispatch) ─────────
     force_brief = os.environ.get("FORCE_MORNING_BRIEF","false").lower() == "true"
