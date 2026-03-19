@@ -75,17 +75,53 @@ def ist_hour_min():
     n = now_ist()
     return n.hour, n.minute
 
+MORNING_BRIEF_SENT_FILE = REPO / "morning_brief_sent.json"
+
+def _morning_brief_sent_today() -> bool:
+    """True if morning brief was already sent today (IST date)."""
+    import json as _json
+    today = now_ist().strftime("%Y-%m-%d")
+    if not MORNING_BRIEF_SENT_FILE.exists():
+        return False
+    try:
+        data = _json.loads(MORNING_BRIEF_SENT_FILE.read_text(encoding="utf-8"))
+        return data.get("date") == today
+    except Exception:
+        return False
+
+def _mark_morning_brief_sent():
+    """Record that morning brief was sent today. Commit to repo."""
+    import json as _json, subprocess as _sp
+    today = now_ist().strftime("%Y-%m-%d")
+    MORNING_BRIEF_SENT_FILE.write_text(
+        _json.dumps({"date": today}, indent=2), encoding="utf-8"
+    )
+    try:
+        _sp.run(["git", "config", "user.email", "bot@multibagger-alerts.local"],
+                cwd=str(REPO), check=False)
+        _sp.run(["git", "config", "user.name",  "Multibagger Alert Bot"],
+                cwd=str(REPO), check=False)
+        _sp.run(["git", "add", "morning_brief_sent.json"], cwd=str(REPO), check=True)
+        _sp.run(["git", "commit", "-m", f"chore: morning brief sent {today} [skip ci]"],
+                cwd=str(REPO), check=True)
+        _sp.run(["git", "push"], cwd=str(REPO), check=True)
+        print(f"  [brief] marked sent for {today}")
+    except Exception as e:
+        print(f"  [brief] git commit failed (non-fatal): {e}")
+
 def is_morning_brief():
     """
-    True if we're in the 8am IST hour.
-    WIDENED from 8:25-8:35 → full hour (h==8).
-    GitHub Actions takes 30-60s to start — a 10-min window was
-    too narrow and caused silent failures.
-    Any 30-min cron slot that fires during the 8am hour triggers
-    the morning brief exactly once.
+    True if we're in the 7:30-9:59 IST window AND brief not yet sent today.
+    WIDENED from h==8 to 7:30-9:59 IST — GitHub Actions free tier can delay
+    scheduled cron runs by up to 60 min. Widening to 2.5 hours ensures the
+    brief fires even with maximum delay.
+    Date-based dedup (morning_brief_sent.json) guarantees exactly one per day.
     """
-    h, _ = ist_hour_min()
-    return h == 8
+    h, m = ist_hour_min()
+    in_window = (h == 7 and m >= 30) or (h == 8) or (h == 9)
+    if not in_window:
+        return False
+    return not _morning_brief_sent_today()
 
 def is_noon_heartbeat():
     """
@@ -497,6 +533,17 @@ def main():
 
     sent = 0
 
+    # ── FORCE MORNING BRIEF (from workflow_dispatch) ─────────
+    force_brief = os.environ.get("FORCE_MORNING_BRIEF","false").lower() == "true"
+    if force_brief:
+        print("  → FORCE_MORNING_BRIEF mode")
+        msg = build_morning_brief()
+        ok = send(msg)
+        print(f"  → Forced Morning Brief sent: {ok}")
+        if ok:
+            _mark_morning_brief_sent()
+        return
+
     # ── TEST MODE ─────────────────────────────────────────────
     if TEST_MODE:
         print("  → TEST MODE")
@@ -511,12 +558,14 @@ def main():
         print(f"  → Test message sent: {ok}")
         return
 
-    # ── MORNING BRIEF (8am IST — full hour) ───────────────────
+    # ── MORNING BRIEF (7:30-9:59 IST, once per day) ──────────
     if is_morning_brief():
         print("  → Morning Brief mode")
         msg = build_morning_brief()
         ok = send(msg)
         print(f"  → Morning Brief sent: {ok}")
+        if ok:
+            _mark_morning_brief_sent()
         sent += 1
 
     # ── NOON HEARTBEAT (12:00-12:29 IST) ──────────────────────
