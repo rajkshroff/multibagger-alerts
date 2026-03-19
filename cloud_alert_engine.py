@@ -135,19 +135,41 @@ def _si(v, default=0):
     except Exception:
         return default
 
-ALERT_FRESHNESS_MINUTES = 65   # only fire alerts from CSVs pushed within this window
-                               # prevents cron re-sending same alerts every 30 min
+SEEN_HASHES_FILE = REPO / "seen_hashes.json"
+SEEN_HASH_TTL_HOURS = 48   # forget alerts older than this (avoids file growing forever)
 
-def _csv_is_fresh(key) -> bool:
-    """Return True if the CSV was modified within ALERT_FRESHNESS_MINUTES."""
-    import time
-    p = CSV_FILES.get(key)
-    if not p or not p.exists():
-        return False
-    age_minutes = (time.time() - p.stat().st_mtime) / 60
-    print(f"  [freshness] {key}: {age_minutes:.1f} min old "
-          f"({'FRESH' if age_minutes <= ALERT_FRESHNESS_MINUTES else 'STALE'})")
-    return age_minutes <= ALERT_FRESHNESS_MINUTES
+def _load_seen_hashes() -> dict:
+    """Load previously sent alert hashes from repo file."""
+    if not SEEN_HASHES_FILE.exists():
+        return {}
+    try:
+        import json
+        return json.loads(SEEN_HASHES_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+def _save_seen_hashes(hashes: dict):
+    """Save updated hashes back to repo file + git commit."""
+    import json, subprocess
+    # Prune expired entries
+    cutoff = (datetime.now(IST) - timedelta(hours=SEEN_HASH_TTL_HOURS)).isoformat()
+    hashes = {k: v for k, v in hashes.items() if v >= cutoff}
+    SEEN_HASHES_FILE.write_text(json.dumps(hashes, indent=2), encoding="utf-8")
+    # Commit back to repo so next run sees updated hashes
+    try:
+        subprocess.run(["git", "add", "seen_hashes.json"], cwd=str(REPO), check=True)
+        subprocess.run(["git", "commit", "-m", "chore: update seen alert hashes"],
+                       cwd=str(REPO), check=True)
+        subprocess.run(["git", "push"], cwd=str(REPO), check=True)
+        print("  [dedup] seen_hashes.json committed + pushed")
+    except Exception as e:
+        print(f"  [dedup] git commit failed (non-fatal): {e}")
+
+def _alert_hash(row) -> str:
+    """Stable hash for one alert row — SYMBOL + TYPE + DATE."""
+    import hashlib
+    key = f"{row.get('NSE_SYMBOL','')}-{row.get('ALERT_TYPE','')}-{row.get('ALERT_DATE','')}"
+    return hashlib.md5(key.encode()).hexdigest()[:12]
 
 
 # ── TELEGRAM SENDER ──────────────────────────────────────────
@@ -377,12 +399,18 @@ def build_intraday_alerts(send_status_if_empty: bool = False):
             return f"✅ <b>{t}</b> — Engine alive. No new alerts."
         return None
 
-    # ── FRESHNESS GATE — prevents cron duplicate sends ────────
-    # early_alerts.csv is pushed once per engine run via git_sync.
-    # GitHub push triggers Actions immediately — that run fires alerts.
-    # Subsequent 30-min cron runs find a stale CSV and skip silently.
-    if not _csv_is_fresh("early_alerts"):
-        print("  [intraday] early_alerts.csv stale — skipping (cron dedup)")
+    # ── CONTENT-HASH DEDUP — prevents cron duplicate sends ──────
+    # Each alert row is hashed (SYMBOL+TYPE+DATE).
+    # Hashes seen in previous runs are stored in seen_hashes.json.
+    # Only unseen rows fire. After firing, hashes are committed back.
+    # Works correctly on GitHub Actions (no mtime dependency).
+    seen = _load_seen_hashes()
+    new_rows_mask = ea.apply(lambda r: _alert_hash(r) not in seen, axis=1)
+    ea = ea[new_rows_mask].copy()
+    print(f"  [dedup] {new_rows_mask.sum()} new / {(~new_rows_mask).sum()} already seen")
+
+    if ea.empty:
+        print("  [intraday] all alerts already sent — skipping")
         if send_status_if_empty:
             t = now_ist().strftime("%H:%M IST")
             return f"✅ <b>{t}</b> — Engine alive. No new alerts."
@@ -478,6 +506,15 @@ def main():
         if msg:
             ok = send(msg)
             print(f"  → Intraday/status sent: {ok}")
+            if ok:
+                # Commit seen hashes so next run doesn't re-send
+                ea_df = _load("early_alerts")
+                if not ea_df.empty:
+                    seen = _load_seen_hashes()
+                    now_iso = now_ist().isoformat()
+                    for _, row in ea_df.iterrows():
+                        seen[_alert_hash(row)] = now_iso
+                    _save_seen_hashes(seen)
             sent += 1
         else:
             print("  → No new alerts, no status slot — silent")
