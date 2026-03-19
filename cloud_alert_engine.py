@@ -1,7 +1,4 @@
-<<<<<<< HEAD
-=======
 # -*- coding: utf-8 -*-
->>>>>>> 38ec224 (fix: syntax error + message split + morning brief dedup + git identity)
 #!/usr/bin/env python3
 # ============================================================
 # cloud_alert_engine.py — v2.1
@@ -220,11 +217,7 @@ def _send_raw(msg: str, parse_mode: str = "HTML") -> bool:
         return False
     except Exception as e:
         print(f"  [send] Error: {e}")
-<<<<<<< HEAD
-        return False────
-=======
         return False
->>>>>>> 38ec224 (fix: syntax error + message split + morning brief dedup + git identity)
 def send(msg: str, parse_mode: str = "HTML") -> bool:
     """Send to Telegram, splitting at TELEGRAM_MAX chars if needed."""
     if not msg.strip():
