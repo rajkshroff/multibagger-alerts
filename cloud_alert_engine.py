@@ -173,11 +173,10 @@ def _alert_hash(row) -> str:
 
 
 # ── TELEGRAM SENDER ──────────────────────────────────────────
-def send(msg: str, parse_mode: str = "HTML") -> bool:
-    """Send a message to Telegram. Returns True on success."""
-    if not msg.strip():
-        print("  [send] Empty message — skipping")
-        return False
+TELEGRAM_MAX = 4000   # Telegram hard limit is 4096; use 4000 for safety
+
+def _send_raw(msg: str, parse_mode: str = "HTML") -> bool:
+    """Send one message chunk. Returns True on success."""
     url  = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     data = {"chat_id": CHAT_ID, "text": msg, "parse_mode": parse_mode}
     try:
@@ -190,6 +189,35 @@ def send(msg: str, parse_mode: str = "HTML") -> bool:
     except Exception as e:
         print(f"  [send] Error: {e}")
         return False
+
+def send(msg: str, parse_mode: str = "HTML") -> bool:
+    """Send a message to Telegram, splitting at TELEGRAM_MAX chars if needed."""
+    if not msg.strip():
+        print("  [send] Empty message — skipping")
+        return False
+    if len(msg) <= TELEGRAM_MAX:
+        return _send_raw(msg, parse_mode)
+    # Split on newlines, keep chunks under TELEGRAM_MAX
+    lines  = msg.split("\n")
+    chunks = []
+    buf    = []
+    cur_len = 0
+    for line in lines:
+        if cur_len + len(line) + 1 > TELEGRAM_MAX and buf:
+            chunks.append("\n".join(buf))
+            buf = [line]
+            cur_len = len(line)
+        else:
+            buf.append(line)
+            cur_len += len(line) + 1
+    if buf:
+        chunks.append("\n".join(buf))
+    print(f"  [send] Message split into {len(chunks)} parts ({len(msg)} chars total)")
+    ok = True
+    for i, chunk in enumerate(chunks, 1):
+        label = f"  (Part {i}/{len(chunks)})" if len(chunks) > 1 else ""
+        ok &= _send_raw(chunk + label, parse_mode)
+    return ok
 
 
 # ── GLOBAL CUES (yfinance) ────────────────────────────────────
