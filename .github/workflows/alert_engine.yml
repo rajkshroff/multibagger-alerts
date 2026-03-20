@@ -1,23 +1,21 @@
 # ============================================================
-# .github/workflows/alert_engine.yml
-# SESSION 42 — 3x Daily Action Plan + 7:30am Morning Brief
+# .github/workflows/alert_engine.yml — SESSION 42 FINAL
 #
-# PLACE THIS FILE IN:
-#   Multibagger_App/multibagger-alerts/.github/workflows/alert_engine.yml
+# PLACE IN: multibagger-alerts/.github/workflows/alert_engine.yml
 #
-# SCHEDULE (all times IST = UTC+5:30):
-#   7:30am IST  = 2:00 UTC   → Morning Brief (daily)
-#   9:00am IST  = 3:30 UTC   → Intraday (push-triggered after 8:15am engine run)
-#   11:30am IST = 6:00 UTC   → Intraday (push-triggered after 11am engine run)
-#   3:00pm IST  = 9:30 UTC   → Intraday (push-triggered after 2:30pm engine run)
-#   Every 30min 7am-8pm IST  → RSS/early_alerts intraday check
-#   On push to CSVs          → Immediate intraday check (engine just ran)
+# SECRET NAMES (Settings → Secrets → Actions):
+#   TELEGRAM_TOKEN   ← your bot token (already set)
+#   TELEGRAM_CHAT_ID ← your chat ID (already set)
 #
-# PC-INDEPENDENCE:
-#   All cron jobs run in GitHub cloud — no PC needed.
-#   When engine runs on PC, git_sync.cmd pushes CSVs → push trigger fires.
-#   If PC is off, scheduled crons still send morning brief + status updates
-#   using the LAST pushed CSV data (could be from yesterday's run).
+# SCHEDULE (IST = UTC+5:30):
+#   7:30am  daily        → Morning Brief (cloud, no PC needed)
+#   Every 30min 7am-8pm  → Intraday RSS + early alerts (cloud)
+#   On CSV push          → Action Plan alert (fires after engine run)
+#
+# ENGINE RUNS (from PC via Task Scheduler):
+#   Mon-Fri 8:15am, 11:00am, 2:30pm  → Quick Run + write all 5 models
+#   Sunday  7:00am                    → Full Refresh + write all 5 models
+#   Each run: engine → all models → git_sync → push → this workflow fires
 # ============================================================
 
 name: Multibagger Alert Engine
@@ -33,13 +31,10 @@ on:
     branches: [ main ]
 
   schedule:
-    # ── MORNING BRIEF — 7:30am IST (2:00 UTC) ────────────────
+    # Morning Brief 7:30am IST = 2:00 UTC
     - cron: '0 2 * * *'
-
-    # ── INTRADAY EVERY 30 MIN — 7am to 8pm IST ───────────────
-    # 7am IST = 1:30 UTC | 8pm IST = 14:30 UTC
+    # Intraday every 30 min, 7am-8pm IST
     - cron: '30 1 * * *'   # 7:00am IST
-    - cron: '0  2 * * *'   # 7:30am IST  (same as morning brief — brief fires once, then intraday)
     - cron: '30 2 * * *'   # 8:00am IST
     - cron: '0  3 * * *'   # 8:30am IST
     - cron: '30 3 * * *'   # 9:00am IST
@@ -73,11 +68,7 @@ on:
         required: false
         default: 'auto'
         type: choice
-        options:
-          - auto
-          - morning_brief
-          - action_plan
-          - test
+        options: [auto, morning_brief, action_plan, test]
 
 jobs:
   alert:
@@ -85,41 +76,36 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Install dependencies
-        run: |
-          pip install --quiet pandas requests yfinance
+      - run: pip install --quiet pandas requests yfinance
 
       - name: Run Alert Engine
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
-          # Pass dispatch mode if manually triggered
-          DISPATCH_MODE: ${{ github.event.inputs.mode || 'auto' }}
-          # Tell engine if this was push-triggered (CSV just updated)
-          TRIGGERED_BY_PUSH: ${{ github.event_name == 'push' && 'true' || 'false' }}
-          # Force morning brief if manually triggered
+          # ── SECRET NAMES MATCH WHAT IS SET IN GITHUB ──────
+          # Your secrets: TELEGRAM_TOKEN + TELEGRAM_CHAT_ID
+          # Code reads:   TELEGRAM_BOT_TOKEN or TELEGRAM_TOKEN (both work)
+          TELEGRAM_TOKEN:   ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}   # alias — same value
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           FORCE_MORNING_BRIEF: ${{ github.event.inputs.mode == 'morning_brief' && 'true' || 'false' }}
-        run: |
-          python cloud_alert_engine.py
+          TRIGGERED_BY_PUSH:  ${{ github.event_name == 'push' && 'true' || 'false' }}
+        run: python cloud_alert_engine.py
 
       - name: Configure git
         run: |
           git config user.email "bot@multibagger-alerts.local"
           git config user.name  "Multibagger Alert Bot"
 
-      - name: Push state files (seen_hashes, morning_brief_sent)
+      - name: Push state files
         run: |
           git add -f seen_hashes.json morning_brief_sent.json 2>/dev/null || true
           git diff --staged --quiet || git commit -m "chore: update alert state [skip ci]"
