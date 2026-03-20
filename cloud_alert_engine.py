@@ -1,306 +1,167 @@
-# -*- coding: utf-8 -*-
 #!/usr/bin/env python3
 # ============================================================
-# cloud_alert_engine.py — v2.1
-# SESSION 40 FIXES:
-#   - Morning brief: was 8:25-8:35 (10min window, GitHub Actions
-#     startup could miss it). Now full 8am hour (h==8). Any
-#     30-min cron slot in the 8am hour fires the morning brief.
-#   - Noon heartbeat (12:00-12:30 IST): always sends market state
-#     even when no alerts — proves system is alive.
-#   - Intraday: sends "no alerts" status every 2hrs (10am/2pm/6pm)
-#     so silence = intentional, not broken.
-#   - --test flag: sends test message immediately, bypasses time gates.
-#   - Better console logging for GitHub Actions debug.
+# cloud_alert_engine.py — v3.0
+# SESSION 42 — 3 Message Types + Dedup Fix + Hourly News
+#
+# MESSAGE TYPES:
+#   TYPE 1 — ACTION PLAN
+#     Trigger: push to CSVs (engine just ran)
+#     Content: BUY/ACCUMULATE/BEAR_ACCUM stocks, all 5 models
+#     When: after every engine run (3x daily from scheduler)
+#
+#   TYPE 2 — MORNING BRIEF
+#     Trigger: 7:30am IST daily (schedule)
+#     Content: Market state, global cues, top picks, sector cycle
+#
+#   TYPE 3 — HOURLY NEWS
+#     Trigger: every hour 9am-6pm IST (schedule)
+#     Content: RSS news filtered for our watchlist stocks
+#              + ace investor moves + MF moves + macro events
+#
+# DEDUP FIX:
+#   Removed git push from inside Python (_save_seen_hashes).
+#   Python only WRITES seen_hashes.json.
+#   YML handles ALL git commits. No more race conditions.
 #
 # LOCATION: Multibagger_App/multibagger-alerts/cloud_alert_engine.py
-# TRIGGERED BY: GitHub Actions (alert_engine.yml)
-#   - Morning Brief: 8:30am IST daily (3:00 UTC)
-#   - Intraday Alerts: every 30min, 7am-8pm IST, 7 days
 # ============================================================
 
-import os
-import sys
-import requests
-import json
-import argparse
+import os, sys, json, hashlib, argparse
+import requests, re
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 try:
     import pandas as pd
 except ImportError:
-    os.system("pip install pandas -q")
-    import pandas as pd
-
+    os.system("pip install pandas -q"); import pandas as pd
 try:
     import yfinance as yf
 except ImportError:
-    os.system("pip install yfinance -q")
-    import yfinance as yf
+    os.system("pip install yfinance -q"); import yfinance as yf
 
 # ── ARGS ─────────────────────────────────────────────────────
 parser = argparse.ArgumentParser(add_help=False)
-parser.add_argument("--test", action="store_true",
-                    help="Send a test message immediately, bypass time gates")
+parser.add_argument("--test", action="store_true")
 args, _ = parser.parse_known_args()
 TEST_MODE = args.test
 
-# ── TELEGRAM CONFIG ──────────────────────────────────────────
-BOT_TOKEN  = os.environ.get("TELEGRAM_BOT_TOKEN", "") or os.environ.get("TELEGRAM_TOKEN", "")
-CHAT_ID    = os.environ.get("TELEGRAM_CHAT_ID", "")
+# ── TELEGRAM ─────────────────────────────────────────────────
+BOT_TOKEN = (os.environ.get("TELEGRAM_BOT_TOKEN","")
+             or os.environ.get("TELEGRAM_TOKEN",""))
+CHAT_ID   = os.environ.get("TELEGRAM_CHAT_ID","")
 
 if not BOT_TOKEN or not CHAT_ID:
-    print("❌ TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set")
+    print("❌ TELEGRAM_TOKEN or TELEGRAM_CHAT_ID not set")
     sys.exit(1)
 
 # ── PATHS ─────────────────────────────────────────────────────
-REPO      = Path(__file__).resolve().parent
-CSV_FILES = {
+REPO = Path(__file__).resolve().parent
+CSV  = {
     "composite":    REPO / "composite_scores.csv",
     "market_intel": REPO / "market_intelligence.csv",
     "sector_cycle": REPO / "sector_cycle_status.csv",
-    "watchlist":    REPO / "watchlist_for_cloud.csv",
     "action":       REPO / "action_language.csv",
     "early_alerts": REPO / "early_alerts.csv",
+    "watchlist":    REPO / "watchlist_for_cloud.csv",
 }
+SEEN_FILE    = REPO / "seen_hashes.json"
+MORNING_FILE = REPO / "morning_brief_sent.json"
 
-# ── IST HELPERS ───────────────────────────────────────────────
+# ── IST ───────────────────────────────────────────────────────
 IST = timezone(timedelta(hours=5, minutes=30))
+def now_ist(): return datetime.now(IST)
+def h_m(): n = now_ist(); return n.hour, n.minute
 
-def now_ist():
-    return datetime.now(IST)
-
-def ist_hour_min():
-    n = now_ist()
-    return n.hour, n.minute
-
-def is_morning_brief():
-    """
-    True if we're in the 8am IST hour.
-    WIDENED from 8:25-8:35 → full hour (h==8).
-    GitHub Actions takes 30-60s to start — a 10-min window was
-    too narrow and caused silent failures.
-    Any 30-min cron slot that fires during the 8am hour triggers
-    the morning brief exactly once.
-    """
-    h, m = ist_hour_min()
-    in_window = (h == 7 and m >= 30) or (h == 8) or (h == 9)
-    return in_window and not _morning_brief_sent_today()
-
-def is_noon_heartbeat():
-    """
-    True 12:00-12:29 IST.
-    Sends a short market status even with no alerts — proves
-    system is alive. Replaces silence with status.
-    """
-    h, m = ist_hour_min()
-    return h == 12 and m < 30
-
-def is_status_slot():
-    """
-    True at 10am, 2pm, 6pm IST (first 30 min of those hours).
-    Sends 'no alerts' confirmation so silence = intentional.
-    """
-    h, m = ist_hour_min()
-    return h in (10, 14, 18) and m < 30
-
-def is_market_hours():
-    """True if 7am-8pm IST (inclusive)."""
-    h, _ = ist_hour_min()
-    return 7 <= h <= 20
-
+# ── TELEGRAM SEND ─────────────────────────────────────────────
+MAX = 4000
+def send(text: str) -> bool:
+    if not text.strip(): return False
+    url    = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    chunks = [text[i:i+MAX] for i in range(0, len(text), MAX)]
+    ok = True
+    for i, chunk in enumerate(chunks):
+        suffix = f"\n<i>Part {i+1}/{len(chunks)}</i>" if len(chunks) > 1 else ""
+        try:
+            r = requests.post(url, json={
+                "chat_id": CHAT_ID, "text": chunk+suffix, "parse_mode": "HTML"
+            }, timeout=15)
+            if r.ok:
+                print(f"  [send] ✅ {len(chunk)} chars")
+            else:
+                print(f"  [send] HTTP {r.status_code}: {r.text[:200]}")
+                ok = False
+        except Exception as e:
+            print(f"  [send] Error: {e}"); ok = False
+    return ok
 
 # ── CSV LOADER ────────────────────────────────────────────────
-def _load(key):
-    p = CSV_FILES.get(key)
+def load(key):
+    p = CSV.get(key)
     if not p or not p.exists():
-        print(f"  [CSV] MISSING: {key} → {p}")
         return pd.DataFrame()
     try:
         df = pd.read_csv(p, low_memory=False)
-        print(f"  [CSV] loaded: {key} → {len(df):,} rows")
+        df.columns = [c.strip() for c in df.columns]
         return df
     except Exception as e:
-        print(f"  [CSV] FAILED: {key} → {e}")
+        print(f"  [csv] {key}: {e}")
         return pd.DataFrame()
 
-def _sf(v, default=0.0):
-    try:
-        return float(v) if str(v) not in ("nan","None","","NaT") else default
-    except Exception:
-        return default
+def _sf(v, d=0.0):
+    try: return float(v) if str(v) not in ("nan","None","") else d
+    except: return d
+def _si(v, d=0):
+    try: return int(float(str(v))) if str(v) not in ("nan","None","") else d
+    except: return d
 
-def _si(v, default=0):
-    try:
-        return int(float(str(v))) if str(v) not in ("nan","None","") else default
-    except Exception:
-        return default
+# ── DEDUP (file-only, no git inside Python) ───────────────────
+HASH_TTL_H = 48
 
-SEEN_HASHES_FILE  = REPO / "seen_hashes.json"
-MORNING_SENT_FILE = REPO / "morning_brief_sent.json"
+def load_seen() -> dict:
+    if not SEEN_FILE.exists(): return {}
+    try: return json.loads(SEEN_FILE.read_text(encoding="utf-8"))
+    except: return {}
 
-def _morning_brief_sent_today() -> bool:
-    import json as _j
-    today = now_ist().strftime("%Y-%m-%d")
-    if not MORNING_SENT_FILE.exists():
-        return False
-    try:
-        return _j.loads(MORNING_SENT_FILE.read_text(encoding="utf-8")).get("date") == today
-    except Exception:
-        return False
+def save_seen(h: dict):
+    """Write seen_hashes.json — YML commits it, NOT Python."""
+    cutoff = (now_ist() - timedelta(hours=HASH_TTL_H)).isoformat()
+    h = {k: v for k, v in h.items() if v >= cutoff}
+    SEEN_FILE.write_text(json.dumps(h, indent=2), encoding="utf-8")
+    print(f"  [dedup] {len(h)} hashes saved (YML will commit)")
 
-def _mark_morning_brief_sent():
-    import json as _j, subprocess as _sp
-    today = now_ist().strftime("%Y-%m-%d")
-    MORNING_SENT_FILE.write_text(_j.dumps({"date": today}, indent=2), encoding="utf-8")
-    try:
-        _sp.run(["git","config","user.email","bot@multibagger-alerts.local"], cwd=str(REPO), check=False)
-        _sp.run(["git","config","user.name","Multibagger Alert Bot"], cwd=str(REPO), check=False)
-        _sp.run(["git","add","morning_brief_sent.json"], cwd=str(REPO), check=True)
-        _sp.run(["git","commit","-m",f"chore: morning brief sent {today} [skip ci]"], cwd=str(REPO), check=True)
-        _sp.run(["git","push"], cwd=str(REPO), check=True)
-        print(f"  [brief] marked sent for {today}")
-    except Exception as e:
-        print(f"  [brief] git commit failed (non-fatal): {e}")
-SEEN_HASH_TTL_HOURS = 48   # forget alerts older than this (avoids file growing forever)
-
-def _load_seen_hashes() -> dict:
-    """Load previously sent alert hashes from repo file."""
-    if not SEEN_HASHES_FILE.exists():
-        return {}
-    try:
-        import json
-        return json.loads(SEEN_HASHES_FILE.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
-
-def _save_seen_hashes(hashes: dict):
-    """Save updated hashes back to repo file + git commit."""
-    import json, subprocess
-    # Prune expired entries
-    cutoff = (datetime.now(IST) - timedelta(hours=SEEN_HASH_TTL_HOURS)).isoformat()
-    hashes = {k: v for k, v in hashes.items() if v >= cutoff}
-    SEEN_HASHES_FILE.write_text(json.dumps(hashes, indent=2), encoding="utf-8")
-    # Commit back to repo so next run sees updated hashes
-    try:
-        subprocess.run(["git","config","user.email","bot@multibagger-alerts.local"], cwd=str(REPO), check=False)
-        subprocess.run(["git","config","user.name","Multibagger Alert Bot"], cwd=str(REPO), check=False)
-        subprocess.run(["git", "add", "seen_hashes.json"], cwd=str(REPO), check=True)
-        subprocess.run(["git", "commit", "-m", "chore: update seen alert hashes [skip ci]"],
-                       cwd=str(REPO), check=True)
-        subprocess.run(["git", "push"], cwd=str(REPO), check=True)
-        print("  [dedup] seen_hashes.json committed + pushed")
-    except Exception as e:
-        print(f"  [dedup] git commit failed (non-fatal): {e}")
-
-def _alert_hash(row) -> str:
-    """Stable hash for one alert row — SYMBOL + TYPE + DATE."""
-    import hashlib
+def alert_hash(row) -> str:
     key = f"{row.get('NSE_SYMBOL','')}-{row.get('ALERT_TYPE','')}-{row.get('ALERT_DATE','')}"
     return hashlib.md5(key.encode()).hexdigest()[:12]
 
+def news_hash(title: str) -> str:
+    return hashlib.md5(title.strip().lower().encode()).hexdigest()[:12]
 
-# ── TELEGRAM SENDER ──────────────────────────────────────
-TELEGRAM_MAX = 4000   # Telegram hard limit 4096; use 4000 for safety
+# ── MORNING BRIEF DEDUP ───────────────────────────────────────
+def morning_sent_today() -> bool:
+    today = now_ist().strftime("%Y-%m-%d")
+    if not MORNING_FILE.exists(): return False
+    try: return json.loads(MORNING_FILE.read_text()).get("date") == today
+    except: return False
 
-def _send_raw(msg: str, parse_mode: str = "HTML") -> bool:
-    """Send one chunk. Returns True on success."""
-    url  = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    data = {"chat_id": CHAT_ID, "text": msg, "parse_mode": parse_mode}
-    try:
-        r = requests.post(url, json=data, timeout=15)
-        if r.status_code == 200:
-            print(f"  [send] ✅ Sent ({len(msg)} chars)")
-            return True
-        print(f"  [send] HTTP {r.status_code}: {r.text[:300]}")
-        return False
-    except Exception as e:
-        print(f"  [send] Error: {e}")
-        return False
-def send(msg: str, parse_mode: str = "HTML") -> bool:
-    """Send to Telegram, splitting at TELEGRAM_MAX chars if needed."""
-    if not msg.strip():
-        print("  [send] Empty message — skipping")
-        return False
-    if len(msg) <= TELEGRAM_MAX:
-        return _send_raw(msg, parse_mode)
-    lines = msg.split("\n"); chunks = []; buf = []; cur = 0
-    for line in lines:
-        if cur + len(line) + 1 > TELEGRAM_MAX and buf:
-            chunks.append("\n".join(buf)); buf = [line]; cur = len(line)
-        else:
-            buf.append(line); cur += len(line) + 1
-    if buf: chunks.append("\n".join(buf))
-    print(f"  [send] Split into {len(chunks)} parts ({len(msg)} chars total)")
-    ok = True
-    for i, chunk in enumerate(chunks, 1):
-        ok &= _send_raw(chunk + (f"  (Part {i}/{len(chunks)})" if len(chunks)>1 else ""), parse_mode)
-    return ok
+def mark_morning_sent():
+    today = now_ist().strftime("%Y-%m-%d")
+    MORNING_FILE.write_text(json.dumps({"date": today}, indent=2))
+    print(f"  [brief] marked sent {today}")
 
-
-# ── GLOBAL CUES (yfinance) ────────────────────────────────────
-GLOBAL_TICKERS = {
-    "Dow Jones":  "^DJI",
-    "Nasdaq":     "^IXIC",
-    "Crude WTI":  "CL=F",
-    "USD/INR":    "USDINR=X",
-}
-
-def fetch_global_cues() -> list:
-    lines = []
-    try:
-        for label, ticker in GLOBAL_TICKERS.items():
-            try:
-                info  = yf.Ticker(ticker).fast_info
-                price = float(info.get("last_price", 0) or 0)
-                prev  = float(info.get("previous_close", 0) or 0)
-                if price <= 0:
-                    continue
-                chg   = price - prev if prev else 0
-                pct   = chg / prev * 100 if prev else 0
-                icon  = "🟢" if pct >= 0 else "🔴"
-                lines.append(f"{icon} <b>{label:<12}</b> {price:>12,.2f}  ({pct:+.2f}%)")
-            except Exception:
-                continue
-    except Exception:
-        pass
-    return lines
-
-
-# ── FII/DII PROXY ─────────────────────────────────────────────
-def fetch_fii_proxy() -> str:
-    try:
-        nifty  = yf.Ticker("^NSEI").fast_info
-        midcap = yf.Ticker("NIFTY_MIDCAP_100.NS").fast_info
-        n_pct  = round((float(nifty.get("last_price",0)) / float(nifty.get("previous_close",1)) - 1) * 100, 2)
-        m_pct  = round((float(midcap.get("last_price",0)) / float(midcap.get("previous_close",1)) - 1) * 100, 2)
-        fii_sig = "FII-driven 📈" if n_pct > m_pct + 0.3 else ("DII-driven 📈" if m_pct > n_pct + 0.3 else "Balanced")
-        return f"NIFTY50 {n_pct:+.2f}% vs MidCap {m_pct:+.2f}% → {fii_sig}"
-    except Exception:
-        return ""
-
-
-# ── MARKET SUMMARY BLOCK (shared by brief + heartbeat) ────────
-def build_market_summary() -> tuple:
-    """Returns (mstate, summary_text). summary_text is multi-line HTML."""
-    mi = _load("market_intel")
-    mstate = fglabel = "—"
-    fgscore = b200 = b50 = med1m = 0.0
-    sectors_up = 0
+# ── MARKET SUMMARY ────────────────────────────────────────────
+def market_summary():
+    mi = load("market_intel")
+    mstate = fg = "—"
+    fg_score = b200 = b50 = 0.0
     if not mi.empty:
-        r = mi.iloc[0]
-        mstate    = str(r.get("MARKET_STATE", "—"))
-        fglabel   = str(r.get("FEAR_GREED_LABEL", "—"))
-        fgscore   = _sf(r.get("FEAR_GREED_SCORE", 0))
-        b200      = _sf(r.get("BREADTH_ABOVE_200DMA", 0))
-        b50       = _sf(r.get("BREADTH_ABOVE_50DMA", 0))
-        med1m     = _sf(r.get("MEDIAN_RETURN_1M", 0))
-        sectors_up= _si(r.get("SECTORS_OUTPERFORMING", 0))
-
-    mstate_icon = {"BULL":"🟢","CAUTION":"🟡","BEAR":"🔴"}.get(mstate,"⚪")
-
-    cs = _load("composite")
+        r      = mi.iloc[0]
+        mstate = str(r.get("MARKET_STATE","—"))
+        fg     = str(r.get("FEAR_GREED_LABEL","—"))
+        fg_score = _sf(r.get("FEAR_GREED_SCORE",0))
+        b200   = _sf(r.get("BREADTH_ABOVE_200DMA",0))
+        b50    = _sf(r.get("BREADTH_ABOVE_50DMA",0))
+    cs = load("composite")
     prime = strong = wlc = total = 0
     if not cs.empty and "TIER" in cs.columns:
         tc     = cs["TIER"].value_counts()
@@ -308,277 +169,418 @@ def build_market_summary() -> tuple:
         prime  = _si(tc.get("PRIME",0))
         strong = _si(tc.get("STRONG",0))
         wlc    = _si(tc.get("WATCHLIST_CONFIRMED",0))
-
-    text = (
-        f"{mstate_icon} <b>{mstate}</b> | F&amp;G: {fglabel} ({fgscore:.0f}) | "
-        f"Above 200DMA: {b200:.1f}%\n"
-        f"50DMA: {b50:.1f}% | Median 1M: {med1m:+.1f}% | Outperforming: {sectors_up} sectors\n"
-        f"PRIME <b>{prime}</b> | STRONG <b>{strong}</b> | WLC <b>{wlc}</b> | Universe {total:,}"
-    )
+    icon = {"BULL":"🟢","CAUTION":"🟡","BEAR":"🔴"}.get(mstate,"⚪")
+    text = (f"{icon} <b>{mstate}</b> | F&amp;G: {fg} ({fg_score:.0f}) | "
+            f"Above 200DMA: {b200:.1f}%\n"
+            f"PRIME <b>{prime}</b> | STRONG <b>{strong}</b> | WLC <b>{wlc}</b> | Universe {total:,}")
     return mstate, text
 
+# ── GLOBAL CUES ───────────────────────────────────────────────
+def global_cues():
+    lines = []
+    for label, ticker in [("Dow Jones","^DJI"),("Nasdaq","^IXIC"),
+                           ("Crude WTI","CL=F"),("USD/INR","USDINR=X")]:
+        try:
+            info  = yf.Ticker(ticker).fast_info
+            price = float(info.get("last_price",0) or 0)
+            prev  = float(info.get("previous_close",0) or 0)
+            if price <= 0: continue
+            pct = (price-prev)/prev*100 if prev else 0
+            icon = "🟢" if pct >= 0 else "🔴"
+            lines.append(f"{icon} <b>{label:<12}</b> {price:>12,.1f}  ({pct:+.2f}%)")
+        except: continue
+    return lines
 
-# ── MORNING BRIEF ─────────────────────────────────────────────
+# ════════════════════════════════════════════════════════════════
+# TYPE 1 — ACTION PLAN (push-triggered, after every engine run)
+# ════════════════════════════════════════════════════════════════
+BUY_ACTIONS = {"BUY","STRONG_BUY","FRESH_BUY","ACCUMULATE","ADD",
+               "BEAR ACCUMULATE — 3X POTENTIAL","BEAR_ACCUM",
+               "RECOVERY WATCH — TRANCHE BUY","RECOVERY_WATCH"}
+
+def build_action_plan() -> str:
+    al = load("action")
+    if al.empty:
+        return ""
+
+    action_col = next((c for c in al.columns if c.upper() in
+                       ("AI_ACTION","ACTION","RECOMMENDATION")), None)
+    sym_col    = next((c for c in al.columns if c.upper() in
+                       ("NSE_SYMBOL","SYMBOL")), None)
+    name_col   = next((c for c in al.columns if c.upper() in
+                       ("NAME","COMPANY")), None)
+    tier_col   = next((c for c in al.columns if "TIER" in c.upper()
+                       and "MULTI" not in c.upper()), None)
+    score_col  = next((c for c in al.columns if c.upper() in
+                       ("COMPOSITE_SCORE","COMPOSITE_BALANCED","SIGNAL_TOTAL")), None)
+    if not action_col or not sym_col: return ""
+
+    al[action_col] = al[action_col].astype(str).str.strip()
+
+    def bucket(a):
+        u = a.upper()
+        if "BEAR ACCUM" in u or "3X POTENTIAL" in u: return "BEAR_ACCUM"
+        if "RECOVERY"   in u or "TRANCHE"      in u: return "RECOVERY"
+        if "STRONG_BUY" in u or "STRONG BUY"   in u: return "STRONG_BUY"
+        if "BUY"        in u or "FRESH"        in u: return "BUY"
+        if "ACCUMULATE" in u or "ADD"          in u: return "ACCUMULATE"
+        return None
+
+    al["_B"] = al[action_col].apply(bucket)
+    act = al[al["_B"].notna()].copy()
+    if score_col and score_col in act.columns:
+        act[score_col] = pd.to_numeric(act[score_col], errors="coerce")
+        act = act.sort_values(score_col, ascending=False)
+    act = act.drop_duplicates(subset=[sym_col], keep="first")
+
+    _, mkt = market_summary()
+    mstate, _ = market_summary()
+    now_str = now_ist().strftime("%d %b %Y  %H:%M")
+    mkt_icon = {"BULL":"🟢","BEAR":"🔴","CAUTION":"🟡"}.get(mstate,"⚪")
+
+    lines = [
+        f"<b>🎯 ACTION PLAN — ENGINE RUN COMPLETE</b>",
+        f"<b>{now_str}</b>  {mkt_icon} <b>{mstate}</b>",
+        "",
+        mkt.split("\n")[0],   # market state line
+        "",
+    ]
+
+    LABELS = {"STRONG_BUY":"🟢 STRONG BUY","BUY":"🟢 BUY",
+              "ACCUMULATE":"🔵 ACCUMULATE","BEAR_ACCUM":"💜 BEAR ACCUM",
+              "RECOVERY":"🌱 RECOVERY WATCH"}
+
+    total = 0
+    for b in ["STRONG_BUY","BUY","ACCUMULATE","BEAR_ACCUM","RECOVERY"]:
+        grp = act[act["_B"]==b]
+        if grp.empty: continue
+        total += len(grp)
+        lines.append(f"<b>{LABELS[b]}</b>  ({len(grp)})")
+        for _, row in grp.head(10).iterrows():
+            sym  = str(row.get(sym_col,""))
+            nm   = str(row.get(name_col,""))[:20] if name_col else ""
+            tier = str(row.get(tier_col,""))[:12] if tier_col else ""
+            sc   = _si(row.get(score_col,0)) if score_col else 0
+            lines.append(f"  • <code>{sym:<10}</code> {nm:<22} [{tier}] S:{sc}")
+        if len(grp) > 10:
+            lines.append(f"  ... +{len(grp)-10} more")
+        lines.append("")
+
+    if total == 0:
+        lines.append("  No BUY signals this run — market conditions not met.")
+        lines.append("  Check WATCHLIST + RECOVERY_WATCH in Excel.")
+
+    # Tier counts
+    cs = load("composite")
+    if not cs.empty and "TIER" in cs.columns:
+        tc = cs["TIER"].value_counts()
+        lines.append(f"📊 PRIME <b>{tc.get('PRIME',0)}</b>  "
+                     f"STRONG <b>{tc.get('STRONG',0)}</b>  "
+                     f"WLC <b>{tc.get('WATCHLIST_CONFIRMED',0)}</b>  "
+                     f"LANDMINE <b>{tc.get('LANDMINE',0)}</b>")
+
+    lines.append(f"\n<i>🤖 Engine run complete — {total} actionable stocks</i>")
+    return "\n".join(lines)
+
+
+# ════════════════════════════════════════════════════════════════
+# TYPE 2 — MORNING BRIEF (7:30am daily)
+# ════════════════════════════════════════════════════════════════
 def build_morning_brief() -> str:
-    n   = now_ist()
-    day = n.strftime("%A, %d %b %Y")
+    day = now_ist().strftime("%A, %d %b %Y")
+    mstate, mkt_text = market_summary()
 
-    mstate, mkt_text = build_market_summary()
-
-    # Actionable picks
-    al  = _load("action")
-    cs  = _load("composite")
-    picks_lines = []
-    if not al.empty and "AI_ACTION" in al.columns:
-        buys = al[al["AI_ACTION"].str.contains("BUY|ACCUMULATE", case=False, na=False)]
-        buys = buys.sort_values("COMPOSITE_SCORE", ascending=False).head(5)
-        for _, r in buys.iterrows():
-            sym   = str(r.get("NSE_SYMBOL",""))
-            tier  = str(r.get("MULTIBAGGER_TIER",""))
-            score = _si(r.get("COMPOSITE_SCORE",0))
-            act   = str(r.get("AI_ACTION","")).replace("🟢","").replace("✅","").strip()
-            phase = str(r.get("SECTOR_PHASE",""))
-            entry = sl = rr = "—"
-            if not cs.empty and "NSE_SYMBOL" in cs.columns:
-                match = cs[cs["NSE_SYMBOL"] == sym]
-                if not match.empty:
-                    entry = str(match.iloc[0].get("ENTRY_ZONE","—"))
-                    sl    = str(match.iloc[0].get("STOP_LOSS","—"))
-                    rr    = str(match.iloc[0].get("RISK_REWARD","—"))
-            picks_lines.append(
-                f"  <code>{sym:<14}</code> {tier:<20} {score}/100  {phase}\n"
-                f"    ↳ {act}  │  Entry:{entry}  SL:{sl}  R:R:{rr}"
-            )
-
-    # Recovery watch
-    bw_lines = []
-    if not cs.empty and "BEATEN_DOWN_WATCH" in cs.columns:
-        bw = cs[cs["BEATEN_DOWN_WATCH"] == True].sort_values(
-            "COMPOSITE_BALANCED", ascending=False).head(4)
-        for _, r in bw.iterrows():
-            sym   = str(r.get("NSE_SYMBOL",""))
-            phase = str(r.get("SECTOR_PHASE",""))
-            entry = str(r.get("ENTRY_ZONE","—"))
-            bw_lines.append(f"  🌱 <code>{sym}</code>  {phase}  Entry:{entry}")
+    # Top picks
+    al  = load("action")
+    picks = []
+    if not al.empty:
+        ac = next((c for c in al.columns if "ACTION" in c.upper()), None)
+        sc = next((c for c in al.columns if "COMPOSITE" in c.upper()), None)
+        if ac and sc:
+            al[sc] = pd.to_numeric(al[sc], errors="coerce")
+            buys = al[al[ac].str.contains("BUY|ACCUM", case=False, na=False)]
+            for _, r in buys.nlargest(5, sc).iterrows():
+                sym   = str(r.get("NSE_SYMBOL",""))
+                tier  = str(r.get("MULTIBAGGER_TIER",""))
+                score = _si(r.get(sc,0))
+                entry = str(r.get("ENTRY_ZONE","—") or "—")
+                sl    = str(r.get("STOP_LOSS","—") or "—")
+                act   = str(r.get(ac,""))[:40]
+                picks.append(f"  <code>{sym:<12}</code> {tier:<22} {score}/100\n"
+                             f"    ↳ {act}  Entry:{entry}  SL:{sl}")
 
     # Early alerts
-    ea = _load("early_alerts")
-    alert_lines = []
+    ea = load("early_alerts")
+    alerts = []
     if not ea.empty:
-        top = ea.sort_values("SEVERITY", ascending=True).head(5)
-        for _, r in top.iterrows():
+        for _, r in ea.head(4).iterrows():
             sev  = str(r.get("SEVERITY",""))
             sym  = str(r.get("NSE_SYMBOL",""))
             atyp = str(r.get("ALERT_TYPE",""))
             det  = str(r.get("ALERT_DETAIL",""))[:80]
-            tier = str(r.get("TIER",""))
-            icon = {"VERY_HIGH":"🔥","HIGH":"⚡","MEDIUM":"📌","LOW":"📎"}.get(sev,"📌")
-            if atyp == "SECTOR_TURN":
-                alert_lines.append(f"  {icon} SECTOR_TURN [{tier}] {det}")
-            else:
-                alert_lines.append(f"  {icon} [{atyp}] {sym} ({tier})  {det}")
+            icon = {"VERY_HIGH":"🔥","HIGH":"⚡","MEDIUM":"📌"}.get(sev,"📌")
+            alerts.append(f"  {icon} <b>{sym}</b> [{atyp}] {det}")
 
-    # Sector cycle highlights
-    sc = _load("sector_cycle")
-    cycle_lines = []
-    if not sc.empty:
-        for phase, icon in [("MID_CYCLE","🚀"),("EARLY_RECOVERY","🌱"),
-                             ("BASING","⏸️"),("CORRECTION","📉")]:
-            subs = sc[sc["CYCLE_PHASE"] == phase]
+    # Sector cycle
+    sc_df = load("sector_cycle")
+    cycles = []
+    if not sc_df.empty and "CYCLE_PHASE" in sc_df.columns:
+        for phase, icon in [("MID_CYCLE","🚀"),("EARLY_RECOVERY","🌱"),("BASING","⏸")]:
+            subs = sc_df[sc_df["CYCLE_PHASE"]==phase]
             if not subs.empty:
-                names = ", ".join(subs["INDUSTRY_GROUP"].tolist()[:3])
-                cycle_lines.append(f"  {icon} {phase:<18} ({len(subs)}): {names}")
+                ig_col = next((c for c in subs.columns if "INDUSTRY" in c.upper()), None)
+                if ig_col:
+                    names = ", ".join(subs[ig_col].tolist()[:3])
+                    cycles.append(f"  {icon} {phase}: {names}")
 
-    # Global cues
-    global_lines = fetch_global_cues()
-    fii_line     = fetch_fii_proxy()
+    cues = global_cues()
 
-    msg = f"""🇮🇳 <b>MULTIBAGGER ENGINE — MORNING BRIEF</b>
-{day}
-{mkt_text}
-"""
-    if global_lines:
-        msg += "\n<b>🌍 Global Cues</b>\n" + "\n".join(global_lines)
-        if fii_line:
-            msg += f"\n{fii_line}"
-        msg += "\n"
-
-    if picks_lines:
-        msg += "\n<b>🎯 Actionable Picks (BUY / ACCUMULATE)</b>\n" + "\n".join(picks_lines) + "\n"
-
-    if bw_lines:
-        msg += "\n<b>🌱 RECOVERY WATCH</b>\n" + "\n".join(bw_lines) + "\n"
-
-    if alert_lines:
-        msg += "\n<b>⚡ Early Alerts</b>\n" + "\n".join(alert_lines) + "\n"
-
-    if cycle_lines:
-        msg += "\n<b>🔄 Sector Cycle</b>\n" + "\n".join(cycle_lines) + "\n"
-
-    msg += f"\n<i>Engine data from last run.</i>"
+    msg = f"🇮🇳 <b>MULTIBAGGER — MORNING BRIEF</b>\n<b>{day}</b>\n\n{mkt_text}\n"
+    if cues:
+        msg += "\n<b>🌍 Global Cues</b>\n" + "\n".join(cues) + "\n"
+    if picks:
+        msg += "\n<b>🎯 Top Picks</b>\n" + "\n".join(picks) + "\n"
+    if cycles:
+        msg += "\n<b>🔄 Sector Cycle</b>\n" + "\n".join(cycles) + "\n"
+    if alerts:
+        msg += "\n<b>⚡ Early Alerts</b>\n" + "\n".join(alerts) + "\n"
+    msg += f"\n<i>Engine data from last run. Open Excel for full detail.</i>"
     return msg
 
 
-# ── NOON HEARTBEAT ────────────────────────────────────────────
-def build_noon_heartbeat() -> str:
-    _, mkt_text = build_market_summary()
-    t = now_ist().strftime("%H:%M IST")
-    ea = _load("early_alerts")
-    alert_count = len(ea) if not ea.empty else 0
-    return (
-        f"💓 <b>MIDDAY STATUS — {t}</b>\n"
-        f"{mkt_text}\n"
-        f"Early alerts in queue: {alert_count}\n"
-        f"<i>Engine running. No action needed unless alerts below.</i>"
-    )
+# ════════════════════════════════════════════════════════════════
+# TYPE 3 — HOURLY NEWS (9am-6pm, RSS + universe filter)
+# ════════════════════════════════════════════════════════════════
 
+RSS_FEEDS = [
+    # Corporate filings — highest signal for specific stocks
+    {"name":"BSE Filings",  "url":"https://www.bseindia.com/xml-data/corpfiling/CorpFile.xml"},
+    {"name":"NSE Filings",  "url":"https://nsearchives.nseindia.com/content/RSS/rss.xml"},
+    # Business news
+    {"name":"ET Markets",   "url":"https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms"},
+    {"name":"ET Economy",   "url":"https://economictimes.indiatimes.com/news/economy/rssfeeds/20080670.cms"},
+    {"name":"Mint",         "url":"https://www.livemint.com/rss/markets"},
+    {"name":"Moneycontrol", "url":"https://www.moneycontrol.com/rss/MCtopnews.xml"},
+    {"name":"BS Markets",   "url":"https://www.business-standard.com/rss/markets-106.rss"},
+    {"name":"FE Markets",   "url":"https://www.financialexpress.com/market/feed/"},
+    # Policy
+    {"name":"SEBI",         "url":"https://www.sebi.gov.in/sebi_data/rss/sebirss.xml"},
+    {"name":"RBI",          "url":"https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx?prid=rss"},
+]
 
-# ── INTRADAY ALERTS ───────────────────────────────────────────
-def build_intraday_alerts(send_status_if_empty: bool = False):
+# Ace investors to watch for by name in headlines
+ACE_INVESTORS = [
+    "ashish kacholia","kacholia",
+    "dolly khanna",
+    "mukul agarwal","mukul aggarwal",
+    "vijay kedia",
+    "porinju veliyath","porinju",
+    "mohnish pabrai",
+    "radhakishan damani",
+    "rekha jhunjhunwala","jhunjhunwala",
+    "nalanda capital",
+    "ace investor",
+]
+
+# High-impact keywords that affect stock prices
+HIGH_IMPACT = [
+    "insider","promoter bought","promoter sold","bulk deal","block deal",
+    "pledging","pledge invoked","pledge","mutual fund exit","mf exit",
+    "analyst buy","analyst sell","target price","upgrade","downgrade",
+    "earnings beat","earnings miss","profit jump","profit falls","loss widens",
+    "order win","order worth","contract awarded","capex","acquisition","merger",
+    "fii bought","fii sold","fii selling","fii buying",
+    "delisting","ban","sebi order","rbi policy","rate cut","rate hike",
+    "q3 results","q4 results","q1 results","q2 results",
+    "revenue growth","net profit","ebitda",
+]
+
+def get_universe_symbols() -> set:
+    """Get set of NSE symbols we care about — PRIME+STRONG+WLC."""
+    wl = load("watchlist")
+    if not wl.empty:
+        sym_col = next((c for c in wl.columns if "SYMBOL" in c.upper()), None)
+        if sym_col:
+            return set(wl[sym_col].dropna().astype(str).str.strip().str.upper().tolist())
+    # Fallback: top tiers from composite
+    cs = load("composite")
+    if not cs.empty and "TIER" in cs.columns and "NSE_SYMBOL" in cs.columns:
+        top = cs[cs["TIER"].isin(["PRIME","STRONG","WATCHLIST_CONFIRMED"])]
+        return set(top["NSE_SYMBOL"].dropna().astype(str).str.upper().tolist())
+    return set()
+
+def fetch_rss(url: str, timeout=8) -> list:
+    """Fetch RSS and return list of {title, link, date}."""
+    try:
+        r = requests.get(url, timeout=timeout, headers={
+            "User-Agent": "Mozilla/5.0 (compatible; MultibaggerBot/1.0)"
+        })
+        if not r.ok: return []
+        items = []
+        # Parse title tags
+        titles = re.findall(r'<title><!\[CDATA\[(.*?)\]\]></title>', r.text, re.DOTALL)
+        if not titles:
+            titles = re.findall(r'<title>(.*?)</title>', r.text, re.DOTALL)
+        titles = [t.strip() for t in titles if len(t.strip()) > 10]
+        # Skip feed title (first item usually)
+        if titles and len(titles) > 1:
+            titles = titles[1:]
+        return titles[:15]
+    except Exception as e:
+        print(f"  [rss] {url[:40]}: {e}")
+        return []
+
+def is_relevant(headline: str, universe: set) -> tuple:
     """
-    Returns alert message string, or status string if send_status_if_empty=True
-    and nothing actionable found, or None if nothing to send.
+    Returns (relevant: bool, category: str, matched: str)
+    Categories: ACE_INVESTOR, HIGH_IMPACT, UNIVERSE_STOCK
     """
-    ea = _load("early_alerts")
-    if ea.empty:
-        if send_status_if_empty:
-            t = now_ist().strftime("%H:%M IST")
-            return f"✅ <b>{t}</b> — Engine alive. No new alerts."
-        return None
+    hl = headline.lower()
 
-    # ── CONTENT-HASH DEDUP — prevents cron duplicate sends ──────
-    # Each alert row is hashed (SYMBOL+TYPE+DATE).
-    # Hashes seen in previous runs are stored in seen_hashes.json.
-    # Only unseen rows fire. After firing, hashes are committed back.
-    # Works correctly on GitHub Actions (no mtime dependency).
-    seen = _load_seen_hashes()
-    new_rows_mask = ea.apply(lambda r: _alert_hash(r) not in seen, axis=1)
-    ea = ea[new_rows_mask].copy()
-    print(f"  [dedup] {new_rows_mask.sum()} new / {(~new_rows_mask).sum()} already seen")
+    # Check ace investors
+    for inv in ACE_INVESTORS:
+        if inv in hl:
+            return True, "ACE_INVESTOR", inv.title()
 
-    if ea.empty:
-        print("  [intraday] all alerts already sent — skipping")
-        if send_status_if_empty:
-            t = now_ist().strftime("%H:%M IST")
-            return f"✅ <b>{t}</b> — Engine alive. No new alerts."
-        return None
+    # Check high-impact keywords
+    for kw in HIGH_IMPACT:
+        if kw in hl:
+            # Extra check — is a universe stock mentioned?
+            for sym in universe:
+                if sym.lower() in hl or sym.lower()[:5] in hl:
+                    return True, "STOCK_SIGNAL", sym
+            # High-impact even without specific stock
+            if any(k in hl for k in ["sebi","rbi","fii","mf exit","bulk deal",
+                                      "block deal","pledge","rate cut","rate hike"]):
+                return True, "MACRO_SIGNAL", kw
 
-    FIRE_TYPES = {"ORDER_WIN","PENALTY","RESULT_BEAT","CAPEX","ACQUISITION",
-                  "BULK_BUY","BLOCK_BUY","INSIDER_BUY","ACE_INVESTOR","SECTOR_TURN",
-                  "MF_JUMP","FII_JUMP"}
-    HIGH_TIERS = {"PRIME","STRONG","WATCHLIST_CONFIRMED"}
+    # Direct symbol mention in universe
+    for sym in universe:
+        if len(sym) >= 4 and sym.lower() in hl:
+            return True, "UNIVERSE_STOCK", sym
 
-    rows = ea[
-        (ea["ALERT_TYPE"].isin(FIRE_TYPES)) &
-        (ea["TIER"].isin(HIGH_TIERS) | (ea["ALERT_TYPE"] == "SECTOR_TURN"))
-    ]
+    return False, "", ""
 
-    cutoff = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%d")
-    if "ALERT_DATE" in rows.columns:
-        rows = rows[rows["ALERT_DATE"].astype(str) >= cutoff]
+def build_hourly_news() -> str:
+    universe = get_universe_symbols()
+    print(f"  [news] Universe: {len(universe)} symbols")
 
-    if rows.empty:
-        if send_status_if_empty:
-            t = now_ist().strftime("%H:%M IST")
-            return f"✅ <b>{t}</b> — Engine alive. No actionable alerts."
-        return None
+    seen   = load_seen()
+    new_news = []
 
-    now_str = now_ist().strftime("%H:%M IST")
-    lines   = [f"⚡ <b>INTRADAY ALERTS — {now_str}</b>"]
-    for _, r in rows.sort_values("SEVERITY").head(8).iterrows():
-        sev  = str(r.get("SEVERITY",""))
-        sym  = str(r.get("NSE_SYMBOL",""))
-        atyp = str(r.get("ALERT_TYPE",""))
-        tier = str(r.get("TIER",""))
-        det  = str(r.get("ALERT_DETAIL",""))[:100]
-        date = str(r.get("ALERT_DATE",""))
-        icon = {"VERY_HIGH":"🔥","HIGH":"⚡","MEDIUM":"📌","LOW":"📎"}.get(sev,"📌")
-        if atyp == "SECTOR_TURN":
-            lines.append(f"\n{icon} <b>SECTOR_TURN</b> [{sym}]\n  {det}")
-        else:
-            lines.append(f"\n{icon} <b>{sym}</b> [{tier}]  {atyp}  {date}\n  {det}")
+    for feed in RSS_FEEDS:
+        titles = fetch_rss(feed["url"])
+        for title in titles:
+            h = news_hash(title)
+            if h in seen:
+                continue
+            relevant, category, matched = is_relevant(title, universe)
+            if relevant:
+                new_news.append({
+                    "title": title,
+                    "category": category,
+                    "matched": matched,
+                    "source": feed["name"],
+                    "hash": h,
+                })
+
+    if not new_news:
+        return ""
+
+    # Sort: ACE_INVESTOR and STOCK_SIGNAL first
+    CAT_ORDER = {"ACE_INVESTOR":0, "STOCK_SIGNAL":1, "UNIVERSE_STOCK":2, "MACRO_SIGNAL":3}
+    new_news.sort(key=lambda x: CAT_ORDER.get(x["category"], 9))
+
+    now_str = now_ist().strftime("%H:%M IST, %d %b")
+    lines = [f"📰 <b>MARKET NEWS UPDATE — {now_str}</b>", ""]
+
+    CAT_ICONS = {
+        "ACE_INVESTOR":  "👁 ACE INVESTOR",
+        "STOCK_SIGNAL":  "⚡ STOCK SIGNAL",
+        "UNIVERSE_STOCK":"📌 WATCHLIST STOCK",
+        "MACRO_SIGNAL":  "🌐 MACRO",
+    }
+
+    for item in new_news[:12]:  # cap at 12 per hour
+        icon = CAT_ICONS.get(item["category"], "📎")
+        match_str = f"  [{item['matched']}]" if item["matched"] else ""
+        title_clean = item["title"][:120]
+        lines.append(f"{icon}{match_str}\n  {title_clean}\n  <i>— {item['source']}</i>\n")
+
+    lines.append(f"<i>{len(new_news)} new items found | Full analysis in next engine run</i>")
+
+    # Mark as seen (file only, YML commits)
+    now_iso = now_ist().isoformat()
+    for item in new_news:
+        seen[item["hash"]] = now_iso
+    save_seen(seen)
 
     return "\n".join(lines)
 
 
-# ── MAIN ──────────────────────────────────────────────────────
+# ════════════════════════════════════════════════════════════════
+# MAIN
+# ════════════════════════════════════════════════════════════════
 def main():
+    h, m = h_m()
     now_str = now_ist().strftime("%Y-%m-%d %H:%M:%S IST")
-    h, m = ist_hour_min()
-    print(f"[{now_str}] cloud_alert_engine v2.1 starting")
-    print(f"  IST time: {h:02d}:{m:02d}")
-    print(f"  morning_brief={is_morning_brief()} noon={is_noon_heartbeat()} "
-          f"status_slot={is_status_slot()} market_hours={is_market_hours()}")
-    print(f"  TEST_MODE={TEST_MODE}")
-    print(f"  CSV files present: "
-          + ", ".join(k for k, v in CSV_FILES.items() if v.exists()))
+    triggered_by_push = os.environ.get("TRIGGERED_BY_PUSH","false").lower() == "true"
+
+    print(f"[{now_str}] cloud_alert_engine v3.0")
+    print(f"  IST: {h:02d}:{m:02d} | push={triggered_by_push} | test={TEST_MODE}")
+
+    # ── TEST ─────────────────────────────────────────────────
+    if TEST_MODE:
+        _, mkt = market_summary()
+        msg = (f"🧪 <b>MULTIBAGGER v3.0 — TEST</b>\n"
+               f"{now_ist().strftime('%H:%M IST')}\n{mkt}\n"
+               f"<i>3 message types active. System verified.</i>")
+        ok = send(msg)
+        print(f"  Test sent: {ok}")
+        return
 
     sent = 0
 
-    # ── FORCE MORNING BRIEF ───────────────────────────────────
-    if os.environ.get("FORCE_MORNING_BRIEF","false").lower() == "true":
-        print("  → FORCE_MORNING_BRIEF mode")
-        ok = send(build_morning_brief())
-        if ok: _mark_morning_brief_sent()
-        print(f"  → Forced brief sent: {ok}")
-        return
-
-    # ── TEST MODE ─────────────────────────────────────────────
-    if TEST_MODE:
-        print("  → TEST MODE")
-        _, mkt_text = build_market_summary()
-        msg = (
-            f"🧪 <b>MULTIBAGGER — TEST MESSAGE</b>\n"
-            f"{now_ist().strftime('%H:%M IST')}\n"
-            f"{mkt_text}\n"
-            f"<i>System alive. Telegram verified.</i>"
-        )
-        ok = send(msg)
-        print(f"  → Test message sent: {ok}")
-        return
-
-    # ── MORNING BRIEF (8am IST — full hour) ───────────────────
-    if is_morning_brief():
-        print("  → Morning Brief mode")
-        msg = build_morning_brief()
-        ok = send(msg)
-        if ok: _mark_morning_brief_sent()
-        print(f"  → Morning Brief sent: {ok}")
-        sent += 1
-
-    # ── NOON HEARTBEAT (12:00-12:29 IST) ──────────────────────
-    elif is_noon_heartbeat():
-        print("  → Noon heartbeat mode")
-        msg = build_noon_heartbeat()
-        ok = send(msg)
-        print(f"  → Noon heartbeat sent: {ok}")
-        sent += 1
-
-    # ── INTRADAY WITH STATUS SLOT ──────────────────────────────
-    elif is_market_hours():
-        send_status = is_status_slot()
-        print(f"  → Intraday mode (send_status={send_status})")
-        msg = build_intraday_alerts(send_status_if_empty=send_status)
+    # ── TYPE 1: ACTION PLAN (push-triggered = engine just ran) ──
+    if triggered_by_push:
+        print("  → TYPE 1: Action Plan (push trigger — engine just ran)")
+        msg = build_action_plan()
         if msg:
             ok = send(msg)
-            print(f"  → Intraday/status sent: {ok}")
-            if ok:
-                # Commit seen hashes so next run doesn't re-send
-                ea_df = _load("early_alerts")
-                if not ea_df.empty:
-                    seen = _load_seen_hashes()
-                    now_iso = now_ist().isoformat()
-                    for _, row in ea_df.iterrows():
-                        seen[_alert_hash(row)] = now_iso
-                    _save_seen_hashes(seen)
-            sent += 1
+            print(f"  Action Plan sent: {ok}")
+            if ok: sent += 1
         else:
-            print("  → No new alerts, no status slot — silent")
+            print("  No actionable stocks — silent")
+        return   # push trigger = action plan only, don't run news scan
 
-    else:
-        print(f"  → Outside alert window ({h:02d}:{m:02d} IST) — sleeping")
+    # ── TYPE 2: MORNING BRIEF (7:30am) ───────────────────────
+    in_brief_window = (h == 7 and m >= 30) or (h == 8 and m < 30)
+    if in_brief_window and not morning_sent_today():
+        print("  → TYPE 2: Morning Brief")
+        msg = build_morning_brief()
+        ok  = send(msg)
+        if ok: mark_morning_sent()
+        print(f"  Morning Brief sent: {ok}")
+        sent += 1
+        # After brief, also run news scan for the morning
+        # Fall through to TYPE 3
 
-    print(f"  Messages sent: {sent}")
+    # ── TYPE 3: HOURLY NEWS (9am-6pm) ────────────────────────
+    if 9 <= h <= 18:
+        print(f"  → TYPE 3: Hourly News (market hours)")
+        msg = build_hourly_news()
+        if msg:
+            ok = send(msg)
+            print(f"  News sent: {ok}")
+            if ok: sent += 1
+        else:
+            print("  No new relevant news this hour")
+
+    # Outside all windows
+    if sent == 0 and not (9 <= h <= 18) and not in_brief_window:
+        print(f"  → Outside windows ({h:02d}:{m:02d}) — silent")
+
+    print(f"  Total sent: {sent}")
 
 
 if __name__ == "__main__":
