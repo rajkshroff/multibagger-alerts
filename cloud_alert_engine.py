@@ -384,30 +384,60 @@ ACE_INVESTORS = [
 
 # High-impact keywords that affect stock prices
 HIGH_IMPACT = [
+    # Insider / institutional activity
     "insider","promoter bought","promoter sold","bulk deal","block deal",
     "pledging","pledge invoked","pledge","mutual fund exit","mf exit",
-    "analyst buy","analyst sell","target price","upgrade","downgrade",
-    "earnings beat","earnings miss","profit jump","profit falls","loss widens",
-    "order win","order worth","contract awarded","capex","acquisition","merger",
     "fii bought","fii sold","fii selling","fii buying",
-    "delisting","ban","sebi order","rbi policy","rate cut","rate hike",
+    # Analyst actions
+    "analyst buy","analyst sell","target price","upgrade","downgrade",
+    "initiates coverage","outperform","overweight","underweight",
+    # Earnings / results
+    "earnings beat","earnings miss","profit jump","profit falls","loss widens",
     "q3 results","q4 results","q1 results","q2 results",
-    "revenue growth","net profit","ebitda",
+    "revenue growth","net profit","ebitda","pat rises","pat falls",
+    # Orders / business wins — catches Tata Power type news
+    "order win","order worth","order received","order bag","bags order",
+    "contract awarded","contract won","supply agreement","supply contract",
+    "agreement signed","govt approves","government approves","nod received",
+    "ppa signed","loa received","letter of award","project award",
+    "capacity addition","plant approval","new order","secures order",
+    # Corporate events
+    "capex","acquisition","merger","demerger","buyback","dividend",
+    "delisting","ban","sebi order","rbi policy","rate cut","rate hike",
+    # Sector/macro
+    "pli scheme","production linked","tariff hike","price hike",
+    "import duty","export ban","subsidy",
 ]
 
 def get_universe_symbols() -> set:
-    """Get set of NSE symbols we care about — PRIME+STRONG+WLC."""
+    """Get ALL symbols we track — broad universe for news matching."""
+    symbols = set()
+    # From watchlist CSV
     wl = load("watchlist")
     if not wl.empty:
         sym_col = next((c for c in wl.columns if "SYMBOL" in c.upper()), None)
         if sym_col:
-            return set(wl[sym_col].dropna().astype(str).str.strip().str.upper().tolist())
-    # Fallback: top tiers from composite
+            symbols.update(wl[sym_col].dropna().astype(str).str.strip().str.upper().tolist())
+    # From composite — all non-AVOID tiers (not just PRIME/STRONG)
     cs = load("composite")
     if not cs.empty and "TIER" in cs.columns and "NSE_SYMBOL" in cs.columns:
-        top = cs[cs["TIER"].isin(["PRIME","STRONG","WATCHLIST_CONFIRMED"])]
-        return set(top["NSE_SYMBOL"].dropna().astype(str).str.upper().tolist())
-    return set()
+        # Include everything except pure AVOID (no signals, no quality)
+        watched = cs[cs["TIER"].isin(["PRIME","STRONG","WATCHLIST_CONFIRMED",
+                                       "WATCHLIST_EXTERNAL","MONITOR"])]
+        symbols.update(watched["NSE_SYMBOL"].dropna().astype(str).str.upper().tolist())
+    # Always include Nifty50 large caps — news about them is always market-moving
+    NIFTY50_SYMS = {
+        "RELIANCE","TCS","HDFCBANK","INFY","ICICIBANK","HINDUNILVR",
+        "ITC","SBIN","BAJFINANCE","BHARTIARTL","KOTAKBANK","LT",
+        "HCLTECH","AXISBANK","ASIANPAINT","MARUTI","TITAN","NESTLEIND",
+        "ULTRACEMCO","WIPRO","POWERGRID","NTPC","TATAMOTORS","TATAPOWER",
+        "ADANIENT","ADANIPORTS","SUNPHARMA","DRREDDY","CIPLA","DIVISLAB",
+        "ONGC","COALINDIA","BPCL","TECHM","INDUSINDBK","BAJAJFINSV",
+        "GRASIM","HINDALCO","JSWSTEEL","TATASTEEL","EICHERMOT","APOLLOHOSP",
+        "HEROMOTOCO","M&M","BRITANNIA","BAJAJ-AUTO","VEDL","SHRIRAMFIN",
+    }
+    symbols.update(NIFTY50_SYMS)
+    return symbols
 
 def fetch_rss(url: str, timeout=8) -> list:
     """Fetch RSS and return list of {title, link, date}."""
