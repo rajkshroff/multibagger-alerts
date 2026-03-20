@@ -1,24 +1,15 @@
 # ============================================================
-# .github/workflows/alert_engine.yml — SESSION 42 FINAL
+# .github/workflows/alert_engine.yml — v3.0
 #
-# PLACE IN: multibagger-alerts/.github/workflows/alert_engine.yml
+# 3 TRIGGER TYPES:
+#   PUSH (CSVs updated)  → TYPE 1: Action Plan (engine just ran)
+#   7:30am daily         → TYPE 2: Morning Brief
+#   Every hour 9am-6pm  → TYPE 3: Hourly News scan
 #
-# SECRET NAMES (Settings → Secrets → Actions):
-#   TELEGRAM_TOKEN   ← your bot token (already set)
-#   TELEGRAM_CHAT_ID ← your chat ID (already set)
-#
-# SCHEDULE (IST = UTC+5:30):
-#   7:30am  daily        → Morning Brief (cloud, no PC needed)
-#   Every 30min 7am-8pm  → Intraday RSS + early alerts (cloud)
-#   On CSV push          → Action Plan alert (fires after engine run)
-#
-# ENGINE RUNS (from PC via Task Scheduler):
-#   Mon-Fri 8:15am, 11:00am, 2:30pm  → Quick Run + write all 5 models
-#   Sunday  7:00am                    → Full Refresh + write all 5 models
-#   Each run: engine → all models → git_sync → push → this workflow fires
+# SECRETS: TELEGRAM_TOKEN + TELEGRAM_CHAT_ID (already set)
 # ============================================================
 
-name: Multibagger Alert Engine
+name: Multibagger Alert Engine v3
 
 on:
   push:
@@ -31,50 +22,31 @@ on:
     branches: [ main ]
 
   schedule:
-    # Morning Brief 7:30am IST = 2:00 UTC
-    - cron: '0 2 * * *'
-    # Intraday every 30 min, 7am-8pm IST
-    - cron: '30 1 * * *'   # 7:00am IST
-    - cron: '30 2 * * *'   # 8:00am IST
-    - cron: '0  3 * * *'   # 8:30am IST
-    - cron: '30 3 * * *'   # 9:00am IST
-    - cron: '0  4 * * *'   # 9:30am IST
-    - cron: '30 4 * * *'   # 10:00am IST
-    - cron: '0  5 * * *'   # 10:30am IST
-    - cron: '30 5 * * *'   # 11:00am IST
-    - cron: '0  6 * * *'   # 11:30am IST
-    - cron: '30 6 * * *'   # 12:00pm IST
-    - cron: '0  7 * * *'   # 12:30pm IST
-    - cron: '30 7 * * *'   # 1:00pm IST
-    - cron: '0  8 * * *'   # 1:30pm IST
-    - cron: '30 8 * * *'   # 2:00pm IST
-    - cron: '0  9 * * *'   # 2:30pm IST
-    - cron: '30 9 * * *'   # 3:00pm IST
-    - cron: '0  10 * * *'  # 3:30pm IST
-    - cron: '30 10 * * *'  # 4:00pm IST
-    - cron: '0  11 * * *'  # 4:30pm IST
-    - cron: '30 11 * * *'  # 5:00pm IST
-    - cron: '0  12 * * *'  # 5:30pm IST
-    - cron: '30 12 * * *'  # 6:00pm IST
-    - cron: '0  13 * * *'  # 6:30pm IST
-    - cron: '30 13 * * *'  # 7:00pm IST
-    - cron: '0  14 * * *'  # 7:30pm IST
-    - cron: '30 14 * * *'  # 8:00pm IST
+    - cron: '0 2  * * *'    # 7:30am IST  — Morning Brief
+    - cron: '30 3  * * *'   # 9:00am IST  — Hourly News
+    - cron: '30 4  * * *'   # 10:00am IST
+    - cron: '30 5  * * *'   # 11:00am IST
+    - cron: '30 6  * * *'   # 12:00pm IST
+    - cron: '30 7  * * *'   # 1:00pm IST
+    - cron: '30 8  * * *'   # 2:00pm IST
+    - cron: '30 9  * * *'   # 3:00pm IST
+    - cron: '30 10 * * *'   # 4:00pm IST
+    - cron: '30 11 * * *'   # 5:00pm IST
+    - cron: '30 12 * * *'   # 6:00pm IST
 
   workflow_dispatch:
     inputs:
       mode:
-        description: 'Run mode'
+        description: 'Force mode'
         required: false
         default: 'auto'
         type: choice
-        options: [auto, morning_brief, action_plan, test]
+        options: [auto, test, morning_brief]
 
 jobs:
   alert:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -90,24 +62,26 @@ jobs:
 
       - name: Run Alert Engine
         env:
-          # ── SECRET NAMES MATCH WHAT IS SET IN GITHUB ──────
-          # Your secrets: TELEGRAM_TOKEN + TELEGRAM_CHAT_ID
-          # Code reads:   TELEGRAM_BOT_TOKEN or TELEGRAM_TOKEN (both work)
-          TELEGRAM_TOKEN:   ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}   # alias — same value
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_TOKEN:      ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_BOT_TOKEN:  ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID:    ${{ secrets.TELEGRAM_CHAT_ID }}
+          TRIGGERED_BY_PUSH:   ${{ github.event_name == 'push' && 'true' || 'false' }}
           FORCE_MORNING_BRIEF: ${{ github.event.inputs.mode == 'morning_brief' && 'true' || 'false' }}
-          TRIGGERED_BY_PUSH:  ${{ github.event_name == 'push' && 'true' || 'false' }}
-        run: python cloud_alert_engine.py
+        run: |
+          if [ "${{ github.event.inputs.mode }}" = "test" ]; then
+            python cloud_alert_engine.py --test
+          else
+            python cloud_alert_engine.py
+          fi
 
       - name: Configure git
         run: |
           git config user.email "bot@multibagger-alerts.local"
           git config user.name  "Multibagger Alert Bot"
 
-      - name: Push state files
+      - name: Save state (dedup hashes — YML owns git, not Python)
         run: |
           git add -f seen_hashes.json morning_brief_sent.json 2>/dev/null || true
-          git diff --staged --quiet || git commit -m "chore: update alert state [skip ci]"
+          git diff --staged --quiet || git commit -m "chore: alert state [skip ci]"
           git push || true
         continue-on-error: true
