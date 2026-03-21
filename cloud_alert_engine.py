@@ -209,8 +209,7 @@ def build_action_plan() -> str:
                        ("NSE_SYMBOL","SYMBOL")), None)
     name_col   = next((c for c in al.columns if c.upper() in
                        ("NAME","COMPANY")), None)
-    tier_col   = next((c for c in al.columns if "TIER" in c.upper()
-                       and "MULTI" not in c.upper()), None)
+    phase_col  = next((c for c in al.columns if c.upper() == "SECTOR_PHASE"), None)
     score_col  = next((c for c in al.columns if c.upper() in
                        ("COMPOSITE_SCORE","COMPOSITE_BALANCED","SIGNAL_TOTAL")), None)
     if not action_col or not sym_col: return ""
@@ -259,9 +258,10 @@ def build_action_plan() -> str:
         for _, row in grp.head(10).iterrows():
             sym  = str(row.get(sym_col,""))
             nm   = str(row.get(name_col,""))[:20] if name_col else ""
-            tier = str(row.get(tier_col,""))[:12] if tier_col else ""
-            sc   = _si(row.get(score_col,0)) if score_col else 0
-            lines.append(f"  • <code>{sym:<10}</code> {nm:<22} [{tier}] S:{sc}")
+            phase = str(row.get(phase_col,"")).strip()[:12] if phase_col else ""
+            sc    = _si(row.get(score_col,0)) if score_col else 0
+            phase_s = f"[{phase}]" if phase and phase not in ("nan","None","—","") else ""
+            lines.append(f"  • <code>{sym:<10}</code> {nm:<22} {phase_s} S:{sc}")
         if len(grp) > 10:
             lines.append(f"  ... +{len(grp)-10} more")
         lines.append("")
