@@ -451,7 +451,17 @@ def fetch_rss(url: str, timeout=8) -> list:
         titles = re.findall(r'<title><!\[CDATA\[(.*?)\]\]></title>', r.text, re.DOTALL)
         if not titles:
             titles = re.findall(r'<title>(.*?)</title>', r.text, re.DOTALL)
-        titles = [t.strip() for t in titles if len(t.strip()) > 10]
+        # Strip CDATA wrappers and XML entities from titles
+        clean = []
+        for t in titles:
+            t = t.strip()
+            t = re.sub(r'<!\[CDATA\[|\]\]>', '', t, flags=re.IGNORECASE)
+            t = t.replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>').replace('&quot;', '"')
+            t = re.sub(r'<[^>]+>', '', t)   # strip any remaining HTML tags
+            t = t.strip()
+            if len(t) > 10:
+                clean.append(t)
+        titles = clean
         # Skip feed title (first item usually)
         if titles and len(titles) > 1:
             titles = titles[1:]
@@ -534,8 +544,11 @@ def build_hourly_news() -> str:
     for item in new_news[:12]:  # cap at 12 per hour
         icon = CAT_ICONS.get(item["category"], "📎")
         match_str = f"  [{item['matched']}]" if item["matched"] else ""
-        title_clean = item["title"][:120]
-        lines.append(f"{icon}{match_str}\n  {title_clean}\n  <i>— {item['source']}</i>\n")
+        import html as _html
+        title_clean = _html.escape(item["title"][:120])
+        match_esc   = _html.escape(item["matched"]) if item["matched"] else ""
+        match_str2  = f"  [{match_esc}]" if match_esc else ""
+        lines.append(f"{icon}{match_str2}\n  {title_clean}\n  <i>— {item['source']}</i>\n")
 
     lines.append(f"<i>{len(new_news)} new items found | Full analysis in next engine run</i>")
 
