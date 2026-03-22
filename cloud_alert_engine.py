@@ -49,11 +49,16 @@ TEST_MODE = args.test
 # ── TELEGRAM ─────────────────────────────────────────────────
 BOT_TOKEN = (os.environ.get("TELEGRAM_BOT_TOKEN","")
              or os.environ.get("TELEGRAM_TOKEN",""))
-CHAT_ID   = os.environ.get("TELEGRAM_CHAT_ID","")
+# Comma-separated: setx TELEGRAM_CHAT_IDS "ID1,ID2,ID3"
+_raw_ids  = os.environ.get("TELEGRAM_CHAT_IDS","") or os.environ.get("TELEGRAM_CHAT_ID","")
+CHAT_IDS  = [x.strip() for x in _raw_ids.split(",") if x.strip()]
+CHAT_ID   = CHAT_IDS[0] if CHAT_IDS else ""
 
-if not BOT_TOKEN or not CHAT_ID:
+if not BOT_TOKEN or not CHAT_IDS:
     print("❌ TELEGRAM_TOKEN or TELEGRAM_CHAT_ID not set")
     sys.exit(1)
+
+print(f"  [telegram] {len(CHAT_IDS)} recipient(s)")
 
 # ── PATHS ─────────────────────────────────────────────────────
 REPO = Path(__file__).resolve().parent
@@ -76,23 +81,25 @@ def h_m(): n = now_ist(); return n.hour, n.minute
 # ── TELEGRAM SEND ─────────────────────────────────────────────
 MAX = 4000
 def send(text: str) -> bool:
+    """Send to all recipients in CHAT_IDS."""
     if not text.strip(): return False
     url    = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     chunks = [text[i:i+MAX] for i in range(0, len(text), MAX)]
     ok = True
-    for i, chunk in enumerate(chunks):
-        suffix = f"\n<i>Part {i+1}/{len(chunks)}</i>" if len(chunks) > 1 else ""
-        try:
-            r = requests.post(url, json={
-                "chat_id": CHAT_ID, "text": chunk+suffix, "parse_mode": "HTML"
-            }, timeout=15)
-            if r.ok:
-                print(f"  [send] ✅ {len(chunk)} chars")
-            else:
-                print(f"  [send] HTTP {r.status_code}: {r.text[:200]}")
-                ok = False
-        except Exception as e:
-            print(f"  [send] Error: {e}"); ok = False
+    for chat in CHAT_IDS:
+        for i, chunk in enumerate(chunks):
+            suffix = f"\n<i>Part {i+1}/{len(chunks)}</i>" if len(chunks) > 1 else ""
+            try:
+                r = requests.post(url, json={
+                    "chat_id": chat, "text": chunk+suffix, "parse_mode": "HTML"
+                }, timeout=15)
+                if r.ok:
+                    print(f"  [send→..{chat[-4:]}] ✅ {len(chunk)} chars")
+                else:
+                    print(f"  [send→..{chat[-4:]}] HTTP {r.status_code}: {r.text[:100]}")
+                    ok = False
+            except Exception as e:
+                print(f"  [send→..{chat[-4:]}] Error: {e}"); ok = False
     return ok
 
 # ── CSV LOADER ────────────────────────────────────────────────
@@ -546,9 +553,8 @@ def build_hourly_news() -> str:
         match_str = f"  [{item['matched']}]" if item["matched"] else ""
         import html as _html
         title_clean = _html.escape(item["title"][:120])
-        match_esc   = _html.escape(item["matched"]) if item["matched"] else ""
-        match_str2  = f"  [{match_esc}]" if match_esc else ""
-        lines.append(f"{icon}{match_str2}\n  {title_clean}\n  <i>— {item['source']}</i>\n")
+        # symbol tag removed — often wrong and noisy
+        lines.append(f"{icon}\n  {title_clean}\n  <i>— {item['source']}</i>\n")
 
     lines.append(f"<i>{len(new_news)} new items found | Full analysis in next engine run</i>")
 

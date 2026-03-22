@@ -65,6 +65,7 @@ jobs:
           TELEGRAM_TOKEN:      ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_BOT_TOKEN:  ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID:    ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_CHAT_IDS:   ${{ secrets.TELEGRAM_CHAT_IDS }}
           TRIGGERED_BY_PUSH:   ${{ github.event_name == 'push' && 'true' || 'false' }}
           FORCE_MORNING_BRIEF: ${{ github.event.inputs.mode == 'morning_brief' && 'true' || 'false' }}
         run: |
