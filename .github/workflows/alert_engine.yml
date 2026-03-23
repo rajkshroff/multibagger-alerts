@@ -91,7 +91,7 @@ jobs:
   # ── CORPORATE ANNOUNCEMENTS (every 15 min, 9am-4:30pm IST) ─
   corp_announcements:
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule'
+    # Runs on schedule (every 15min market hours) AND manual dispatch for testing
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
