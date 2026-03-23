@@ -1,0 +1,58 @@
+# ─────────────────────────────────────────────────────────────
+# ADD TO: .github/workflows/alerts.yml
+# Add this as a NEW JOB alongside your existing news/morning jobs
+#
+# This runs build_corporate_announcements.py every 15 minutes
+# during market hours (9:00am–4:30pm IST = 3:30am–11:00am UTC)
+# weekdays only.
+#
+# HOW TO ADD:
+#   1. Open multibagger-alerts/.github/workflows/alerts.yml
+#   2. Paste the job below under 'jobs:' at the same indent level
+#      as your other jobs (e.g. 'news_alerts:', 'morning_brief:')
+# ─────────────────────────────────────────────────────────────
+
+  # ── CORPORATE ANNOUNCEMENTS (every 15 min, market hours) ───
+  corp_announcements:
+    runs-on: ubuntu-latest
+    # weekdays, 3:30am–11:00am UTC = 9:00am–4:30pm IST
+    if: github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: pip install requests pandas --quiet
+
+      - name: Run Corporate Announcements Poller
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_IDS:  ${{ secrets.TELEGRAM_CHAT_IDS }}
+        run: python build_corporate_announcements.py
+
+      - name: Commit seen hashes
+        run: |
+          git config user.name  "multibagger-bot"
+          git config user.email "bot@multibagger.local"
+          git add corp_announcements_seen.json || true
+          git diff --cached --quiet || git commit -m "corp_anns: update seen hashes"
+          git push || true
+
+# ─────────────────────────────────────────────────────────────
+# CRON SCHEDULE TO ADD (runs every 15 minutes):
+# Add this line under your existing 'on: schedule:' section:
+#
+# on:
+#   schedule:
+#     - cron: '*/15 3-11 * * 1-5'   # ← ADD THIS (corp announcements)
+#     - cron: '0 2 * * 1-5'          # ← existing (morning brief 7:30 IST)
+#     - cron: '30 3-11 * * 1-5'      # ← existing (hourly news)
+#
+# SECRETS to add in GitHub → Settings → Secrets → Actions:
+#   TELEGRAM_BOT_TOKEN  — your bot token (same as existing)
+#   TELEGRAM_CHAT_IDS   — comma-separated: "YOUR_ID,FRIEND_ID"
+#     (rename from TELEGRAM_CHAT_ID if you have it set)
+# ─────────────────────────────────────────────────────────────
