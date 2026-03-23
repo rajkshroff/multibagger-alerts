@@ -389,6 +389,28 @@ ACE_INVESTORS = [
     "ace investor",
 ]
 
+# Noise filter — headlines containing these are ALWAYS skipped
+# regardless of any other match (global noise, generic advice, currency noise)
+NOISE_KEYWORDS = [
+    # Global market noise — not India-stock-specific
+    "south korea","hong kong","japan stocks","nikkei","dow jones","nasdaq","s&p 500",
+    "wall street","european stocks","ftse","hang seng","kospi","shanghai",
+    # Geopolitical / macro noise irrelevant to Indian equities
+    "iran","mideast","middle east","ukraine","russia","taiwan","israel","hamas",
+    "crude oil price","brent crude","wti crude","oil price",
+    # Currency noise (too generic)
+    "rupee hits record","rupee falls","rupee weakens","rupee at",
+    "dollar index","usd/inr","forex reserve",
+    # Generic advice / strategy articles (not stock-specific)
+    "how to build your portfolio","how to invest","wealth strategy","financial planning",
+    "portfolio strategy","retirement planning","investment strategy",
+    "global market update","market wrap","week ahead","month ahead",
+    "stocks to watch today","stocks in focus today","stocks to buy or sell",
+    # Broker/analyst generic lists (not our universe specific)
+    "3 shares","5 shares","10 shares","top picks today",
+    "multibagger stocks","penny stocks","cheap stocks",
+]
+
 # High-impact keywords that affect stock prices
 HIGH_IMPACT = [
     # Insider / institutional activity
@@ -484,6 +506,11 @@ def is_relevant(headline: str, universe: set) -> tuple:
     """
     hl = headline.lower()
 
+    # Session 34: reject noise FIRST — global/generic headlines add no value
+    for noise in NOISE_KEYWORDS:
+        if noise in hl:
+            return False, "", ""
+
     # Check ace investors
     for inv in ACE_INVESTORS:
         if inv in hl:
@@ -502,8 +529,12 @@ def is_relevant(headline: str, universe: set) -> tuple:
                 return True, "MACRO_SIGNAL", kw
 
     # Direct symbol mention in universe
+    # Require symbol >= 5 chars to avoid false positives ("ITC" in "critical" etc.)
     for sym in universe:
-        if len(sym) >= 4 and sym.lower() in hl:
+        if len(sym) >= 5 and sym.lower() in hl:
+            return True, "UNIVERSE_STOCK", sym
+        elif len(sym) == 4 and f" {sym.lower()} " in f" {hl} ":
+            # 4-char symbols: require word boundaries
             return True, "UNIVERSE_STOCK", sym
 
     return False, "", ""

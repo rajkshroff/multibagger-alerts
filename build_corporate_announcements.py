@@ -266,9 +266,11 @@ def parse_bse_announcement(item: dict) -> dict:
     subject  = str(item.get("HEADLINE","") or item.get("headline","") or "").strip()
     category = str(item.get("CATEGORYNAME","") or item.get("SUBCATNAME","") or "").strip()
     dt_str   = str(item.get("NEWS_DT","") or item.get("news_dt","") or "").strip()
-    # BSE scrip code → need NSE symbol lookup (best effort)
+    # Company name — BSE API returns SHORT_NAME or LONG_NAME in announcement payload
+    company  = (str(item.get("SHORT_NAME","") or item.get("LONG_NAME","") or
+                    item.get("COMPANYNAME","") or item.get("CompanyName","") or "").strip())
     return {"symbol": sym, "subject": subject, "category": category,
-            "date": dt_str, "url": "", "exchange": "BSE"}
+            "date": dt_str, "url": "", "exchange": "BSE", "company": company}
 
 # ── PRIORITY CLASSIFIER ───────────────────────────────────────
 def classify_priority(ann: dict) -> str:
@@ -310,16 +312,22 @@ def build_alert(announcements: list) -> str:
     shown = (critical + high)[:15]  # cap at 15 per cycle
 
     for ann in shown:
-        icon  = PRIORITY_ICONS.get(ann["priority"], "📎")
-        sym   = ann["symbol"]
-        subj  = ann["subject"][:100]
-        cat   = ann["category"]
-        exch  = ann["exchange"]
+        icon     = PRIORITY_ICONS.get(ann["priority"], "📎")
+        sym      = ann["symbol"]
+        # Show company name if available, else fall back to symbol/code
+        company  = ann.get("company","").strip()
+        disp_sym = company if company else sym
+        subj     = ann["subject"][:100]
+        cat      = ann["category"]
+        exch     = ann["exchange"]
         import html as _html
-        subj_esc = _html.escape(subj)
-        cat_esc  = _html.escape(cat)
+        subj_esc    = _html.escape(subj)
+        cat_esc     = _html.escape(cat)
+        disp_esc    = _html.escape(disp_sym)
+        # Show BSE code in brackets if we have the company name
+        code_str = f" <i>({sym})</i>" if company and sym != company else ""
         lines.append(
-            f"{icon} <b>{sym}</b> — {cat_esc}\n"
+            f"{icon} <b>{disp_esc}</b>{code_str} — {cat_esc}\n"
             f"  {subj_esc}\n"
             f"  <i>— {exch}</i>\n"
         )
