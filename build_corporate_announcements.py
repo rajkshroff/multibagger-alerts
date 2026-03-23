@@ -261,15 +261,43 @@ def fetch_bse_announcements() -> list:
         print(f"  [bse] {e}")
         return []
 
+# BSE scrip code → company name cache (built during run)
+_BSE_NAME_CACHE = {}
+
+def _bse_company_name(scrip_cd: str) -> str:
+    """Lookup BSE company name from scrip code. Cached per run."""
+    if not scrip_cd: return ""
+    if scrip_cd in _BSE_NAME_CACHE: return _BSE_NAME_CACHE[scrip_cd]
+    try:
+        url = (f"https://api.bseindia.com/BseIndiaAPI/api/getScripHeaderData/w"
+               f"?Scrip_cd={scrip_cd}&seriesid=")
+        r = requests.get(url, headers={"User-Agent":"Mozilla/5.0",
+                                        "Referer":"https://www.bseindia.com/"},
+                         timeout=5)
+        if r.ok:
+            d = r.json()
+            name = (d.get("CompanyName","") or d.get("companyname","") or
+                    d.get("SHORT_NAME","")  or d.get("LONG_NAME","") or "").strip()
+            if name:
+                _BSE_NAME_CACHE[scrip_cd] = name
+                return name
+    except Exception:
+        pass
+    _BSE_NAME_CACHE[scrip_cd] = ""  # cache miss to avoid retrying
+    return ""
+
 def parse_bse_announcement(item: dict) -> dict:
-    sym      = str(item.get("SCRIP_CD","") or item.get("scrip_cd","")).strip()
+    scrip_cd = str(item.get("SCRIP_CD","") or item.get("scrip_cd","")).strip()
     subject  = str(item.get("HEADLINE","") or item.get("headline","") or "").strip()
     category = str(item.get("CATEGORYNAME","") or item.get("SUBCATNAME","") or "").strip()
     dt_str   = str(item.get("NEWS_DT","") or item.get("news_dt","") or "").strip()
-    # Company name — BSE API returns SHORT_NAME or LONG_NAME in announcement payload
-    company  = (str(item.get("SHORT_NAME","") or item.get("LONG_NAME","") or
-                    item.get("COMPANYNAME","") or item.get("CompanyName","") or "").strip())
-    return {"symbol": sym, "subject": subject, "category": category,
+    # Try all possible name fields in the BSE payload first (fast, no extra API call)
+    company = (str(item.get("short_name","") or item.get("COMPANYNAME","") or
+                   item.get("CompanyName","") or item.get("FULL_NAME","") or "").strip())
+    # Fallback: dedicated BSE company lookup API (adds ~1 HTTP call per new scrip)
+    if not company and scrip_cd:
+        company = _bse_company_name(scrip_cd)
+    return {"symbol": scrip_cd, "subject": subject, "category": category,
             "date": dt_str, "url": "", "exchange": "BSE", "company": company}
 
 # ── PRIORITY CLASSIFIER ───────────────────────────────────────

@@ -372,7 +372,8 @@ RSS_FEEDS = [
     {"name":"FE Markets",   "url":"https://www.financialexpress.com/market/feed/"},
     # Policy
     {"name":"SEBI",         "url":"https://www.sebi.gov.in/sebi_data/rss/sebirss.xml"},
-    {"name":"RBI",          "url":"https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx?prid=rss"},
+    # RBI RSS disabled — generic press releases, rarely stock-specific
+    # {"name":"RBI", "url":"https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx?prid=rss"},
 ]
 
 # Ace investors to watch for by name in headlines
@@ -390,25 +391,35 @@ ACE_INVESTORS = [
 ]
 
 # Noise filter — headlines containing these are ALWAYS skipped
-# regardless of any other match (global noise, generic advice, currency noise)
+# Checked FIRST before any keyword matching — noise overrides everything
 NOISE_KEYWORDS = [
     # Global market noise — not India-stock-specific
     "south korea","hong kong","japan stocks","nikkei","dow jones","nasdaq","s&p 500",
     "wall street","european stocks","ftse","hang seng","kospi","shanghai",
+    "global stock market","global market |","global market update",
+    "five triggers","triggers that could move","week ahead","month ahead",
     # Geopolitical / macro noise irrelevant to Indian equities
     "iran","mideast","middle east","ukraine","russia","taiwan","israel","hamas",
-    "crude oil price","brent crude","wti crude","oil price",
+    "crude oil price","brent crude","wti crude","oil price","oil shock",
+    "fed rate cut","fed rate hike","bond market","bond yield","treasury yield",
     # Currency noise (too generic)
-    "rupee hits record","rupee falls","rupee weakens","rupee at",
+    "rupee hits record","rupee falls","rupee weakens","rupee at","rupee down",
     "dollar index","usd/inr","forex reserve",
     # Generic advice / strategy articles (not stock-specific)
     "how to build your portfolio","how to invest","wealth strategy","financial planning",
     "portfolio strategy","retirement planning","investment strategy",
-    "global market update","market wrap","week ahead","month ahead",
+    "invest in staggered","buy in staggered","staggered manner",
+    "market wrap","what to expect","market outlook",
     "stocks to watch today","stocks in focus today","stocks to buy or sell",
-    # Broker/analyst generic lists (not our universe specific)
+    "10 shares in focus","stocks in focus","shares in focus",
+    # IPO noise (not our holdings universe)
+    "ipo day","ipo allotment","ipo subscription","ipo gmp","ipo price band",
+    "sme ipo","mainboard ipo","listing today","listing price",
+    # Broker generic lists
     "3 shares","5 shares","10 shares","top picks today",
-    "multibagger stocks","penny stocks","cheap stocks",
+    "penny stocks","cheap stocks","multibagger stock to buy",
+    # Press release noise
+    "press releases - reserve bank","press releases - sebi",
 ]
 
 # High-impact keywords that affect stock prices
