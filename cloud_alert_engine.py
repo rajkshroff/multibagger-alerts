@@ -615,6 +615,77 @@ def build_hourly_news() -> str:
 
 
 
+
+# ── LIVE PRICE + ATR HELPERS (catalyst scorer) ───────────────
+def _nse_live_price(symbol: str) -> float:
+    """Fetch live price from NSE. Returns 0.0 on failure."""
+    try:
+        import requests as _r
+        s = _r.Session()
+        s.headers.update({"User-Agent":"Mozilla/5.0",
+                          "Referer":"https://www.nseindia.com/",
+                          "Accept":"application/json"})
+        s.get("https://www.nseindia.com", timeout=5)
+        r = s.get(f"https://www.nseindia.com/api/quote-equity?symbol={symbol}",
+                  timeout=8)
+        if r.ok:
+            d = r.json()
+            p = (d.get("priceInfo",{}).get("lastPrice") or
+                 d.get("priceInfo",{}).get("close") or 0)
+            return float(p) if p else 0.0
+    except Exception:
+        pass
+    return 0.0
+
+def _live_atr_pct(symbol: str, days: int = 14) -> float:
+    """ATR as % of price. Same formula as engine. Default 2.5% on failure."""
+    try:
+        import requests as _r
+        from datetime import datetime as _dt, timedelta as _td
+        s = _r.Session()
+        s.headers.update({"User-Agent":"Mozilla/5.0",
+                          "Referer":"https://www.nseindia.com/",
+                          "Accept":"application/json"})
+        s.get("https://www.nseindia.com", timeout=5)
+        to_d   = _dt.now().strftime("%d-%m-%Y")
+        fr_d   = (_dt.now()-_td(days=days+5)).strftime("%d-%m-%Y")
+        url    = (f"https://www.nseindia.com/api/historical/cm/equity"
+                  f"?symbol={symbol}&series=[%22EQ%22]"
+                  f"&from={fr_d}&to={to_d}&csv=false")
+        r = s.get(url, timeout=10)
+        if not r.ok: return 2.5
+        rows = r.json().get("data",[])
+        if len(rows) < 5: return 2.5
+        trs = []
+        for i in range(1, min(days+1, len(rows))):
+            h  = float(rows[i].get("CH_TRADE_HIGH_PRICE",0) or 0)
+            l  = float(rows[i].get("CH_TRADE_LOW_PRICE",0)  or 0)
+            pc = float(rows[i-1].get("CH_CLOSING_PRICE",0)  or
+                       rows[i].get("CH_CLOSING_PRICE",0)     or 0)
+            if h>0 and l>0 and pc>0:
+                trs.append(max(h-l, abs(h-pc), abs(l-pc)) / pc * 100)
+        return sum(trs)/len(trs) if trs else 2.5
+    except Exception:
+        return 2.5
+
+def _engine_age_hours(composite_df) -> float:
+    """Hours since last engine run (from SCORED_AT in composite_scores.csv)."""
+    try:
+        from datetime import datetime as _dt2
+        col = composite_df["SCORED_AT"].dropna() if "SCORED_AT" in composite_df.columns else None
+        if col is None or col.empty: return 999.0
+        latest = _dt2.fromisoformat(str(col.iloc[-1]).strip()[:19])
+        return (_dt2.now() - latest).total_seconds() / 3600
+    except Exception:
+        return 999.0
+
+def _confidence(age_h: float) -> tuple:
+    """Returns (label, icon, use_live_prices)"""
+    if   age_h <   6: return "FRESH",   "🟢", False
+    elif age_h <  24: return "RECENT",  "🟡", True
+    elif age_h < 168: return "STALE",   "🟠", True
+    else:             return "EXPIRED", "🔴", True
+
 # ══════════════════════════════════════════════════════════════
 # CATALYST SCORER v2 — NOTIFICATION ONLY (Session 34)
 #
@@ -875,18 +946,49 @@ def check_and_score_catalysts():
             try:    score_str = str(int(float(str(score))))
             except: score_str = "—"
 
-            # Entry zone — clean ₹ range
-            entry_clean = "—"
-            if entry and "₹" in entry:
-                nums = _re.findall(r"₹([\d,]+)", entry)
-                if len(nums) >= 2: entry_clean = f"₹{nums[0]}–{nums[1]}"
-                elif nums:         entry_clean = f"₹{nums[0]}"
+            # Data freshness
+            age_h = _engine_age_hours(cs)
+            _conf_label, _conf_icon, _use_live = _confidence(age_h)
+            broken_flag = False
+            price_note  = ""
 
-            # Stop loss — just the ₹ number
-            sl_clean = "—"
-            if sl and "₹" in sl:
-                m = _re.search(r"₹([\d,]+)", sl)
-                if m: sl_clean = f"₹{m.group(1)}"
+            entry_clean = "—"
+            sl_clean    = "—"
+
+            if _use_live:
+                # Engine data >6h old — compute live entry/SL from NSE
+                _lp = _nse_live_price(matched_sym)
+                if _lp > 0:
+                    _atr   = _live_atr_pct(matched_sym)
+                    _atr_a = _lp * _atr / 100
+                    entry_clean = f"₹{_lp*(1-0.5*_atr/100):,.0f}–₹{_lp*(1+0.5*_atr/100):,.0f}"
+                    sl_clean    = f"₹{_lp - 2*_atr_a:,.0f}"
+                    # Safety: if price already below last known SL → broken
+                    if sl and "₹" in sl:
+                        try:
+                            _old_sl = float(_re.search(r"₹([\d,]+)", sl).group(1).replace(",",""))
+                            if _lp < _old_sl:
+                                broken_flag = True
+                        except Exception:
+                            pass
+                    price_note = f"{_conf_icon} Live prices (engine {int(age_h)}h old)"
+                else:
+                    # NSE unavailable — fallback to engine values
+                    if entry and "₹" in entry:
+                        _ns = _re.findall(r"₹([\d,]+)", entry)
+                        entry_clean = f"₹{_ns[0]}–₹{_ns[1]}" if len(_ns)>=2 else f"₹{_ns[0]}" if _ns else "—"
+                    if sl and "₹" in sl:
+                        _sm = _re.search(r"₹([\d,]+)", sl)
+                        if _sm: sl_clean = f"₹{_sm.group(1)}"
+                    price_note = f"🟠 Engine values ({int(age_h)}h old — NSE unavailable)"
+            else:
+                # FRESH — use engine entry/SL directly
+                if entry and "₹" in entry:
+                    _ns = _re.findall(r"₹([\d,]+)", entry)
+                    entry_clean = f"₹{_ns[0]}–₹{_ns[1]}" if len(_ns)>=2 else f"₹{_ns[0]}" if _ns else "—"
+                if sl and "₹" in sl:
+                    _sm = _re.search(r"₹([\d,]+)", sl)
+                    if _sm: sl_clean = f"₹{_sm.group(1)}"
 
             # Action from engine (already in action_language.csv)
             # If empty, derive from tier + market
