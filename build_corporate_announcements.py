@@ -66,14 +66,19 @@ MAX = 4000
 # NSE uses these category labels in their API
 # Routine filings — these are filed by EVERY company every quarter, pure noise
 ROUTINE_SUBJECTS = [
-    "closure of trading window",
-    "trading window closure",
-    "intimation of closure",
-    "trading window for the quarter",
-    "trading window pursuant",
-    "closure of trading window for",
-    "new listing",          # exchange admin notice, not company-specific news
+    # Single broad match catches ALL trading window variations
+    "trading window",       # "closure of trading window", "trading window for dealing", etc.
+    "new listing",
     "listing of securities",
+    "listing of equity",
+    "intimation of closure",
+]
+
+# Block entire category unless subject has genuinely material keywords
+NOISY_CATEGORIES = {"Insider Trading / SAST", "Insider Trading"}
+MATERIAL_OVERRIDE_KEYWORDS = [
+    "pledge invoked", "acquisition", "bulk deal", "block deal",
+    "merger", "demerger", "open offer", "takeover",
 ]
 
 CRITICAL_CATEGORIES = {
@@ -328,6 +333,10 @@ def classify_priority(ann: dict) -> str:
     # Filed by every company every quarter — pure noise
     for r in ROUTINE_SUBJECTS:
         if r in subj:
+            return "LOW"
+    # Block noisy categories unless subject has material keywords
+    if cat in NOISY_CATEGORIES:
+        if not any(kw in subj for kw in MATERIAL_OVERRIDE_KEYWORDS):
             return "LOW"
     # Exact category match
     for c in CRITICAL_CATEGORIES:
