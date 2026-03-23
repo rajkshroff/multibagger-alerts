@@ -22,6 +22,7 @@ on:
     branches: [ main ]
 
   schedule:
+    - cron: '*/15 3-11 * * 1-5'  # 9:00am–4:30pm IST — Corp Announcements
     - cron: '0 2  * * *'    # 7:30am IST  — Morning Brief
     - cron: '30 3  * * *'   # 9:00am IST  — Hourly News
     - cron: '30 4  * * *'   # 10:00am IST
@@ -84,5 +85,40 @@ jobs:
         run: |
           git add -f seen_hashes.json morning_brief_sent.json 2>/dev/null || true
           git diff --staged --quiet || git commit -m "chore: alert state [skip ci]"
+          git push || true
+        continue-on-error: true
+
+  # ── CORPORATE ANNOUNCEMENTS (every 15 min, 9am-4:30pm IST) ─
+  corp_announcements:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - run: pip install --quiet requests pandas
+
+      - name: Run Corporate Announcements Poller
+        env:
+          TELEGRAM_TOKEN:      ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_BOT_TOKEN:  ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID:    ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_CHAT_IDS:   ${{ secrets.TELEGRAM_CHAT_IDS }}
+        run: python build_corporate_announcements.py
+
+      - name: Save seen hashes
+        run: |
+          git config user.email "bot@multibagger-alerts.local"
+          git config user.name  "Multibagger Alert Bot"
+          git add -f corp_announcements_seen.json 2>/dev/null || true
+          git diff --staged --quiet || git commit -m "corp_anns: update seen hashes [skip ci]"
           git push || true
         continue-on-error: true
