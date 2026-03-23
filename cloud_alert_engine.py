@@ -964,8 +964,17 @@ def main():
     now_str = now_ist().strftime("%Y-%m-%d %H:%M:%S IST")
     triggered_by_push = os.environ.get("TRIGGERED_BY_PUSH","false").lower() == "true"
 
+    # --catalyst-only: skip everything except catalyst scorer
+    # Used by the dedicated 5-min GitHub Actions job
+    import sys as _sys
+    catalyst_only_mode = "--catalyst-only" in _sys.argv
+
     print(f"[{now_str}] cloud_alert_engine v3.0")
-    print(f"  IST: {h:02d}:{m:02d} | push={triggered_by_push} | test={TEST_MODE}")
+    print(f"  IST: {h:02d}:{m:02d} | push={triggered_by_push} | test={TEST_MODE} | catalyst_only={catalyst_only_mode}")
+
+    if catalyst_only_mode:
+        check_and_score_catalysts()
+        return
 
     # ── TEST ─────────────────────────────────────────────────
     if TEST_MODE:
