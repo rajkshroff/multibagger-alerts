@@ -919,10 +919,8 @@ def check_and_score_catalysts():
                 # Stock not in our universe — show announcement only
                 disp = _html.escape(company if company else scrip)
                 lines.append(
-                    f"📢 <b>{disp}</b> <i>(BSE:{scrip}, not in universe)</i>
-"
-                    f"  {_html.escape(label)}: {_html.escape(subj[:90])}
-"
+                    f"📢 <b>{disp}</b> <i>(BSE:{scrip}, not in universe)</i>\n"
+                    f"  {_html.escape(label)}: {_html.escape(subj[:90])}\n"
                 )
                 count += 1
                 continue
@@ -1022,18 +1020,12 @@ def check_and_score_catalysts():
                 vel_note = f" | Score {velocity}"
 
             lines.append(
-                f"🚨 <b>{_html.escape(name)}</b> [{tier} | S:{score_str}]{boundary_note}
-"
-                f"  📋 <b>{_html.escape(label)}</b>{vel_note}
-"
-                f"  {_html.escape(subj[:100])}
-"
-                f"  💰 Entry: {entry_clean}  |  SL: {sl_clean}
-"
-                f"  ⚡ {_html.escape(action)}
-"
-                f"  <i>📌 Run Quick Run for updated score with this event</i>
-"
+                f"🚨 <b>{_html.escape(name)}</b> [{tier} | S:{score_str}]{boundary_note}\n"
+                f"  📋 <b>{_html.escape(label)}</b>{vel_note}\n"
+                f"  {_html.escape(subj[:100])}\n"
+                f"  💰 Entry: {entry_clean}  |  SL: {sl_clean}\n"
+                f"  ⚡ {_html.escape(action)}\n"
+                f"  <i>📌 Run Quick Run for updated score with this event</i>\n"
             )
             count += 1
 
