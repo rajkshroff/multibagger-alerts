@@ -69,6 +69,7 @@ jobs:
           TELEGRAM_CHAT_IDS:   ${{ secrets.TELEGRAM_CHAT_IDS }}
           TRIGGERED_BY_PUSH:   ${{ github.event_name == 'push' && 'true' || 'false' }}
           FORCE_MORNING_BRIEF: ${{ github.event.inputs.mode == 'morning_brief' && 'true' || 'false' }}
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
         run: |
           if [ "${{ github.event.inputs.mode }}" = "test" ]; then
             python cloud_alert_engine.py --test
