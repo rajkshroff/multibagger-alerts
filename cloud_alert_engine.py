@@ -73,6 +73,31 @@ CSV  = {
 SEEN_FILE    = REPO / "seen_hashes.json"
 MORNING_FILE = REPO / "morning_brief_sent.json"
 
+# ── BSE CODE → NSE SYMBOL MAP ─────────────────────────────────
+# identity_canonical.csv is copied to this repo by git_sync.cmd after each engine run
+def _load_bse_nse_map() -> dict:
+    """Build {bse_code_str: nse_symbol} from identity_canonical.csv."""
+    m = {}
+    p = REPO / "identity_canonical.csv"
+    if not p.exists():
+        print("  [identity] identity_canonical.csv not found — name matching only")
+        return m
+    try:
+        import csv as _csv_id
+        with open(p, encoding="utf-8", errors="replace") as _f_id:
+            for row in _csv_id.DictReader(_f_id):
+                bsc = str(row.get("BSE_CODE","") or "").strip().split(".")[0]
+                nse = str(row.get("NSE_SYMBOL","") or "").strip().upper()
+                if bsc and bsc.isdigit() and nse:
+                    m[bsc] = nse
+        print(f"  [identity] {len(m):,} BSE->NSE mappings loaded")
+    except Exception as e:
+        print(f"  [identity] {e}")
+    return m
+
+_BSE_NSE_MAP = _load_bse_nse_map()
+
+
 # ── IST ───────────────────────────────────────────────────────
 IST = timezone(timedelta(hours=5, minutes=30))
 def now_ist(): return datetime.now(IST)
@@ -874,18 +899,20 @@ def check_and_score_catalysts():
 
             if not _catalyst_is_material(subj, cat): continue
 
-            # Match to NSE symbol — look up by company name
+            # Match BSE code -> NSE symbol
             matched = None
-            company_u = company.upper().replace(" LTD","").replace(" LIMITED","").strip()[:8]
-            for sym, info in score_map.items():
-                name_u = info["name"].upper().replace(" LTD","").replace(" LIMITED","").strip()[:8]
-                if company_u and len(company_u) >= 4 and company_u == name_u:
-                    matched = (sym, info)
-                    break
-                # Fallback: scrip code direct match (works for some stocks)
-                if scrip == sym:
-                    matched = (sym, info)
-                    break
+            # Priority 1: direct BSE code lookup via identity_canonical
+            _nse_sym = _BSE_NSE_MAP.get(scrip)
+            if _nse_sym and _nse_sym in score_map:
+                matched = (_nse_sym, score_map[_nse_sym])
+            # Priority 2: company name prefix (8-char) fallback
+            if matched is None:
+                _cname = company.upper().replace(" LTD","").replace(" LIMITED","").strip()[:8]
+                for sym, info in score_map.items():
+                    _ename = info["name"].upper().replace(" LTD","").replace(" LIMITED","").strip()[:8]
+                    if _cname and len(_cname) >= 4 and _cname == _ename:
+                        matched = (sym, info)
+                        break
 
             events_to_alert.append({
                 "scrip":   scrip,
@@ -916,14 +943,7 @@ def check_and_score_catalysts():
             matched = ev["matched"]
 
             if matched is None:
-                # Stock not in our universe — show announcement only
-                disp = _html.escape(company if company else scrip)
-                lines.append(
-                    f"📢 <b>{disp}</b> <i>(BSE:{scrip}, not in universe)</i>\n"
-                    f"  {_html.escape(label)}: {_html.escape(subj[:90])}\n"
-                )
-                count += 1
-                continue
+                continue  # not in universe -- silent drop
 
             sym, info = matched
             tier     = info["tier"]
@@ -955,7 +975,7 @@ def check_and_score_catalysts():
 
             if _use_live:
                 # Engine data >6h old — compute live entry/SL from NSE
-                _lp = _nse_live_price(matched_sym)
+                _lp = _nse_live_price(sym)
                 if _lp > 0:
                     _atr   = _live_atr_pct(matched_sym)
                     _atr_a = _lp * _atr / 100
