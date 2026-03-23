@@ -603,7 +603,9 @@ def main():
         return   # push trigger = action plan only, don't run news scan
 
     # ── TYPE 2: MORNING BRIEF (7:30am) ───────────────────────
-    in_brief_window = (h == 7 and m >= 30) or (h == 8 and m < 30)
+    # Session 34: widened from 1hr to 2hr window
+    # (7:30am–9:30am IST) so a missed cron doesn't lose the day
+    in_brief_window = (h == 7 and m >= 30) or (h == 8) or (h == 9 and m < 30)
     if in_brief_window and not morning_sent_today():
         print("  → TYPE 2: Morning Brief")
         msg = build_morning_brief()
