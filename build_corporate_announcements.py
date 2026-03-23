@@ -64,6 +64,18 @@ MAX = 4000
 
 # ── ANNOUNCEMENT PRIORITY ────────────────────────────────────
 # NSE uses these category labels in their API
+# Routine filings — these are filed by EVERY company every quarter, pure noise
+ROUTINE_SUBJECTS = [
+    "closure of trading window",
+    "trading window closure",
+    "intimation of closure",
+    "trading window for the quarter",
+    "trading window pursuant",
+    "closure of trading window for",
+    "new listing",          # exchange admin notice, not company-specific news
+    "listing of securities",
+]
+
 CRITICAL_CATEGORIES = {
     # Earnings / financials
     "Financial Results",
@@ -291,9 +303,16 @@ def parse_bse_announcement(item: dict) -> dict:
     subject  = str(item.get("HEADLINE","") or item.get("headline","") or "").strip()
     category = str(item.get("CATEGORYNAME","") or item.get("SUBCATNAME","") or "").strip()
     dt_str   = str(item.get("NEWS_DT","") or item.get("news_dt","") or "").strip()
-    # Try all possible name fields in the BSE payload first (fast, no extra API call)
-    company = (str(item.get("short_name","") or item.get("COMPANYNAME","") or
-                   item.get("CompanyName","") or item.get("FULL_NAME","") or "").strip())
+    # BSE announcement payload field names (checked from actual API response)
+    # BSE uses camelCase and UPPERCASE inconsistently across endpoints
+    company = (str(item.get("short_name","")   or  # BSE AnnSubCategoryGetData
+                   item.get("SHORT_NAME","")   or
+                   item.get("COMPANYNAME","")  or
+                   item.get("CompanyName","")  or
+                   item.get("company_name","") or
+                   item.get("FULL_NAME","")    or
+                   item.get("FullName","")     or "").strip()
+               .replace(" Ltd", " Ltd").replace("  ", " "))   # normalize spacing
     # Fallback: dedicated BSE company lookup API (adds ~1 HTTP call per new scrip)
     if not company and scrip_cd:
         company = _bse_company_name(scrip_cd)
@@ -305,6 +324,11 @@ def classify_priority(ann: dict) -> str:
     """Returns 'CRITICAL', 'HIGH', or 'LOW'."""
     cat  = ann.get("category","").strip()
     subj = ann.get("subject","").lower()
+    # Routine filings — always LOW regardless of category
+    # Filed by every company every quarter — pure noise
+    for r in ROUTINE_SUBJECTS:
+        if r in subj:
+            return "LOW"
     # Exact category match
     for c in CRITICAL_CATEGORIES:
         if c.lower() in cat.lower() or c.lower() in subj:
@@ -315,9 +339,11 @@ def classify_priority(ann: dict) -> str:
     # Keyword scan on subject
     critical_kw = [
         "results","dividend","bonus","split","buyback","acquisition","merger",
-        "demerger","penalty","sebi","order received","new order","contract",
-        "default","rating","downgrade","upgrade","resignation","appointed",
-        "pledge","trading window","rights issue","qip","ncd",
+        "demerger","penalty","sebi order","new order","contract awarded",
+        "default","credit rating","downgrade","upgrade","resignation","appointed",
+        "pledge invoked","rights issue","qip","ncd","delisting",
+        # Removed: "trading window" — routine quarterly filing, always noise
+        # Removed: "order received" alone — too broad, matches admin notices
     ]
     for kw in critical_kw:
         if kw in subj:

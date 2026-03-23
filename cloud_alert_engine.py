@@ -420,6 +420,11 @@ NOISE_KEYWORDS = [
     "penny stocks","cheap stocks","multibagger stock to buy",
     # Press release noise
     "press releases - reserve bank","press releases - sebi",
+    # Analysis/opinion pieces — not actionable signals
+    "sector to watch","stocks to watch","sectors to watch",
+    "how to read","what investors should","what to do",
+    "expert says","analyst says","here is why","here's why",
+    "market today","opening bell","closing bell",
 ]
 
 # High-impact keywords that affect stock prices
