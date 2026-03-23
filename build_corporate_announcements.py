@@ -58,6 +58,34 @@ def load_universe():
     print(f"  [universe] {len(syms)} symbols tracked")
     return syms
 
+# ── BSE CODE → COMPANY NAME MAP ──────────────────────────────
+def load_bse_name_map() -> dict:
+    """Resolve BSE numeric codes to company names.
+    BSE AnnSubCategoryGetData API does not reliably return a name field.
+    We build the map from identity_canonical.csv in the main app repo."""
+    m = {}
+    candidates = [
+        REPO.parent / "ENGINE_CORE" / "data_internal" / "identity_canonical.csv",
+        REPO.parent / "ENGINE_CORE" / "data_external" / "identity_canonical.csv",
+        REPO / "identity_canonical.csv",
+    ]
+    for cand in candidates:
+        if cand.exists():
+            try:
+                with open(cand, encoding="utf-8", errors="replace") as f:
+                    for row in csv.DictReader(f):
+                        bsc  = str(row.get("BSE_CODE","") or "").strip().split(".")[0]
+                        name = str(row.get("NAME","") or "").strip()
+                        if bsc and bsc.isdigit() and name:
+                            m[bsc] = name
+                print(f"  [bse_name_map] {len(m):,} codes loaded from {cand.name}")
+            except Exception as e:
+                print(f"  [bse_name_map] {e}")
+            break
+    if not m:
+        print("  [bse_name_map] WARNING: identity_canonical.csv not found — BSE names will show as codes")
+    return m
+
 # ── SEEN HASHES ───────────────────────────────────────────────
 def load_seen():
     if SEEN_FILE.exists():
@@ -118,6 +146,8 @@ MATERIAL_ALWAYS_FIRE = [
 ]
 
 # Always skip — routine filings with no price impact
+# NOTE: checked BEFORE MATERIAL_ALWAYS_FIRE so that a trading-window notice
+# mentioning "Audited Financial Results" in its text does NOT fire.
 ROUTINE_SKIP = [
     "trading window",
     "regulation 30",
@@ -127,6 +157,10 @@ ROUTINE_SKIP = [
     "new listing",
     "listing of securities",
     "listing of equity shares",
+    "postal ballot",          # routine shareholder vote
+    "scrutinizer report",     # postal ballot outcome
+    "scrutinizer's report",
+    "closure of trading",     # alternate BSE phrasing
 ]
 
 # Block these categories unless subject has material keyword
@@ -144,14 +178,17 @@ NOISY_CAT_OVERRIDE = [
 def classify(subject: str, category: str) -> bool:
     subj = subject.lower()
     cat  = category.strip()
-    # Material always-fire check (highest priority)
-    for m in MATERIAL_ALWAYS_FIRE:
-        if m in subj:
-            return True
-    # Routine skip
+    # ROUTINE SKIP FIRST — a trading-window notice like
+    # "...till 48 hours from announcement of Audited Financial Results"
+    # contains "financial results" which would wrongly fire MATERIAL_ALWAYS_FIRE
+    # if checked first.
     for r in ROUTINE_SKIP:
         if r in subj:
             return False
+    # Material always-fire (only reached if not routine)
+    for m in MATERIAL_ALWAYS_FIRE:
+        if m in subj:
+            return True
     # Noisy category block
     if cat in NOISY_CATEGORIES:
         return any(kw in subj for kw in NOISY_CAT_OVERRIDE)
@@ -274,8 +311,9 @@ def main():
     if not BOT_TOKEN or not CHAT_IDS:
         print("  ⚠ Telegram not configured")
 
-    universe = load_universe()
-    seen     = load_seen()
+    universe     = load_universe()
+    bse_name_map = load_bse_name_map()
+    seen         = load_seen()
     new_anns = []
 
     # NSE
@@ -304,6 +342,8 @@ def main():
         subj    = str(item.get("HEADLINE","") or "").strip()
         cat     = str(item.get("CATEGORYNAME","") or "").strip()
         company = str(item.get("short_name","") or item.get("COMPANYNAME","") or "").strip()
+        if not company:
+            company = bse_name_map.get(scrip, "")  # resolve from identity_canonical
         if not scrip or not subj: continue
         h = ann_hash(scrip, subj)
         if h in seen: continue
