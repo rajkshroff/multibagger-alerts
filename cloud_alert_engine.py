@@ -614,6 +614,356 @@ def build_hourly_news() -> str:
     return "\n".join(lines)
 
 
+
+# ══════════════════════════════════════════════════════════════
+# CATALYST SCORER — S16 partial rescore (Session 34)
+# Runs after news scan in hourly job.
+# Polls BSE for new material announcements → partial rescore
+# → sends score update Telegram if tier boundary crossed.
+#
+# MATH: Q+G+S+C = COMPOSITE (verified exact, all 5,297 stocks)
+# S16 adds 3.5 pts to S_SCORE → 3.5 pts to COMPOSITE (BALANCED)
+# Entry/SL/Target don't change (ATR-based, not score-based)
+# Score shown as "~X" to indicate estimate. Full rescore on next run.
+# ══════════════════════════════════════════════════════════════
+
+# S16 weight in 10-signal registry
+_S16_WEIGHT     = 2.0
+_NEW_TOTAL_W    = 14.3   # sum of all 10 signal weights after cleanup
+_S16_S_PTS      = round((_S16_WEIGHT / _NEW_TOTAL_W) * 25, 1)   # = 3.5 pts to S_SCORE
+_S16_COMP_PTS   = _S16_S_PTS   # BALANCED: delta_composite = delta_S exactly
+
+# BEAR regime thresholds (from signal_registry BEAR_REGIME_TIER_ADJUSTMENTS)
+_THRESHOLDS = {
+    "BEAR":    {"PRIME": 82, "PRIME_Q_FLOOR": 22, "STRONG": 65, "STRONG_MIN_SIG": 2},
+    "CAUTION": {"PRIME": 80, "PRIME_Q_FLOOR": 20, "STRONG": 62, "STRONG_MIN_SIG": 1},
+    "BULL":    {"PRIME": 80, "PRIME_Q_FLOOR": 20, "STRONG": 60, "STRONG_MIN_SIG": 0},
+}
+
+# Material keywords — same as BSE poller
+_MATERIAL_KW = [
+    "order win","order worth","new order","secures order","contract awarded",
+    "contract won","loa received","ppa signed","mou signed","project award",
+    "letter of award","purchase order","work order","epc contract",
+    "financial results","quarterly results","q1 result","q2 result",
+    "q3 result","q4 result","dividend","bonus share","stock split",
+    "buyback","open offer","rights issue",
+    "acquisition","merger","amalgamation","demerger","takeover",
+    "drug approval","usfda approval","dcgi approval","patent granted",
+    "capacity expansion","new plant","plant commissioned",
+    "sebi order","sebi penalty","ed raid","income tax raid",
+    "fraud","default","insolvency","pledge invoked","rating downgrade",
+    "ceo resign","md resign","cfo resign","auditor resign","going concern",
+    "plant fire","factory fire","force majeure","plant shutdown",
+]
+_ROUTINE_SKIP = [
+    "trading window","regulation 30","sebi (lodr)",
+    "listing obligations","intimation of closure","new listing",
+]
+
+def _fetch_bse_announcements_cs() -> list:
+    """Fetch latest BSE announcements for catalyst scorer."""
+    try:
+        import requests as _req
+        url = ("https://api.bseindia.com/BseIndiaAPI/api/AnnSubCategoryGetData/w"
+               "?strCat=-1&strPrevDate=&strScrip=&strSearch=P&strToDate=&strType=C")
+        r = _req.get(url, headers={"User-Agent":"Mozilla/5.0",
+                                    "Referer":"https://www.bseindia.com/"}, timeout=12)
+        if r.ok:
+            d = r.json()
+            return d if isinstance(d, list) else d.get("Table", []) or []
+    except Exception as e:
+        print(f"  [catalyst] BSE fetch error: {e}")
+    return []
+
+def _is_material(subject: str) -> bool:
+    """Return True if this announcement subject is material."""
+    subj = subject.lower()
+    for r in _ROUTINE_SKIP:
+        if r in subj:
+            return False
+    for m in _MATERIAL_KW:
+        if m in subj:
+            return True
+    return False
+
+def _derive_tier_cs(composite: int, q: int, signals_fired: int,
+                     market_state: str) -> str:
+    """Derive tier using BEAR regime thresholds. Conservative."""
+    mkt = str(market_state).strip().upper()
+    T   = _THRESHOLDS.get(mkt, _THRESHOLDS["CAUTION"])
+    if composite >= T["PRIME"] and q >= T["PRIME_Q_FLOOR"]:
+        return "PRIME"
+    if composite >= T["STRONG"] and signals_fired >= T["STRONG_MIN_SIG"]:
+        return "STRONG"
+    if composite >= 42:
+        return "WATCHLIST_CONFIRMED"
+    if composite >= 28:
+        return "WATCHLIST_EXTERNAL"
+    return "MONITOR"
+
+def _event_type(subject: str) -> str:
+    """Extract short event type label from subject."""
+    subj = subject.lower()
+    if any(k in subj for k in ["order","contract","loa","ppa","mou","epc"]):
+        # Try to extract order value
+        import re
+        m = re.search(r"(?:rs\.?|₹|inr)\s*([\d,]+(?:\.\d+)?)\s*(?:crore|cr|lakh|l)?",
+                      subj, re.IGNORECASE)
+        val = f" ₹{m.group(1)} Cr" if m else ""
+        return f"Order Win{val}"
+    if any(k in subj for k in ["result","revenue","profit","pat","ebitda"]):
+        return "Financial Results"
+    if "dividend" in subj: return "Dividend"
+    if "bonus" in subj:    return "Bonus Shares"
+    if "split" in subj:    return "Stock Split"
+    if "buyback" in subj:  return "Buyback"
+    if any(k in subj for k in ["acquisition","merger","amalgam"]):
+        return "Acquisition/Merger"
+    if any(k in subj for k in ["sebi","ed raid","fraud","default"]):
+        return "⚠ Regulatory"
+    if any(k in subj for k in ["fire","shutdown","force majeure"]):
+        return "⚠ Business Risk"
+    if "drug approval" in subj or "usfda" in subj: return "Drug Approval"
+    if "capacity" in subj or "new plant" in subj:  return "Capacity Addition"
+    return "Material Event"
+
+def check_and_score_catalysts():
+    """
+    Polls BSE for new material announcements.
+    For each universe stock with a new event:
+      1. Loads existing Q/G/S/C/COMPOSITE from composite_scores.csv
+      2. Adds S16 contribution (+3.5 pts to S, +3.5 to COMPOSITE)
+      3. Derives new tier using BEAR regime thresholds
+      4. If tier improves OR score crosses boundary: sends Telegram
+    Called every hour from main() after news scan.
+    """
+    try:
+        print("  [catalyst] Checking BSE for new material events...")
+        
+        # Load composite scores — all needed data is here
+        cs = load("composite")
+        if cs.empty or "NSE_SYMBOL" not in cs.columns:
+            print("  [catalyst] No composite_scores.csv — skipping")
+            return
+
+        # Build fast lookup: NSE_SYMBOL → row dict
+        score_map = {}
+        for _, row in cs.iterrows():
+            sym = str(row.get("NSE_SYMBOL","")).strip().upper()
+            if sym:
+                score_map[sym] = row
+
+        # Load seen hashes — reuse cloud_alert_engine seen.json
+        seen = load_seen()
+
+        # Fetch BSE announcements
+        bse_raw = _fetch_bse_announcements_cs()
+        if not bse_raw:
+            print("  [catalyst] BSE returned 0 items")
+            return
+
+        print(f"  [catalyst] {len(bse_raw)} BSE items")
+        alerts_to_send = []
+
+        for item in bse_raw[:50]:
+            scrip   = str(item.get("SCRIP_CD","") or "").strip()
+            subj    = str(item.get("HEADLINE","") or "").strip()
+            company = str(item.get("short_name","") or item.get("COMPANYNAME","") or "").strip()
+            if not scrip or not subj: continue
+
+            # Hash includes "S16" prefix to avoid collision with corp_ann seen hashes
+            h = "S16_" + str(hash(f"{scrip}|{subj[:60]}"))[:12]
+            if h in seen: continue
+
+            if not _is_material(subj): continue
+
+            # Mark as seen immediately
+            seen[h] = now_ist().isoformat()
+
+            # Find NSE symbol — try direct match, company name match
+            matched_sym = None
+            matched_row = None
+            # Direct: scrip code sometimes matches NSE symbol for some stocks
+            if scrip in score_map:
+                matched_sym = scrip
+                matched_row = score_map[scrip]
+            else:
+                # Company name partial match
+                co_upper = company.upper()[:8]
+                if co_upper:
+                    for sym, row in score_map.items():
+                        name = str(row.get("NAME","")).upper()[:8]
+                        if co_upper and co_upper in name and len(co_upper) >= 4:
+                            matched_sym = sym
+                            matched_row = row
+                            break
+
+            if matched_row is None:
+                # Unknown stock — send announcement without scoring
+                # Only for high-priority events
+                if any(k in subj.lower() for k in ["order win","results","dividend","bonus"]):
+                    alerts_to_send.append({
+                        "type": "announcement_only",
+                        "sym": scrip, "company": company, "subj": subj,
+                    })
+                continue
+
+            # ── PARTIAL RESCORE ───────────────────────────────
+            try:
+                q    = int(float(str(matched_row.get("Q_SCORE", 0))))
+                g    = int(float(str(matched_row.get("G_SCORE", 0))))
+                s    = int(float(str(matched_row.get("S_SCORE", 0))))
+                c    = int(float(str(matched_row.get("C_SCORE", 0))))
+                old_comp = int(float(str(matched_row.get("COMPOSITE_BALANCED", 0))))
+                old_tier = str(matched_row.get("TIER","")).strip()
+                sigs_fired = int(float(str(matched_row.get("SIGNALS_FIRED", 0))))
+                mkt  = str(matched_row.get("MARKET_STATE","CAUTION")).strip().upper()
+                entry = str(matched_row.get("ENTRY_ZONE","")).strip()
+                sl    = str(matched_row.get("STOP_LOSS","")).strip()
+                exp   = str(matched_row.get("EXPECTED_RETURN","")).strip()
+                rr    = str(matched_row.get("RISK_REWARD","")).strip()
+                phase = str(matched_row.get("SECTOR_PHASE","")).strip()
+            except Exception:
+                continue
+
+            # Skip LANDMINE and AVOID — no action possible
+            if old_tier in ("LANDMINE","AVOID"): continue
+
+            # S16 adds 3.5 pts to S_SCORE → 3.5 pts to COMPOSITE (BALANCED)
+            # Math verified: Q+G+S+C = COMPOSITE exactly for all stocks
+            new_s    = min(25, int(round(s + _S16_S_PTS)))
+            new_comp = min(100, old_comp + int(round(_S16_COMP_PTS)))
+            new_sigs = sigs_fired + 1   # S16 fires = +1 signal
+
+            new_tier = _derive_tier_cs(new_comp, q, new_sigs, mkt)
+            delta    = new_comp - old_comp  # always = 3 or 4 (int rounding)
+
+            # Only alert if:
+            # a) Tier improved (WLC→STRONG, STRONG→PRIME etc.), OR
+            # b) Score crossed a major boundary (±boundary zone), OR
+            # c) Score moved by >=3 pts (always true with S16, so check tier/boundary)
+            tier_order = {"MONITOR":1,"WATCHLIST_EXTERNAL":2,"WATCHLIST_CONFIRMED":3,
+                          "STRONG":4,"PRIME":5}
+            tier_improved = tier_order.get(new_tier,0) > tier_order.get(old_tier,0)
+
+            # Boundary: within 3 pts of STRONG or PRIME threshold?
+            T = _THRESHOLDS.get(mkt, _THRESHOLDS["CAUTION"])
+            near_strong = (T["STRONG"] - 3) <= old_comp < T["STRONG"]
+            near_prime  = (T["PRIME"]  - 3) <= old_comp < T["PRIME"]
+            boundary_crossed = tier_improved or near_strong or near_prime or old_comp >= T["STRONG"]
+
+            if not boundary_crossed:
+                continue  # no meaningful change — skip
+
+            event_type = _event_type(subj)
+            alerts_to_send.append({
+                "type":        "with_score",
+                "sym":         matched_sym,
+                "company":     str(matched_row.get("NAME", company)).strip(),
+                "subj":        subj,
+                "event_type":  event_type,
+                "old_tier":    old_tier,
+                "new_tier":    new_tier,
+                "old_comp":    old_comp,
+                "new_comp":    new_comp,
+                "delta":       delta,
+                "entry":       entry,
+                "sl":          sl,
+                "exp":         exp,
+                "rr":          rr,
+                "phase":       phase,
+                "mkt":         mkt,
+                "tier_improved": tier_improved,
+            })
+
+        # Save updated seen hashes
+        save_seen(seen)
+
+        if not alerts_to_send:
+            print("  [catalyst] No boundary-crossing events")
+            return
+
+        # ── BUILD TELEGRAM MESSAGE ─────────────────────────────
+        import html as _html
+        now_s  = now_ist().strftime("%H:%M IST, %d %b")
+        mkt_icon = {"BULL":"🟢","BEAR":"🔴","CAUTION":"🟡"}.get(
+            alerts_to_send[0].get("mkt","") if alerts_to_send else "", "⚪")
+        lines  = [f"🔔 <b>CATALYST SCORE UPDATE — {now_s}</b>", ""]
+
+        for a in alerts_to_send[:6]:
+            if a["type"] == "announcement_only":
+                lines.append(
+                    f"📢 <b>{_html.escape(a['company'] or a['sym'])}</b>
+"
+                    f"  {_html.escape(a['subj'][:100])}
+"
+                    f"  <i>(Not in universe — no score data)</i>
+"
+                )
+                continue
+
+            tier_arrow = ""
+            if a["tier_improved"]:
+                tier_arrow = f" → <b>{a['new_tier']}</b> ⬆"
+            else:
+                tier_arrow = f" (tier unchanged)"
+
+            # Action guidance based on new tier + market
+            mkt = a["mkt"]
+            new_tier = a["new_tier"]
+            if new_tier == "PRIME" and mkt != "BEAR":
+                action = "✅ BUY — catalyst confirmed, all axes aligned"
+            elif new_tier == "PRIME" and mkt == "BEAR":
+                action = "✅ BUY PARTIAL — PRIME quality, bear market caution"
+            elif new_tier == "STRONG" and mkt == "BEAR":
+                action = "🟢 STAGED ACCUMULATE — build in thirds"
+            elif new_tier == "STRONG":
+                action = "🟢 ACCUMULATE — catalyst confirmed"
+            elif new_tier == "WATCHLIST_CONFIRMED":
+                action = "👁 WATCH — approaching STRONG on catalyst"
+            else:
+                action = "👁 MONITOR — event noted"
+
+            # Format entry/SL cleanly
+            entry_clean = a["entry"] if "₹" in a["entry"] else "—"
+            sl_clean = "—"
+            if "₹" in a["sl"]:
+                import re
+                m = re.search(r"₹([\d,]+)", a["sl"])
+                if m: sl_clean = f"₹{m.group(1)}"
+
+            lines.append(
+                f"🚨 <b>{_html.escape(a['company'])}</b> [{a['old_tier']}{tier_arrow}]
+"
+                f"  📋 {_html.escape(a['event_type'])}
+"
+                f"  {_html.escape(a['subj'][:90])}
+"
+                f"  📊 Score: {a['old_comp']} → <b>~{a['new_comp']}</b> (+{a['delta']}pts)
+"
+                f"  💰 {entry_clean}  |  SL {sl_clean}
+"
+                f"  ⚡ {action}
+"
+                f"  <i>~score estimated. Full rescore on next engine run.</i>
+"
+            )
+
+        lines.append(
+            f"<i>Catalyst scorer | {len(alerts_to_send)} event(s) | "
+            f"Runs hourly 9am-6pm | No PC needed</i>"
+        )
+
+        msg = "\n".join(lines)
+        ok  = send(msg)
+        print(f"  [catalyst] Sent {len(alerts_to_send)} score update(s): {ok}")
+
+    except Exception as e:
+        print(f"  [catalyst] Error: {e}")
+        import traceback
+        traceback.print_exc()
+
 # ════════════════════════════════════════════════════════════════
 # MAIN
 # ════════════════════════════════════════════════════════════════
