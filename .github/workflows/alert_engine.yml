@@ -1,10 +1,17 @@
 # ============================================================
-# .github/workflows/alert_engine.yml — v3.0
+# .github/workflows/alert_engine.yml — v3.1
+#
+# SESSION 40 FIXES:
+#   - Removed */5 cron from `alert` job schedule (was causing hourly duplicates)
+#   - Removed `corp_announcements` job (merged into hourly news in Session 39)
+#   - Added hourly_news_sent.json to git commit step
 #
 # 3 TRIGGER TYPES:
 #   PUSH (CSVs updated)  → TYPE 1: Action Plan (engine just ran)
 #   7:30am daily         → TYPE 2: Morning Brief
 #   Every hour 9am-6pm  → TYPE 3: Hourly News scan
+#
+# Catalyst scorer (every 5 min) has its own dedicated workflow: catalyst.yml
 #
 # SECRETS: TELEGRAM_TOKEN + TELEGRAM_CHAT_ID (already set)
 # ============================================================
@@ -22,8 +29,7 @@ on:
     branches: [ main ]
 
   schedule:
-    - cron: '*/5 3-11 * * 1-5'   # every 5 min, 9am-4:30pm IST — Catalyst scorer
-    # */15 cron removed — corp ann merged into hourly news (Session 39)
+    # NOTE: */5 cron REMOVED from here — moved to catalyst.yml
     - cron: '0 2  * * *'    # 7:30am IST  — Morning Brief
     - cron: '30 3  * * *'   # 9:00am IST  — Hourly News
     - cron: '30 4  * * *'   # 10:00am IST
@@ -85,76 +91,11 @@ jobs:
 
       - name: Save state (dedup hashes — YML owns git, not Python)
         run: |
-          git add -f seen_hashes.json morning_brief_sent.json 2>/dev/null || true
+          git add -f seen_hashes.json morning_brief_sent.json hourly_news_sent.json 2>/dev/null || true
           git diff --staged --quiet || git commit -m "chore: alert state [skip ci]"
           git push || true
         continue-on-error: true
 
-  # ── CATALYST SCORER (every 5 min, 9am-4:30pm IST) ─────────
-  # Fast job: polls BSE → reads composite_scores.csv → sends score alert
-  # Only runs check_and_score_catalysts() — skips news and morning brief
-  # 5 min = GitHub Actions minimum. Total delay from BSE post: ~5 min.
-  catalyst_only:
-    runs-on: ubuntu-latest
-    timeout-minutes: 3
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-
-      - run: pip install --quiet pandas requests
-
-      - name: Run Catalyst Scorer
-        env:
-          TELEGRAM_TOKEN:     ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
-          TELEGRAM_CHAT_IDS:  ${{ secrets.TELEGRAM_CHAT_IDS }}
-          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-        run: python cloud_alert_engine.py --catalyst-only
-
-      - name: Save seen hashes
-        run: |
-          git config user.email "bot@multibagger-alerts.local"
-          git config user.name  "Multibagger Alert Bot"
-          git add -f seen_hashes.json 2>/dev/null || true
-          git diff --staged --quiet || git commit -m "catalyst: update seen hashes [skip ci]"
-          git push || true
-        continue-on-error: true
-
-  corp_announcements:
-    runs-on: ubuntu-latest
-    timeout-minutes: 4
-    if: github.event_name == 'schedule'
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-      - run: pip install --quiet pandas requests
-      - name: Run Corporate Announcements
-        env:
-          TELEGRAM_TOKEN:     ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
-          TELEGRAM_CHAT_IDS:  ${{ secrets.TELEGRAM_CHAT_IDS }}
-          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-        run: python build_corporate_announcements.py
-      - name: Save seen hashes
-        run: |
-          git config user.email "bot@multibagger-alerts.local"
-          git config user.name  "Multibagger Alert Bot"
-          git add -f corp_announcements_seen.json 2>/dev/null || true
-          git diff --staged --quiet || git commit -m "corp_ann: seen hashes [skip ci]"
-          git push || true
-        continue-on-error: true
+  # corp_announcements job REMOVED (Session 39/40):
+  # build_corporate_announcements.py merged into hourly news in cloud_alert_engine.py
+  # If you need it back, restore from git history.
