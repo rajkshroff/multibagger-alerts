@@ -761,6 +761,16 @@ _CATALYST_ROUTINE_SKIP = [
     "trading window","regulation 30","sebi (lodr)",
     "listing obligations","intimation of closure","new listing",
     "listing of securities",
+    # SEBI SAST shareholding disclosures — contain word "acquisition" in regulation
+    # name but are NOT actual acquisitions. Session 39 fix.
+    "regulation 29","regulation 10(6)","regulation 10 (6)",
+    "substantial acquisition of shares and takeovers",
+    "sebi (substantial acquisition",
+    "reg 29","reg. 29","intimation under regulation",
+    # Other routine
+    "postal ballot","scrutinizer report","closure of trading window",
+    "record date","book closure","change in directorate",
+    "resignation of","appointment of","re-appointment",
 ]
 
 # Noisy categories — skip unless subject has material keyword
@@ -884,6 +894,7 @@ def check_and_score_catalysts():
         print(f"  [catalyst] {len(bse_raw)} BSE items, checking {len(score_map)} universe stocks")
 
         events_to_alert = []
+        _non_universe_events = []  # non-universe material events
 
         for item in bse_raw[:50]:
             scrip   = str(item.get("SCRIP_CD","") or "").strip()
@@ -943,7 +954,9 @@ def check_and_score_catalysts():
             matched = ev["matched"]
 
             if matched is None:
-                continue  # not in universe -- silent drop
+                # Not in universe — collect for brief section at message end
+                _non_universe_events.append(f"• {company}: {label}")
+                continue
 
             sym, info = matched
             tier     = info["tier"]
@@ -977,7 +990,7 @@ def check_and_score_catalysts():
                 # Engine data >6h old — compute live entry/SL from NSE
                 _lp = _nse_live_price(sym)
                 if _lp > 0:
-                    _atr   = _live_atr_pct(matched_sym)
+                    _atr   = _live_atr_pct(sym)  # FIX Session 39: was matched_sym (NameError)
                     _atr_a = _lp * _atr / 100
                     entry_clean = f"₹{_lp*(1-0.5*_atr/100):,.0f}–₹{_lp*(1+0.5*_atr/100):,.0f}"
                     sl_clean    = f"₹{_lp - 2*_atr_a:,.0f}"
@@ -1039,13 +1052,18 @@ def check_and_score_catalysts():
             elif velocity.startswith("↓"):
                 vel_note = f" | Score {velocity}"
 
+            # Format signals count
+            sigs = info.get("signals","")
+            sigs_str = f"{int(float(str(sigs)))} signals" if sigs and str(sigs) not in ("","nan") else ""
+
             lines.append(
-                f"🚨 <b>{_html.escape(name)}</b> [{tier} | S:{score_str}]{boundary_note}\n"
-                f"  📋 <b>{_html.escape(label)}</b>{vel_note}\n"
-                f"  {_html.escape(subj[:100])}\n"
-                f"  💰 Entry: {entry_clean}  |  SL: {sl_clean}\n"
-                f"  ⚡ {_html.escape(action)}\n"
-                f"  <i>📌 Run Quick Run for updated score with this event</i>\n"
+                f"\n🚨 <b>{_html.escape(name)}</b>\n"
+                f"   {tier} | Score: <b>{score_str}/100</b>{' | '+sigs_str if sigs_str else ''}{boundary_note}\n"
+                f"   📋 <b>{_html.escape(label)}</b>{vel_note}\n"
+                f"   📌 {_html.escape(subj[:120])}\n"
+                f"   💰 Entry: {entry_clean}  |  SL: {sl_clean}\n"
+                f"   ⚡ {_html.escape(action)}\n"
+                + (f"   ⚠️ <b>PRICE BELOW SL — broken setup</b>\n" if broken_flag else "")
             )
             count += 1
 
@@ -1054,16 +1072,26 @@ def check_and_score_catalysts():
             return
 
         if len(events_to_alert) > 8:
-            lines.append(f"<i>+{len(events_to_alert)-8} more events</i>")
+            lines.append(f"<i>+{len(events_to_alert)-8} more events screened</i>")
 
+        # Non-universe material events (compact — no score data)
+        if _non_universe_events:
+            lines.append("")
+            lines.append(f"<i>📰 Other market events (not in engine universe):</i>")
+            for ev_line in _non_universe_events[:5]:
+                lines.append(f"<i>{ev_line}</i>")
+            if len(_non_universe_events) > 5:
+                lines.append(f"<i>+{len(_non_universe_events)-5} more</i>")
+
+        lines.append("")
         lines.append(
-            f"<i>Catalyst notifier v2 | Scores = local engine truth | "
-            f"No PC needed for this alert | {count} event(s)</i>"
+            f"<i>Catalyst v2 | Engine truth | No PC needed | {count} universe event(s)</i>"
         )
 
-        msg = "\n".join(lines)
-        ok  = send(msg)
-        print(f"  [catalyst] Alert sent ({count} events): {ok}")
+        msg  = "\n".join(lines)
+        parts = _split_message(msg)
+        ok    = all(send(p) for p in parts)
+        print(f"  [catalyst] Alert sent ({count} events, {len(parts)} msg(s)): {ok}")
 
     except Exception as e:
         print(f"  [catalyst] Error: {e}")
