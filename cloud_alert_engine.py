@@ -73,6 +73,7 @@ CSV  = {
 SEEN_FILE    = REPO / "seen_hashes.json"
 MORNING_FILE = REPO / "morning_brief_sent.json"
 HOURLY_FILE  = REPO / "hourly_news_sent.json"    # SESSION 40: per-hour dedup
+HOURLY_FILE  = REPO / "hourly_news_sent.json"    # SESSION 40: per-hour dedup
 
 # ── BSE CODE → NSE SYMBOL MAP ─────────────────────────────────
 # identity_canonical.csv is copied to this repo by git_sync.cmd after each engine run
@@ -290,6 +291,22 @@ def mark_morning_sent():
     today = now_ist().strftime("%Y-%m-%d")
     MORNING_FILE.write_text(json.dumps({"date": today}, indent=2))
     print(f"  [brief] marked sent {today}")
+
+# SESSION 40: per-hour dedup
+def hourly_sent_this_hour() -> bool:
+    n = now_ist()
+    if not HOURLY_FILE.exists(): return False
+    try:
+        d = json.loads(HOURLY_FILE.read_text())
+        return d.get("date") == n.strftime("%Y-%m-%d") and d.get("hour") == n.hour
+    except: return False
+
+def mark_hourly_sent():
+    n = now_ist()
+    HOURLY_FILE.write_text(json.dumps(
+        {"date": n.strftime("%Y-%m-%d"), "hour": n.hour}, indent=2
+    ))
+    print(f"  [hourly] marked sent {n.strftime('%Y-%m-%d %H:00')}")
 
 # SESSION 40: per-hour dedup
 def hourly_sent_this_hour() -> bool:
