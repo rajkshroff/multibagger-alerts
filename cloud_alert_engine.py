@@ -72,6 +72,7 @@ CSV  = {
 }
 SEEN_FILE    = REPO / "seen_hashes.json"
 MORNING_FILE = REPO / "morning_brief_sent.json"
+HOURLY_FILE  = REPO / "hourly_news_sent.json"    # SESSION 40: per-hour dedup
 
 # ── BSE CODE → NSE SYMBOL MAP ─────────────────────────────────
 # identity_canonical.csv is copied to this repo by git_sync.cmd after each engine run
@@ -180,6 +181,22 @@ def mark_morning_sent():
     today = now_ist().strftime("%Y-%m-%d")
     MORNING_FILE.write_text(json.dumps({"date": today}, indent=2))
     print(f"  [brief] marked sent {today}")
+
+# SESSION 40: per-hour dedup
+def hourly_sent_this_hour() -> bool:
+    n = now_ist()
+    if not HOURLY_FILE.exists(): return False
+    try:
+        d = json.loads(HOURLY_FILE.read_text())
+        return d.get("date") == n.strftime("%Y-%m-%d") and d.get("hour") == n.hour
+    except: return False
+
+def mark_hourly_sent():
+    n = now_ist()
+    HOURLY_FILE.write_text(json.dumps(
+        {"date": n.strftime("%Y-%m-%d"), "hour": n.hour}, indent=2
+    ))
+    print(f"  [hourly] marked sent {n.strftime('%Y-%m-%d %H:00')}")
 
 # ── MARKET SUMMARY ────────────────────────────────────────────
 def market_summary():
@@ -1158,14 +1175,19 @@ def main():
 
     # ── TYPE 3: HOURLY NEWS (9am-6pm) ────────────────────────
     if 9 <= h <= 18:
-        print(f"  → TYPE 3: Hourly News (market hours)")
-        msg = build_hourly_news()
-        if msg:
-            ok = send(msg)
-            print(f"  News sent: {ok}")
-            if ok: sent += 1
+        if hourly_sent_this_hour():
+            print(f"  → TYPE 3: already sent this hour ({h:02d}:xx) -- skip")
         else:
-            print("  No new relevant news this hour")
+            print(f"  → TYPE 3: Hourly News (market hours)")
+            msg = build_hourly_news()
+            if msg:
+                ok = send(msg)
+                print(f"  News sent: {ok}")
+                if ok:
+                    mark_hourly_sent()
+                    sent += 1
+            else:
+                print("  No new relevant news this hour")
 
     # Outside all windows
     if sent == 0 and not (9 <= h <= 18) and not in_brief_window:
