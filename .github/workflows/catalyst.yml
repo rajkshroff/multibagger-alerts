@@ -4,8 +4,9 @@
 #
 # ONLY runs --catalyst-only mode.
 # Every 5 min, 9am-4:30pm IST weekdays.
-# Fast job: polls BSE → scores catalysts → sends Telegram if material event.
+# Fast job: polls BSE -> scores catalysts -> sends Telegram if material event.
 # No news scan, no morning brief, no action plan.
+# Works 24/7 — independent of PC / app being open.
 # ============================================================
 
 name: Catalyst Scorer

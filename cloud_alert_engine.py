@@ -865,12 +865,122 @@ def _fetch_bse_for_catalyst() -> list:
         print(f"  [catalyst] BSE fetch error: {e}")
     return []
 
-def check_and_score_catalysts():
+
+# ══════════════════════════════════════════════════════════════════
+# MSG TYPE 4 — ⚡ LIVE ANNOUNCEMENT (cloud, every 5 min)
+#
+# Sends ALL material BSE announcements to user — PC does NOT need to be open.
+# Covers every listed stock, not just universe stocks.
+# Catalyst (below) handles universe stocks with full score+action plan.
+# Dedup: "LIVE_" prefix in seen_hashes — separate from "S16_" catalyst hashes.
+# ══════════════════════════════════════════════════════════════════
+
+def send_bse_live_announcements(bse_raw: list, seen: dict) -> int:
     """
-    Polls BSE for new material announcements.
-    For universe stocks: reads existing engine scores from composite_scores.csv.
-    Sends Telegram with: event + engine tier + score + boundary + action.
-    
+    Send ⚡ LIVE ANNOUNCEMENT for ALL material BSE events.
+    Universe stocks also get basic tier/score from composite_scores.csv.
+    Returns count of new alerts sent.
+    """
+    import html as _html_la
+    try:
+        # Load score map for context enrichment (best-effort)
+        _score_map_la = {}
+        cs_la = load("composite")
+        if not cs_la.empty:
+            for _, _row_la in cs_la.iterrows():
+                _sym_la = str(_row_la.get("NSE_SYMBOL","")).strip().upper()
+                if _sym_la:
+                    _score_map_la[_sym_la] = {
+                        "tier":  str(_row_la.get("TIER","")).strip(),
+                        "score": _row_la.get("COMPOSITE_BALANCED",""),
+                        "entry": str(_row_la.get("ENTRY_ZONE","")).strip(),
+                        "sl":    str(_row_la.get("STOP_LOSS","")).strip(),
+                    }
+        # Load action language
+        _actions_la = {}
+        al_la = load("action_language")
+        if not al_la.empty and "NSE_SYMBOL" in al_la.columns and "AI_ACTION" in al_la.columns:
+            for _, _r_la in al_la.iterrows():
+                _s_la = str(_r_la.get("NSE_SYMBOL","")).strip().upper()
+                if _s_la: _actions_la[_s_la] = str(_r_la.get("AI_ACTION","") or "").strip()
+
+        alerts_la = []
+        for item in bse_raw[:50]:
+            scrip   = str(item.get("SCRIP_CD","") or "").strip()
+            subj    = str(item.get("HEADLINE","") or "").strip()
+            cat     = str(item.get("CATEGORYNAME","") or "").strip()
+            company = str(item.get("short_name","") or item.get("COMPANYNAME","") or "").strip()
+            if not scrip or not subj: continue
+            # Dedup with LIVE_ prefix (separate namespace from S16_ catalyst hashes)
+            h = "LIVE_" + hex(abs(hash(f"{scrip}|{subj[:60]}")))[2:14]
+            if h in seen: continue
+            seen[h] = now_ist().isoformat()
+            if not _catalyst_is_material(subj, cat): continue
+            # Resolve company name from BSE map
+            _nse_la = _BSE_NSE_MAP.get(scrip, "")
+            _name_la = company or (
+                _score_map_la.get(_nse_la, {}).get("name", "") if _nse_la else ""
+            ) or f"BSE:{scrip}"
+            alerts_la.append({
+                "scrip": scrip, "nse": _nse_la,
+                "name": _name_la, "subj": subj,
+                "label": _catalyst_event_label(subj),
+            })
+
+        if not alerts_la:
+            print("  [live-ann] No new material events")
+            return 0
+
+        now_s_la = now_ist().strftime("%H:%M IST, %d %b")
+        lines_la = [f"\u26a1 <b>LIVE ANNOUNCEMENT \u2014 {now_s_la}</b>", ""]
+        for ev in alerts_la[:8]:
+            disp_la = _html_la.escape(ev["name"])
+            lines_la.append(f"\U0001f6a8 <b>{disp_la}</b> <i>(BSE:{ev['scrip']})</i>")
+            lines_la.append(f"  {_html_la.escape(ev['label'])} \u2014 {_html_la.escape(ev['subj'][:100])}")
+            # Engine context for universe stocks
+            _nse_la = ev["nse"]
+            if _nse_la and _nse_la in _score_map_la:
+                _inf_la = _score_map_la[_nse_la]
+                _t_la   = _inf_la.get("tier","")
+                _sc_la  = _inf_la.get("score","")
+                _en_la  = _inf_la.get("entry","")
+                _sl_la  = _inf_la.get("sl","")
+                _ctx_la = []
+                if _t_la and _t_la not in ("AVOID","MONITOR"):
+                    try: _ctx_la.append(f"<b>{_t_la}</b> S:{int(float(str(_sc_la)))}")
+                    except: _ctx_la.append(f"<b>{_t_la}</b>")
+                if _en_la and "\u20b9" in _en_la:
+                    _ep_la = _en_la.split("\u20b9")[1:]
+                    _n1_la = _ep_la[0].split("\u2013")[0].strip().rstrip(",") if _ep_la else ""
+                    _n2_la = _ep_la[1].strip().rstrip(",") if len(_ep_la) > 1 else ""
+                    if _n1_la and _n2_la: _ctx_la.append(f"Entry \u20b9{_n1_la}\u2013{_n2_la}")
+                if _sl_la and "\u20b9" in _sl_la:
+                    _sl_n_la = _sl_la.split("\u20b9")[-1].split()[0].rstrip(",")
+                    if _sl_n_la: _ctx_la.append(f"SL \u20b9{_sl_n_la}")
+                _act_la = _actions_la.get(_nse_la,"")
+                if _act_la and _act_la not in ("HOLD","AVOID","SKIP","MONITOR",""):
+                    _ctx_la.append(f"\u2192 {_act_la}")
+                if _ctx_la:
+                    lines_la.append(f"  \U0001f4ca {' | '.join(_ctx_la)}")
+            lines_la.append("")
+        if len(alerts_la) > 8:
+            lines_la.append(f"<i>+{len(alerts_la)-8} more</i>")
+        lines_la.append(f"<i>Cloud poller \u00b7 {len(alerts_la)} new announcement(s)</i>")
+
+        msg_la = "\n".join(lines_la)
+        ok_la  = send(msg_la)
+        print(f"  [live-ann] {len(alerts_la)} alert(s) sent: {ok_la}")
+        return len(alerts_la)
+
+    except Exception as _e_la:
+        print(f"  [live-ann] Error: {_e_la}")
+        return 0
+
+def check_and_score_catalysts(bse_raw=None, seen=None):
+    """
+    Sends 🔔 CATALYST ALERT for universe stocks only (PRIME/STRONG/WL).
+    Full score + entry/SL + AI_ACTION from engine ground truth.
+    Accepts pre-fetched bse_raw and seen dict (shared with live announcements).
     NEVER scores independently. LOCAL ENGINE = SINGLE SOURCE OF TRUTH.
     """
     try:
@@ -911,11 +1021,14 @@ def check_and_score_catalysts():
                 if sym in score_map:
                     score_map[sym]["action"] = str(row.get("AI_ACTION","")).strip()
 
-        # Load seen hashes
-        seen = load_seen()
+        # Use pre-loaded seen dict if provided (shared dedup with live announcements)
+        if seen is None:
+            seen = load_seen()
+        _owns_seen = (seen is None)  # only save if we loaded it ourselves
 
-        # Fetch BSE
-        bse_raw = _fetch_bse_for_catalyst()
+        # Use pre-fetched BSE data if provided (avoids double API call)
+        if bse_raw is None:
+            bse_raw = _fetch_bse_for_catalyst()
         if not bse_raw:
             print("  [catalyst] BSE returned 0 items")
             return
@@ -961,7 +1074,9 @@ def check_and_score_catalysts():
                 "matched": matched,
             })
 
-        save_seen(seen)
+        # Save seen only if we own it (not when called from catalyst_only_mode)
+        if seen is not None:
+            save_seen(seen)
 
         if not events_to_alert:
             print("  [catalyst] No new material events")
@@ -1143,7 +1258,17 @@ def main():
     print(f"  IST: {h:02d}:{m:02d} | push={triggered_by_push} | test={TEST_MODE} | catalyst_only={catalyst_only_mode}")
 
     if catalyst_only_mode:
-        check_and_score_catalysts()
+        # One BSE fetch, shared seen — live announcements first, then catalyst
+        print('  → MSG4: Live BSE Announcements (all material events)')
+        _shared_seen = load_seen()
+        _bse_data    = _fetch_bse_for_catalyst()
+        if _bse_data:
+            send_bse_live_announcements(_bse_data, _shared_seen)
+            print('  → MSG5: Catalyst Alerts (universe stocks only)')
+            check_and_score_catalysts(bse_raw=_bse_data, seen=_shared_seen)
+        else:
+            print('  [catalyst-only] BSE returned 0 items')
+        save_seen(_shared_seen)
         return
 
     # ── TEST ─────────────────────────────────────────────────
