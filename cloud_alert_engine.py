@@ -350,16 +350,24 @@ def build_morning_brief() -> str:
         sc = next((c for c in al.columns if "COMPOSITE" in c.upper()), None)
         if ac and sc:
             al[sc] = pd.to_numeric(al[sc], errors="coerce")
-            buys = al[al[ac].str.contains("BUY|ACCUM", case=False, na=False)]
-            for _, r in buys.nlargest(5, sc).iterrows():
+            buys = al[al[ac].str.contains("BUY|ACCUM", case=False, na=False)].copy()
+            TIER_RANK = {"PRIME":0,"STRONG":1,"WL_CONFIRMED":2,"WATCHLIST_CONFIRMED":2,"WL_EXTERNAL":3}
+            tc2 = next((c for c in al.columns if "TIER" in c.upper()), None)
+            if tc2:
+                buys["_tr"] = buys[tc2].map(TIER_RANK).fillna(5)
+                buys = buys.sort_values(["_tr", sc], ascending=[True, False])
+            else:
+                buys = buys.sort_values(sc, ascending=False)
+            for _, r in buys.head(7).iterrows():
                 sym   = str(r.get("NSE_SYMBOL",""))
-                tier  = str(r.get("MULTIBAGGER_TIER",""))
+                tier  = str(r.get(tc2 if tc2 else "MULTIBAGGER_TIER",""))
                 score = _si(r.get(sc,0))
-                entry = str(r.get("ENTRY_ZONE","—") or "—")
-                sl    = str(r.get("STOP_LOSS","—") or "—")
-                act   = str(r.get(ac,""))[:40]
-                picks.append(f"  <code>{sym:<12}</code> {tier:<22} {score}/100\n"
-                             f"    ↳ {act}  Entry:{entry}  SL:{sl}")
+                entry = (str(r.get("ENTRY_ZONE","") or "")).strip()
+                sl    = (str(r.get("STOP_LOSS","") or "")).strip()
+                act   = str(r.get(ac,""))[:35]
+                tbadge = {"PRIME":"PRIME","STRONG":"STRONG"}.get(tier, tier.replace("WATCHLIST_CONFIRMED","WLC").replace("WL_CONFIRMED","WLC"))
+                price_line = ("Entry:" + entry + " SL:" + sl if entry and entry not in ("-","nan") else "Run engine for price levels")
+                picks.append("  " + sym.ljust(10) + "  " + tbadge.ljust(8) + "  " + str(score) + "/100\n    Action: " + act + "  " + price_line)
 
     # Early alerts
     ea = load("early_alerts")
