@@ -265,6 +265,10 @@ for bucket in BUCKET_ORDER:
         tier     = _he(row.get(tier_col,""))[:8] if tier_col else ""
         sc       = _si(row.get(score_col,0)) if score_col else 0
         sym_upper = str(row.get(sym_col,"")).strip().upper()
+        q_sc = _si(row.get("Q_SCORE",0))
+        g_sc = _si(row.get("G_SCORE",0))
+        s_sc = _si(row.get("S_SCORE",0))
+        c_sc = _si(row.get("C_SCORE",0))
 
         # Price guidance
         cp  = price_map.get(sym_upper, 0.0)
@@ -303,8 +307,9 @@ for bucket in BUCKET_ORDER:
         if tgt_str != "—": price_line += f" | {tgt_str}"
         if rr_str:         price_line += f" | R{rr_str}"
 
+        qgsc = f"Q:{q_sc} G:{g_sc} S:{s_sc} C:{c_sc}"
         lines.append(
-            f"  • <code>{sym:<10}</code> {nm:<18} S:<b>{sc}</b> [{tier}]\n"
+            f"  • <code>{sym:<10}</code> {nm:<16} <b>{sc}</b> [{tier}] {qgsc}\n"
             f"       {price_line}"
         )
 
@@ -349,10 +354,10 @@ try:
         _gn = pd.to_numeric(comp["G_SCORE"], errors="coerce").fillna(0) / G_MAX
         _sn = pd.to_numeric(comp["S_SCORE"], errors="coerce").fillna(0) / S_MAX
         _cn = pd.to_numeric(comp["C_SCORE"], errors="coerce").fillna(0) / C_MAX
-        _mcap = pd.to_numeric(comp.get("Market Capitalization", comp.get("MARKET_CAP", 0)), errors="coerce").fillna(0)
-        _de   = pd.to_numeric(comp.get("Debt to equity", comp.get("DEBT_EQUITY", 999)), errors="coerce").fillna(999)
-        _div  = pd.to_numeric(comp.get("Dividend Payout", comp.get("DIVIDEND_PAYOUT", 0)), errors="coerce").fillna(0)
-        _sigs = pd.to_numeric(comp.get("SIGNALS_FIRED", 0), errors="coerce").fillna(0)
+        _mcap = pd.to_numeric(comp["Market Capitalization"] if "Market Capitalization" in comp.columns else pd.Series([0]*len(comp)), errors="coerce").fillna(0)
+        _de   = pd.to_numeric(comp["Debt to equity"] if "Debt to equity" in comp.columns else pd.Series([999]*len(comp)), errors="coerce").fillna(999)
+        _div  = pd.to_numeric(comp["Dividend Payout"] if "Dividend Payout" in comp.columns else pd.Series([0]*len(comp)), errors="coerce").fillna(0)
+        _sigs = pd.to_numeric(comp["SIGNALS_FIRED"] if "SIGNALS_FIRED" in comp.columns else pd.Series([0]*len(comp)), errors="coerce").fillna(0)
 
         # Load fundamentals for mcap/de/div filters
         _fund_extra = pd.DataFrame()
