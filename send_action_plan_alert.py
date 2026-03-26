@@ -34,11 +34,11 @@ BUY_ACTIONS = {
 }
 
 PROFILE_LABELS = {
-    "BALANCED":          "⚖️  Balanced",
-    "MULTIBAGGER_HUNTER":"🎯  Multibagger Hunter",
-    "SAFE_COMPOUNDER":   "🛡️  Safe Compounder",
-    "DIVIDEND_INCOME":   "💰  Dividend Income",
-    "SECTOR_SPECIALIST": "🏭  Sector Specialist",
+    "BALANCED":          "Balanced",
+    "MULTIBAGGER_HUNTER":"Multibagger Hunter",
+    "SAFE_COMPOUNDER":   "Safe Compounder",
+    "DIVIDEND_INCOME":   "Dividend Income",
+    "SECTOR_SPECIALIST": "Sector Specialist",
 }
 
 def send(text: str) -> bool:
@@ -135,6 +135,7 @@ if not comp.empty:
                 "sl":      _s(cr.get("STOP_LOSS","")),
                 "exp_ret": _s(cr.get("EXPECTED_RETURN","")),
                 "rr":      _s(cr.get("RISK_REWARD","")),
+                "sp":      _s(cr.get("SECTOR_PHASE","")),
             }
     print(f"  Price guidance: {len(pg_map)} stocks from composite_scores")
 
@@ -165,7 +166,7 @@ action_col = next((c for c in adf.columns
 sym_col    = next((c for c in adf.columns if c.upper() in ("NSE_SYMBOL","SYMBOL")), None)
 name_col   = next((c for c in adf.columns if c.upper() in ("NAME","COMPANY")), None)
 tier_col   = next((c for c in adf.columns
-                   if "TIER" in c.upper() and "MULTI" in c.upper()), None)
+                   if c.upper() in ("MULTIBAGGER_TIER","TIER")), None)
 score_col  = next((c for c in adf.columns
                    if c.upper() in ("COMPOSITE_SCORE","COMPOSITE_BALANCED")), None)
 
@@ -308,8 +309,11 @@ for bucket in BUCKET_ORDER:
         if rr_str:         price_line += f" | R{rr_str}"
 
         qgsc = f"Q:{q_sc} G:{g_sc} S:{s_sc} C:{c_sc}"
+        # Get sector phase from composite_scores (pg_map has it)
+        sp = pg_map.get(sym_upper, {}).get("sp", "")  
+        sp_str = f" [{sp}]" if sp and sp not in ("—","") else ""
         lines.append(
-            f"  • <code>{sym:<10}</code> {nm:<16} <b>{sc}</b> [{tier}] {qgsc}\n"
+            f"  • <code>{sym:<10}</code> {nm:<16} <b>{sc}</b> [{tier}]{sp_str} {qgsc}\n"
             f"       {price_line}"
         )
 
