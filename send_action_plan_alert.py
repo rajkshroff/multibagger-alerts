@@ -408,7 +408,11 @@ try:
             # Get PRIME+STRONG by profile score
             _tier_col2 = "TIER" if "TIER" in _pcomp.columns else None
             if _tier_col2:
-                _ps = _pcomp[_pcomp[_tier_col2].isin(["PRIME","STRONG"])].sort_values(
+                # BEAR/CAUTION: surface WL_CONFIRMED too (PRIME=0 in deep BEAR)
+                _act_tiers = ["PRIME", "STRONG"]
+                if mkt_state in ("BEAR", "CAUTION"):
+                    _act_tiers.append("WATCHLIST_CONFIRMED")
+                _ps = _pcomp[_pcomp[_tier_col2].isin(_act_tiers)].sort_values(
                     "_PROF_SCORE", ascending=False)
             else:
                 _ps = _pcomp.sort_values("_PROF_SCORE", ascending=False).head(5)
@@ -416,7 +420,8 @@ try:
             _icon = PROFILE_ICONS.get(prof, "")
             _prof_label = PROFILE_LABELS.get(prof, prof)
             if _ps.empty:
-                lines.append(f"\n{_icon} <b>{_prof_label}</b>  — none pass filters in {mkt_state}")
+                _act_tier_names = "/".join(_act_tiers) if '_act_tiers' in dir() else "PRIME/STRONG"
+                lines.append(f"\n{_icon} <b>{_prof_label}</b>  — 0 stocks pass {_act_tier_names} filters in {mkt_state} regime")
                 continue
 
             lines.append(f"\n{_icon} <b>{_prof_label}</b>  ({len(_ps)} stocks)")
@@ -429,10 +434,19 @@ try:
                 _pg2   = int(float(str(_pr.get("G_SCORE",0) or 0)))
                 _ps2   = int(float(str(_pr.get("S_SCORE",0) or 0)))
                 _pc    = int(float(str(_pr.get("C_SCORE",0) or 0)))
+                # Entry/SL from pg_map (same source as main actionable section)
+                _ppg2    = pg_map.get(str(_pr.get("NSE_SYMBOL","")).strip().upper(), {})
+                _pe_raw  = _ppg2.get("entry","")
+                _psl_raw = _ppg2.get("sl","")
+                _pe_nums = re.findall(r"₹([\d,]+)", _pe_raw)
+                _pe_str  = f"₹{_pe_nums[0]}–{_pe_nums[1]}" if len(_pe_nums)>=2 else (f"₹{_pe_nums[0]}" if _pe_nums else "—")
+                _psl_m   = re.search(r"₹([\d,]+(?:\.\d+)?)", _psl_raw)
+                _psl_str = f"SL₹{_psl_m.group(1)}" if _psl_m else "—"
                 lines.append(
                     f"  • <code>{_psym:<10}</code>{_pname:<16} "
                     f"<b>{_psc}</b> [{_ptier}] "
-                    f"Q:{_pq} G:{_pg2} S:{_ps2} C:{_pc}"
+                    f"Q:{_pq} G:{_pg2} S:{_ps2} C:{_pc}\n"
+                    f"       {_pe_str} | {_psl_str}"
                 )
         lines.append("")
 except Exception as _pme:
