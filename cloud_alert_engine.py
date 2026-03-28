@@ -268,16 +268,48 @@ def build_action_plan() -> str:
 
     al[action_col] = al[action_col].astype(str).str.strip()
 
-    def bucket(a):
-        u = a.upper()
-        if "BEAR ACCUM" in u or "3X POTENTIAL" in u: return "BEAR_ACCUM"
-        if "RECOVERY"   in u or "TRANCHE"      in u: return "RECOVERY"
-        if "STRONG_BUY" in u or "STRONG BUY"   in u: return "STRONG_BUY"
-        if "BUY"        in u or "FRESH"        in u: return "BUY"
-        if "ACCUMULATE" in u or "ADD"          in u: return "ACCUMULATE"
+    # Load composite_scores for Q/G/S/C + BEATEN_DOWN_WATCH + entry/SL
+    cs_ext = load("composite")
+    cs_map = {}  # NSE_SYMBOL → {q,g,s,c,entry,sl,beaten_down}
+    if not cs_ext.empty:
+        for _, _cr in cs_ext.iterrows():
+            _sym = str(_cr.get("NSE_SYMBOL","")).strip().upper()
+            if not _sym: continue
+            cs_map[_sym] = {
+                "q":  _si(_cr.get("Q_SCORE",0)),
+                "g":  _si(_cr.get("G_SCORE",0)),
+                "s":  _si(_cr.get("S_SCORE",0)),
+                "c":  _si(_cr.get("C_SCORE",0)),
+                "entry": str(_cr.get("ENTRY_ZONE","—")).strip(),
+                "sl":    str(_cr.get("STOP_LOSS","—")).strip(),
+                "beaten": bool(_cr.get("BEATEN_DOWN_WATCH", False)),
+                "tier":  str(_cr.get("TIER","")).strip(),
+            }
+
+    # Tier-aware bucket assignment
+    def bucket(row):
+        a = str(row.get(action_col,"")).upper()
+        t = str(row.get(tier_col, "")).upper() if tier_col else ""
+        if "BEAR ACCUM" in a or "3X POTENTIAL" in a or "STAGED ACCUM" in a: return "BEAR_ACCUM"
+        if "RECOVERY"   in a or "TRANCHE"      in a: return "RECOVERY"
+        if "STRONG_BUY" in a or "STRONG BUY"   in a: return "STRONG_BUY"
+        # BUY/ACCUMULATE: gate by tier in BEAR — WL_CONFIRMED lands in BEAR_ACCUM
+        if "BUY" in a or "FRESH" in a:
+            if mstate == "BEAR" and t not in ("PRIME", "STRONG"): return "BEAR_ACCUM"
+            return "BUY"
+        if "ACCUMULATE" in a or "ADD" in a:
+            if mstate == "BEAR" and t not in ("PRIME", "STRONG", "WATCHLIST_CONFIRMED"): return None
+            return "ACCUMULATE"
         return None
 
-    al["_B"] = al[action_col].apply(bucket)
+    # Add BEATEN_DOWN_WATCH stocks to RECOVERY bucket
+    _beaten_syms = {sym for sym, data in cs_map.items() if data.get("beaten")}
+
+    al["_B"] = al.apply(bucket, axis=1)
+    # Mark beaten-down stocks as RECOVERY if not already in an action bucket
+    if sym_col and _beaten_syms:
+        _beaten_mask = al[sym_col].str.upper().isin(_beaten_syms) & al["_B"].isna()
+        al.loc[_beaten_mask, "_B"] = "RECOVERY"
     act = al[al["_B"].notna()].copy()
     if score_col and score_col in act.columns:
         act[score_col] = pd.to_numeric(act[score_col], errors="coerce")
@@ -308,12 +340,25 @@ def build_action_plan() -> str:
         total += len(grp)
         lines.append(f"<b>{LABELS[b]}</b>  ({len(grp)})")
         for _, row in grp.head(10).iterrows():
-            sym  = str(row.get(sym_col,""))
-            nm   = str(row.get(name_col,""))[:20] if name_col else ""
+            sym   = str(row.get(sym_col,"")).strip()
+            nm    = str(row.get(name_col,""))[:18] if name_col else ""
             phase = str(row.get(phase_col,"")).strip()[:12] if phase_col else ""
             sc    = _si(row.get(score_col,0)) if score_col else 0
             phase_s = f"[{phase}]" if phase and phase not in ("nan","None","—","") else ""
-            lines.append(f"  • <code>{sym:<10}</code> {nm:<22} {phase_s} S:{sc}")
+            # Q/G/S/C and price guidance from cs_map
+            _cd   = cs_map.get(sym.upper(), {})
+            _q,_g,_s,_c = _cd.get("q",0),_cd.get("g",0),_cd.get("s",0),_cd.get("c",0)
+            import re as _re
+            _entry_raw = _cd.get("entry","")
+            _sl_raw    = _cd.get("sl","")
+            _e_nums    = _re.findall(r'₹([\d,]+)', _entry_raw)
+            _e_str     = f'₹{_e_nums[0]}–{_e_nums[1]}' if len(_e_nums)>=2 else (f'₹{_e_nums[0]}' if _e_nums else '—')
+            _sl_m      = _re.search(r'₹([\d,]+(?:\.\d+)?)', _sl_raw)
+            _sl_str    = f'SL₹{_sl_m.group(1)}' if _sl_m else '—'
+            lines.append(
+                f"  • <code>{sym:<10}</code> {nm:<18} <b>{sc}</b> {phase_s}\n"
+                f"       Q:{_q} G:{_g} S:{_s} C:{_c} | {_e_str} | {_sl_str}"
+            )
         if len(grp) > 10:
             lines.append(f"  ... +{len(grp)-10} more")
         lines.append("")
@@ -330,6 +375,62 @@ def build_action_plan() -> str:
                      f"STRONG <b>{tc.get('STRONG',0)}</b>  "
                      f"WLC <b>{tc.get('WATCHLIST_CONFIRMED',0)}</b>  "
                      f"LANDMINE <b>{tc.get('LANDMINE',0)}</b>")
+
+    # ── PER-MODEL COMPACT SECTION ─────────────────────────────
+    try:
+        if not cs_ext.empty and "Q_SCORE" in cs_ext.columns:
+            PROFILE_WEIGHTS = {
+                "BALANCED":           {"q":20,"g":15,"s":50,"c":15, "icon":"⚖️"},
+                "MULTIBAGGER_HUNTER": {"q":15,"g":15,"s":55,"c":15, "icon":"🎯"},
+                "SAFE_COMPOUNDER":    {"q":30,"g":20,"s":35,"c":15, "icon":"🛡"},
+                "DIVIDEND_INCOME":    {"q":30,"g":20,"s":35,"c":15, "icon":"💰"},
+                "SECTOR_SPECIALIST":  {"q":18,"g":15,"s":42,"c":25, "icon":"🏭"},
+            }
+            Q_MAX,G_MAX,S_MAX,C_MAX = 20,15,50,15
+            _qn = pd.to_numeric(cs_ext["Q_SCORE"],errors="coerce").fillna(0)/Q_MAX
+            _gn = pd.to_numeric(cs_ext["G_SCORE"],errors="coerce").fillna(0)/G_MAX
+            _sn = pd.to_numeric(cs_ext["S_SCORE"],errors="coerce").fillna(0)/S_MAX
+            _cn = pd.to_numeric(cs_ext["C_SCORE"],errors="coerce").fillna(0)/C_MAX
+            _act_tiers = ["PRIME","STRONG"]
+            if mstate in ("BEAR","CAUTION"): _act_tiers.append("WATCHLIST_CONFIRMED")
+            lines.append("")
+            lines.append("<b>── TOP PICKS BY MODEL ──</b>")
+            for prof, wts in PROFILE_WEIGHTS.items():
+                _pscore = (_qn*wts["q"]+_gn*wts["g"]+_sn*wts["s"]+_cn*wts["c"]).round(1)
+                _pc = cs_ext.copy(); _pc["_PS"] = _pscore
+                _tier_c = "TIER" if "TIER" in _pc.columns else None
+                if _tier_c:
+                    _ps = _pc[_pc[_tier_c].isin(_act_tiers)].sort_values("_PS",ascending=False).head(3)
+                else:
+                    _ps = _pc.sort_values("_PS",ascending=False).head(3)
+                _icon = wts["icon"]
+                _lbl  = prof.replace("_"," ").title()
+                if _ps.empty:
+                    lines.append(f"  {_icon} <b>{_lbl}</b> — none in {'/'.join(_act_tiers)} this {mstate} run")
+                    continue
+                lines.append(f"  {_icon} <b>{_lbl}</b>")
+                for _, _pr in _ps.iterrows():
+                    _psym  = str(_pr.get("NSE_SYMBOL","")).strip()
+                    _psc   = int(_pr.get("_PS",0))
+                    _pt    = str(_pr.get("TIER",""))[:6]
+                    _pq    = _si(_pr.get("Q_SCORE",0))
+                    _pg    = _si(_pr.get("G_SCORE",0))
+                    _ps2   = _si(_pr.get("S_SCORE",0))
+                    _pcc   = _si(_pr.get("C_SCORE",0))
+                    _pentry= cs_map.get(_psym.upper(),{}).get("entry","—")
+                    _psl   = cs_map.get(_psym.upper(),{}).get("sl","—")
+                    import re as _re2
+                    _pe_n  = _re2.findall(r'₹([\d,]+)', _pentry)
+                    _pe_s  = f'₹{_pe_n[0]}–{_pe_n[1]}' if len(_pe_n)>=2 else (f'₹{_pe_n[0]}' if _pe_n else '—')
+                    _psl_m = _re2.search(r'₹([\d,]+(?:\.\d+)?)', _psl)
+                    _psl_s = f'SL₹{_psl_m.group(1)}' if _psl_m else '—'
+                    lines.append(
+                        f"    • <code>{_psym:<10}</code> <b>{_psc}</b> [{_pt}] "
+                        f"Q:{_pq} G:{_pg} S:{_ps2} C:{_pcc}\n"
+                        f"         {_pe_s} | {_psl_s}"
+                    )
+    except Exception as _pme:
+        lines.append(f"<i>[model breakdown error: {_pme}]</i>")
 
     lines.append(f"\n<i>🤖 Engine run complete — {total} actionable stocks</i>")
     return "\n".join(lines)
