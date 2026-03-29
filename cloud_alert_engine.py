@@ -331,8 +331,7 @@ def build_action_plan() -> str:
     act = act.drop_duplicates(subset=[sym_col], keep="first")
 
     # ── Build message ─────────────────────────────────────────────────────
-    from datetime import datetime as _dt
-    now_str  = _dt.now().strftime("%d %b %Y  %H:%M")
+    now_str  = now_ist().strftime("%d %b %Y  %H:%M")  # IST fix Session 45
     mkt_icon = {"BULL":"🟢","BEAR":"🔴","CAUTION":"🟡"}.get(mstate2,"⚪")
     mi = load("market_intel")
     fg_str = ""
@@ -354,8 +353,9 @@ def build_action_plan() -> str:
         "",
     ]
 
+    BEAR_ACCUM_MAX = 5   # Cap BEAR_ACCUM at top 5 (Session 45: 21 is too many)
     LABELS = {"STRONG_BUY":"🟢 STRONG BUY","BUY":"🟢 BUY",
-               "ACCUMULATE":"🔵 ACCUMULATE","BEAR_ACCUM":"💜 BEAR ACCUM",
+               "ACCUMULATE":"🔵 ACCUMULATE","BEAR_ACCUM":"💜 BEAR ACCUM (top 5)",
                "RECOVERY":"🌱 RECOVERY WATCH"}
 
     import re as _re
@@ -365,7 +365,8 @@ def build_action_plan() -> str:
         if grp.empty: continue
         total += len(grp)
         lines.append(f"<b>{LABELS[b]}</b>  ({len(grp)})")
-        for _, row in grp.head(8).iterrows():
+        _disp = grp.head(BEAR_ACCUM_MAX) if b == "BEAR_ACCUM" else grp.head(8)
+        for _, row in _disp.iterrows():
             sym   = str(row.get(sym_col,"")).strip()
             nm    = str(row.get(name_col,""))[:16] if name_col else ""
             sc    = _si(row.get(score_col,0)) if score_col else 0
@@ -823,7 +824,7 @@ def _live_atr_pct(symbol: str, days: int = 14) -> float:
                           "Referer":"https://www.nseindia.com/",
                           "Accept":"application/json"})
         s.get("https://www.nseindia.com", timeout=5)
-        to_d   = _dt.now().strftime("%d-%m-%Y")
+        to_d   = now_ist().strftime("%d-%m-%Y")
         fr_d   = (_dt.now()-_td(days=days+5)).strftime("%d-%m-%Y")
         url    = (f"https://www.nseindia.com/api/historical/cm/equity"
                   f"?symbol={symbol}&series=[%22EQ%22]"
