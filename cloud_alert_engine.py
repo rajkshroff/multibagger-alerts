@@ -87,10 +87,13 @@ def _load_bse_nse_map() -> dict:
         import csv as _csv_id
         with open(p, encoding="utf-8", errors="replace") as _f_id:
             for row in _csv_id.DictReader(_f_id):
-                bsc = str(row.get("BSE_CODE","") or "").strip().split(".")[0]
-                nse = str(row.get("NSE_SYMBOL","") or "").strip().upper()
+                bsc  = str(row.get("BSE_CODE","") or "").strip().split(".")[0]
+                nse  = str(row.get("NSE_SYMBOL","") or "").strip().upper()
+                name = str(row.get("NAME","") or "").strip()
                 if bsc and bsc.isdigit() and nse:
                     m[bsc] = nse
+                    if name:
+                        m[f"NAME_{bsc}"] = name
         print(f"  [identity] {len(m):,} BSE->NSE mappings loaded")
     except Exception as e:
         print(f"  [identity] {e}")
@@ -1017,6 +1020,7 @@ def send_bse_live_announcements(bse_raw: list, seen: dict) -> int:
                     _score_map_la[_sym_la] = {
                         "tier":  str(_row_la.get("TIER","")).strip(),
                         "score": _row_la.get("COMPOSITE_BALANCED",""),
+                        "name":  str(_row_la.get("NAME","")).strip(),
                         "entry": str(_row_la.get("ENTRY_ZONE","")).strip(),
                         "sl":    str(_row_la.get("STOP_LOSS","")).strip(),
                     }
@@ -1041,10 +1045,10 @@ def send_bse_live_announcements(bse_raw: list, seen: dict) -> int:
             seen[h] = now_ist().isoformat()
             if not _catalyst_is_material(subj, cat): continue
             # Resolve company name from BSE map
-            _nse_la = _BSE_NSE_MAP.get(scrip, "")
-            _name_la = company or (
-                _score_map_la.get(_nse_la, {}).get("name", "") if _nse_la else ""
-            ) or f"BSE:{scrip}"
+            _nse_la  = _BSE_NSE_MAP.get(scrip, "")
+            _id_name = _BSE_NSE_MAP.get(f"NAME_{scrip}", "")
+            _sc_name = _score_map_la.get(_nse_la, {}).get("name", "") if _nse_la else ""
+            _name_la = company or _id_name or _sc_name or _nse_la or f"BSE:{scrip}"
             alerts_la.append({
                 "scrip": scrip, "nse": _nse_la,
                 "name": _name_la, "subj": subj,
