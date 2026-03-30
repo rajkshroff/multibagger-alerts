@@ -544,7 +544,7 @@ RSS_FEEDS = [
     {"name":"ET Markets",   "url":"https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms"},
     {"name":"ET Economy",   "url":"https://economictimes.indiatimes.com/news/economy/rssfeeds/20080670.cms"},
     {"name":"Mint",         "url":"https://www.livemint.com/rss/markets"},
-    {"name":"Moneycontrol", "url":"https://www.moneycontrol.com/rss/MCtopnews.xml"},
+    # Moneycontrol removed — 403 Forbidden blocked externally since 2026-03
     {"name":"BS Markets",   "url":"https://www.business-standard.com/rss/markets-106.rss"},
     {"name":"FE Markets",   "url":"https://www.financialexpress.com/market/feed/"},
     # Policy
