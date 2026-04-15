@@ -1,19 +1,15 @@
 # ============================================================
-# .github/workflows/alert_engine.yml — v3.1
+# .github/workflows/alert_engine.yml — v3.2
 #
-# SESSION 40 FIXES:
-#   - Removed */5 cron from `alert` job schedule (was causing hourly duplicates)
-#   - Removed `corp_announcements` job (merged into hourly news in Session 39)
-#   - Added hourly_news_sent.json to git commit step
+# s55: reduced hourly news from 9 crons to 3 (9am, 12:30pm, 3:30pm IST)
+# Weekday filter added to all schedule crons.
 #
 # 3 TRIGGER TYPES:
-#   PUSH (CSVs updated)  → TYPE 1: Action Plan (engine just ran)
-#   7:30am daily         → TYPE 2: Morning Brief
-#   Every hour 9am-6pm  → TYPE 3: Hourly News scan
+#   PUSH (CSVs updated)  -> TYPE 1: Action Plan (engine just ran)
+#   7:30am Mon-Fri       -> TYPE 2: Morning Brief
+#   3 times/day Mon-Fri  -> TYPE 3: News (9am, 12:30pm, 3:30pm IST)
 #
 # Catalyst scorer (every 5 min) has its own dedicated workflow: catalyst.yml
-#
-# SECRETS: TELEGRAM_TOKEN + TELEGRAM_CHAT_ID (already set)
 # ============================================================
 
 name: Multibagger Alert Engine v3
@@ -29,18 +25,10 @@ on:
     branches: [ main ]
 
   schedule:
-    # NOTE: */5 cron REMOVED from here — moved to catalyst.yml
-    - cron: '0 2  * * *'    # 7:30am IST  — Morning Brief
-    - cron: '30 3  * * *'   # 9:00am IST  — Hourly News
-    - cron: '30 4  * * *'   # 10:00am IST
-    - cron: '30 5  * * *'   # 11:00am IST
-    - cron: '30 6  * * *'   # 12:00pm IST
-    - cron: '30 7  * * *'   # 1:00pm IST
-    - cron: '30 8  * * *'   # 2:00pm IST
-    - cron: '30 9  * * *'   # 3:00pm IST
-    - cron: '30 10 * * *'   # 4:00pm IST
-    - cron: '30 11 * * *'   # 5:00pm IST
-    - cron: '30 12 * * *'   # 6:00pm IST
+    - cron: '0 2  * * 1-5'   # 7:30am  IST Mon-Fri -- Morning Brief
+    - cron: '30 3 * * 1-5'   # 9:00am  IST Mon-Fri -- News slot 1
+    - cron: '0  7 * * 1-5'   # 12:30pm IST Mon-Fri -- News slot 2
+    - cron: '0 10 * * 1-5'   # 3:30pm  IST Mon-Fri -- News slot 3
 
   workflow_dispatch:
     inputs:
@@ -89,13 +77,9 @@ jobs:
           git config user.email "bot@multibagger-alerts.local"
           git config user.name  "Multibagger Alert Bot"
 
-      - name: Save state (dedup hashes — YML owns git, not Python)
+      - name: Save state (dedup hashes)
         run: |
           git add -f seen_hashes.json morning_brief_sent.json hourly_news_sent.json 2>/dev/null || true
           git diff --staged --quiet || git commit -m "chore: alert state [skip ci]"
           git push || true
         continue-on-error: true
-
-  # corp_announcements job REMOVED (Session 39/40):
-  # build_corporate_announcements.py merged into hourly news in cloud_alert_engine.py
-  # If you need it back, restore from git history.
