@@ -975,11 +975,18 @@ def _catalyst_event_label(subject: str) -> str:
     """Extract short human-readable event label."""
     subj = subject.lower()
     import re
-    if any(k in subj for k in ["order","contract","loa","ppa","epc","purchase order"]):
+    # s55: exclude tax/GST/regulatory "orders"
+    _tax_ord = any(k in subj for k in [
+        "gst","income tax","tax authority","tax demand",
+        "customs","enforcement","penalty","show cause",
+    ])
+    if not _tax_ord and any(k in subj for k in ["order","contract","loa","ppa","epc","purchase order"]):
         m = re.search(r"(?:rs\.?|₹|inr)\s*([\d,]+(?:\.\d+)?)\s*(?:crore|cr)?",
                       subj, re.IGNORECASE)
         val = f" ₹{m.group(1)} Cr" if m else ""
         return f"Order Win{val}"
+    if _tax_ord:
+        return "⚠ Tax/Regulatory Notice"
     if any(k in subj for k in ["result","revenue","profit","pat"]):
         return "Financial Results"
     if "dividend" in subj:  return "Dividend"
@@ -1396,9 +1403,9 @@ def check_and_score_catalysts(bse_raw=None, seen=None):
         )
 
         msg  = "\n".join(lines)
-        parts = _split_message(msg)
-        ok    = all(send(p) for p in parts)
-        print(f"  [catalyst] Alert sent ({count} events, {len(parts)} msg(s)): {ok}")
+        # s55: send() handles chunking internally -- no _split_message needed
+        ok   = send(msg)
+        print(f"  [catalyst] Alert sent ({count} events): {ok}")
 
     except Exception as e:
         print(f"  [catalyst] Error: {e}")
@@ -1519,3 +1526,4 @@ if __name__ == "__main__":
     main()
 # s55-final-cae
 # s55-telegram
+# s55-catalyst-fix
