@@ -356,19 +356,28 @@ def build_action_plan() -> str:
         "",
     ]
 
-    BEAR_ACCUM_MAX = 5   # Cap BEAR_ACCUM at top 5 (Session 45: 21 is too many)
+    BEAR_ACCUM_MAX = 5  # s55: strict quality gate
+    def _bear_q(r):
+        _bc = cs_map.get(str(r.get(sym_col,"")).strip().upper(), {})
+        return (_bc.get("q",0)>=15 and _bc.get("g",0)>=8
+                and _bc.get("s",0)>=4 and _bc.get("c",0)>=8)
     LABELS = {"STRONG_BUY":"🟢 STRONG BUY","BUY":"🟢 BUY",
                "ACCUMULATE":"🔵 ACCUMULATE","BEAR_ACCUM":"💜 BEAR ACCUM (top 5)",
                "RECOVERY":"🌱 RECOVERY WATCH"}
 
     import re as _re
     total = 0
-    for b in ["STRONG_BUY","BUY","ACCUMULATE","BEAR_ACCUM","RECOVERY"]:
+    # s55: ACCUMULATE removed -- per-model section is the source of truth
+    for b in ["STRONG_BUY","BUY","BEAR_ACCUM","RECOVERY"]:
         grp = act[act["_B"]==b]
         if grp.empty: continue
         total += len(grp)
         lines.append(f"<b>{LABELS[b]}</b>  ({len(grp)})")
-        _disp = grp.head(BEAR_ACCUM_MAX) if b == "BEAR_ACCUM" else grp.head(8)
+        if b == "BEAR_ACCUM":
+            _gf = grp[grp.apply(_bear_q, axis=1)]
+            _disp = _gf.head(BEAR_ACCUM_MAX) if not _gf.empty else grp.head(BEAR_ACCUM_MAX)
+        else:
+            _disp = grp.head(8)
         for _, row in _disp.iterrows():
             sym   = str(row.get(sym_col,"")).strip()
             nm    = str(row.get(name_col,""))[:16] if name_col else ""
@@ -384,7 +393,7 @@ def build_action_plan() -> str:
             slm   = _re.search(r"₹([\d,]+(?:\.\d+)?)", sl)
             sl_s  = f"SL₹{slm.group(1)}" if slm else "—"
             lines.append(
-                f"  • <code>{sym:<10}</code>{nm:<16} <b>{sc}</b> {ph_s}\n"
+                f"  • <code>{sym:<10}</code> <b>{sc}</b> {ph_s}\n"
                 f"       Q:{q} G:{g} S:{s} C:{c} | {e_s} | {sl_s}"
             )
         if len(grp) > 8:
@@ -426,6 +435,8 @@ def build_action_plan() -> str:
             _cn = pd.to_numeric(cs2["C_SCORE"],errors="coerce").fillna(0)/C_MAX
             _at = ["PRIME","STRONG"]
             if mstate2 in ("BEAR","CAUTION"): _at.append("WATCHLIST_CONFIRMED")
+            _al_map = {str(r.get(sym_col,"")).strip().upper(): str(r.get(action_col,"")).strip()
+                       for _, r in al.iterrows() if sym_col and action_col}
             lines.append("\n<b>── TOP PICKS BY MODEL ──</b>")
             for prof, wts in PW.items():
                 _ps = (_qn*wts["q"]+_gn*wts["g"]+_sn*wts["s"]+_cn*wts["c"]).round(1)
@@ -450,10 +461,13 @@ def build_action_plan() -> str:
                     _pes  = f"₹{_pen[0]}–{_pen[1]}" if len(_pen)>=2 else (f"₹{_pen[0]}" if _pen else "—")
                     _pslm = _re.search(r"₹([\d,]+(?:\.\d+)?)", _pcd.get("sl",""))
                     _psls = f"SL₹{_pslm.group(1)}" if _pslm else "—"
+                    _act_m = _al_map.get(_ps2.upper(), "")
+                    _act_s = _act_m.split()[0] if _act_m else ""
                     lines.append(
                         f"    • <code>{_ps2:<10}</code> <b>{_psc}</b> [{_pt}] "
                         f"Q:{_pq} G:{_pg} S:{_pss} C:{_pcc}\n"
                         f"         {_pes} | {_psls}"
+                        + (f" | {_act_s}" if _act_s else "")
                     )
     except Exception as _pme:
         lines.append(f"<i>[model breakdown error: {_pme}]</i>")
@@ -926,6 +940,13 @@ _CATALYST_ROUTINE_SKIP = [
     "postal ballot","scrutinizer report","closure of trading window",
     "record date","book closure","change in directorate",
     "resignation of","appointment of","re-appointment",
+    # s55: board meeting noise
+    "board meeting scheduled","board meeting to be held",
+    "meeting of the board of directors",
+    "intimation of board meeting",
+    "convening of board meeting",
+    "intimation regarding board meeting",
+    "change in registered office","shifting of registered",
 ]
 
 # Noisy categories — skip unless subject has material keyword
@@ -1064,7 +1085,22 @@ def send_bse_live_announcements(bse_raw: list, seen: dict) -> int:
         for ev in alerts_la[:8]:
             disp_la = _html_la.escape(ev["name"])
             lines_la.append(f"\U0001f6a8 <b>{disp_la}</b> <i>(BSE:{ev['scrip']})</i>")
-            lines_la.append(f"  {_html_la.escape(ev['label'])} \u2014 {_html_la.escape(ev['subj'][:100])}")
+            # s55: clean boilerplate, show full sentence
+            import re as _re_la
+            _sc = ev["subj"]
+            for _bp in [
+                r"^(The company|The Board|The Company).{0,60}(informs?|hereby).{0,30}that\s+",
+                r"^Pursuant to.{0,60}Regulation[^,]{0,20},\s*",
+                r"^(This is to|We hereby) (inform|intimate).{0,30}that\s+",
+                r"^(In|With) reference to.{0,40},\s*",
+            ]:
+                _sc = _re_la.sub(_bp, "", _sc, flags=_re_la.I).strip()
+            if _sc: _sc = _sc[0].upper() + _sc[1:]
+            _cut = min(120, len(_sc))
+            _se = _re_la.search(r"[.!?]", _sc[30:80])
+            if _se: _cut = 30 + _se.end()
+            _lbl_la = ev["label"]
+            lines_la.append(f"  {_html_la.escape(_lbl_la)} -- {_html_la.escape(_sc[:_cut])}")
             # Engine context for universe stocks
             _nse_la = ev["nse"]
             if _nse_la and _nse_la in _score_map_la:
@@ -1455,9 +1491,11 @@ def main():
         # Fall through to TYPE 3
 
     # ── TYPE 3: HOURLY NEWS (9am-6pm) ────────────────────────
-    if 9 <= h <= 18:
+    # s55: 3 news slots per day (9-11, 12-14, 15-18)
+    _nslot = (1 if 9<=h<12 else 2 if 12<=h<15 else 3 if 15<=h<=18 else 0)
+    if _nslot > 0:
         if hourly_sent_this_hour():
-            print(f"  → TYPE 3: already sent this hour ({h:02d}:xx) -- skip")
+            print(f"  → TYPE 3: slot {_nslot} already sent -- skip")
         else:
             print(f"  → TYPE 3: Hourly News (market hours)")
             msg = build_hourly_news()
@@ -1479,3 +1517,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+# s55-final-cae
+# s55-telegram
