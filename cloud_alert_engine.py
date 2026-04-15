@@ -371,11 +371,21 @@ def build_action_plan() -> str:
     for b in ["STRONG_BUY","BUY","BEAR_ACCUM","RECOVERY"]:
         grp = act[act["_B"]==b]
         if grp.empty: continue
+        # s55-bear-tight: 97th percentile quality sort, no hard gate
+        if b == "BEAR_ACCUM":
+            def _qsc(_r):
+                _d = cs_map.get(str(_r.get(sym_col,"")).strip().upper(),{})
+                return (_d.get("q",0)*2.0 + _d.get("g",0)*1.5
+                            + _d.get("s",0)*1.0 + _d.get("c",0)*0.5)
+            _bsc = grp.apply(_qsc, axis=1)
+            _thr = _bsc.quantile(0.97) if len(_bsc) > 5 else _bsc.min()
+            _gf  = grp[_bsc >= _thr]
+            if not _gf.empty:
+                grp = _gf.loc[_bsc[_gf.index].sort_values(ascending=False).index]
         total += len(grp)
         lines.append(f"<b>{LABELS[b]}</b>  ({len(grp)})")
         if b == "BEAR_ACCUM":
-            _gf = grp[grp.apply(_bear_q, axis=1)]
-            _disp = _gf.head(BEAR_ACCUM_MAX) if not _gf.empty else grp.head(BEAR_ACCUM_MAX)
+            _disp = grp.head(BEAR_ACCUM_MAX)
         else:
             _disp = grp.head(8)
         for _, row in _disp.iterrows():
@@ -1527,3 +1537,4 @@ if __name__ == "__main__":
 # s55-final-cae
 # s55-telegram
 # s55-catalyst-fix
+# s55-bear-tight
