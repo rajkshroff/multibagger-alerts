@@ -30,6 +30,11 @@ import os, sys, json, hashlib, argparse
 import requests, re
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
+try:
+    from type4_alerts import build_prebreakout_alert, build_catalyst_alert
+except ImportError:
+    build_prebreakout_alert = None
+    build_catalyst_alert = None
 
 try:
     import pandas as pd
@@ -64,6 +69,8 @@ print(f"  [telegram] {len(CHAT_IDS)} recipient(s)")
 REPO = Path(__file__).resolve().parent
 CSV  = {
     "composite":    REPO / "composite_scores.csv",
+        "events":        DATA_DIR / "recent_events.csv",
+        "early_alerts":  DATA_DIR / "early_alerts.csv",
     "market_intel": REPO / "market_intelligence.csv",
     "sector_cycle": REPO / "sector_cycle_status.csv",
     "action":       REPO / "action_language.csv",
@@ -1468,6 +1475,24 @@ def main():
     if triggered_by_push:
         print("  → TYPE 1: Action Plan (push trigger — engine just ran)")
         msg = build_action_plan()
+        # TYPE 4a: PRE_BREAKOUT (s56)
+        try:
+            if build_prebreakout_alert:
+                _pb = build_prebreakout_alert(load)
+                if _pb:
+                    send_telegram(_pb)
+        except Exception as _e4a:
+            print("[WARN] PRE_BREAKOUT alert: " + str(_e4a))
+
+        # TYPE 4b: CATALYST (s56)
+        try:
+            if build_catalyst_alert:
+                _cat = build_catalyst_alert(load)
+                if _cat:
+                    send_telegram(_cat)
+        except Exception as _e4b:
+            print("[WARN] CATALYST alert: " + str(_e4b))
+
         if not msg:
             # Build minimal market summary even with 0 actionable stocks
             # BEAR market with all AVOID actions is still informative
