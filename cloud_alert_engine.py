@@ -472,7 +472,7 @@ def build_action_plan() -> str:
                     _pslm = _re.search(r"₹([\d,]+(?:\.\d+)?)", _pcd.get("sl",""))
                     _psls = f"SL₹{_pslm.group(1)}" if _pslm else "—"
                     _act_m = _al_map.get(_ps2.upper(), "")
-                    _act_s = _act_m.split()[0] if _act_m else ""
+                    _act_s = _re.sub(r'^[^A-Za-z]+', '', _act_m).split()[0] if _act_m else ""
                     lines.append(
                         f"    • <code>{_ps2:<10}</code> <b>{_psc}</b> [{_pt}] "
                         f"Q:{_pq} G:{_pg} S:{_pss} C:{_pcc}\n"
