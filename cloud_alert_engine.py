@@ -1452,6 +1452,31 @@ def main():
         _bse_data    = _fetch_bse_for_catalyst()
         if _bse_data:
             send_bse_live_announcements(_bse_data, _shared_seen)
+
+        # ── TYPE 4: PRE_BREAKOUT + CATALYST (s56) ────────────────
+        # SAFE: wrapped individually, TYPE 1 already sent above.
+        # Uses actual send function: send_bse_live_announcements
+        try:
+            from type4_alerts import (build_prebreakout_alert as _t4a,
+                                      build_catalyst_alert    as _t4b)
+            try:
+                _pb = _t4a(load)
+                if _pb:
+                    send_bse_live_announcements(_pb)
+            except Exception as _e4a:
+                pass  # PRE_BREAKOUT failed silently -- TYPE 1 unaffected
+            try:
+                _cat = _t4b(load)
+                if _cat:
+                    send_bse_live_announcements(_cat)
+            except Exception as _e4b:
+                pass  # CATALYST failed silently -- TYPE 1 unaffected
+        except ImportError:
+            pass  # type4_alerts.py not deployed yet
+        except Exception:
+            pass  # any other error -- TYPE 1 unaffected
+        # ── end TYPE 4 ────────────────────────────────────────────
+
             print('  → MSG5: Catalyst Alerts (universe stocks only)')
             check_and_score_catalysts(bse_raw=_bse_data, seen=_shared_seen)
         else:
@@ -1475,23 +1500,7 @@ def main():
     if triggered_by_push:
         print("  → TYPE 1: Action Plan (push trigger — engine just ran)")
         msg = build_action_plan()
-        # TYPE 4a: PRE_BREAKOUT (s56)
-        try:
-            if build_prebreakout_alert:
-                _pb = build_prebreakout_alert(load)
-                if _pb:
-                    send_bse_live_announcements(_pb)
-        except Exception as _e4a:
-            print("[WARN] PRE_BREAKOUT alert: " + str(_e4a))
-
-        # TYPE 4b: CATALYST (s56)
-        try:
-            if build_catalyst_alert:
-                _cat = build_catalyst_alert(load)
-                if _cat:
-                    send_bse_live_announcements(_cat)
-        except Exception as _e4b:
-            print("[WARN] CATALYST alert: " + str(_e4b))
+        
 
         if not msg:
             # Build minimal market summary even with 0 actionable stocks
