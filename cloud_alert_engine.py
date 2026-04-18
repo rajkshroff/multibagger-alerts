@@ -320,6 +320,8 @@ def build_action_plan() -> str:
         if "BUY" in a or "FRESH" in a:
             # In BEAR, only STRONG+ gets BUY; WLC gets BEAR_ACCUM
             if mstate2 == "BEAR" and t not in ("PRIME","STRONG"): return "BEAR_ACCUM"
+            # In CAUTION, only STRONG+ gets BUY; WLC gets ACCUMULATE
+            if mstate2 == "CAUTION" and t not in ("PRIME","STRONG"): return "ACCUMULATE"
             return "BUY"
         if "ACCUMULATE" in a or "ADD" in a:
             if mstate2 == "BEAR" and t not in ("PRIME","STRONG","WATCHLIST_CONFIRMED"): return None
@@ -394,7 +396,7 @@ def build_action_plan() -> str:
         if b == "BEAR_ACCUM":
             _disp = grp.head(BEAR_ACCUM_MAX)
         else:
-            _disp = grp.head(8)
+            _disp = grp.head(15 if b == "BUY" else 8)
         for _, row in _disp.iterrows():
             sym   = str(row.get(sym_col,"")).strip()
             nm    = str(row.get(name_col,""))[:16] if name_col else ""
