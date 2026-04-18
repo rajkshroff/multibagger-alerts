@@ -377,7 +377,8 @@ def build_action_plan() -> str:
     import re as _re
     total = 0
     # s55: ACCUMULATE removed -- per-model section is the source of truth
-    for b in ["STRONG_BUY","BUY","BEAR_ACCUM","RECOVERY"]:
+    # s56: ACCUMULATE added back -- CAUTION market routes WLC here
+    for b in ["STRONG_BUY","BUY","ACCUMULATE","BEAR_ACCUM","RECOVERY"]:
         grp = act[act["_B"]==b]
         if grp.empty: continue
         # s55-bear-tight: 97th percentile quality sort, no hard gate
@@ -423,12 +424,20 @@ def build_action_plan() -> str:
     cs2 = load("composite")
     if not cs2.empty and "TIER" in cs2.columns:
         tc = cs2["TIER"].value_counts()
-        lines.append(
-            f"📊 PRIME <b>{tc.get('PRIME',0)}</b>  "
-            f"STRONG <b>{tc.get('STRONG',0)}</b>  "
+        _strong_n = tc.get('STRONG', 0)
+        _prime_n  = tc.get('PRIME', 0)
+        _tier_line = (
+            f"📊 PRIME <b>{_prime_n}</b>  "
+            f"STRONG <b>{_strong_n}</b>  "
             f"WLC <b>{tc.get('WATCHLIST_CONFIRMED',0)}</b>  "
             f"LANDMINE <b>{tc.get('LANDMINE',0)}</b>"
         )
+        if _strong_n == 0 and mstate2 == 'CAUTION':
+            _tier_line += (
+                "\n<i>CAUTION: threshold raised to 57pts — "
+                "prev STRONG stocks now WLC. Quality unchanged.</i>"
+            )
+        lines.append(_tier_line)
 
     # No actionable stocks — market summary still sent
     if total == 0:
