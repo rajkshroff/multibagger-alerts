@@ -1480,7 +1480,7 @@ def main():
             if build_prebreakout_alert:
                 _pb = build_prebreakout_alert(load)
                 if _pb:
-                    send_telegram(_pb)
+                    send_bse_live_announcements(_pb)
         except Exception as _e4a:
             print("[WARN] PRE_BREAKOUT alert: " + str(_e4a))
 
@@ -1489,7 +1489,7 @@ def main():
             if build_catalyst_alert:
                 _cat = build_catalyst_alert(load)
                 if _cat:
-                    send_telegram(_cat)
+                    send_bse_live_announcements(_cat)
         except Exception as _e4b:
             print("[WARN] CATALYST alert: " + str(_e4b))
 
