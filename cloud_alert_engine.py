@@ -377,8 +377,9 @@ def build_action_plan() -> str:
     import re as _re
     total = 0
     # s55: ACCUMULATE removed -- per-model section is the source of truth
-    # s56: ACCUMULATE added back -- CAUTION market routes WLC here
-    for b in ["STRONG_BUY","BUY","ACCUMULATE","BEAR_ACCUM","RECOVERY"]:
+    # s55: ACCUMULATE removed -- per-model section is the source of truth
+    # s56 revert: ACCUMULATE re-removed (82 stocks shown was wrong)
+    for b in ["STRONG_BUY","BUY","BEAR_ACCUM","RECOVERY"]:
         grp = act[act["_B"]==b]
         if grp.empty: continue
         # s55-bear-tight: 97th percentile quality sort, no hard gate
