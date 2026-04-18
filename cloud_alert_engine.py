@@ -69,8 +69,8 @@ print(f"  [telegram] {len(CHAT_IDS)} recipient(s)")
 REPO = Path(__file__).resolve().parent
 CSV  = {
     "composite":    REPO / "composite_scores.csv",
-        "events":        DATA_DIR / "recent_events.csv",
-        "early_alerts":  DATA_DIR / "early_alerts.csv",
+        "events":        "recent_events.csv",
+        "early_alerts":  "early_alerts.csv",
     "market_intel": REPO / "market_intelligence.csv",
     "sector_cycle": REPO / "sector_cycle_status.csv",
     "action":       REPO / "action_language.csv",
