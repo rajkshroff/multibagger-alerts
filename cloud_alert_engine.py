@@ -395,7 +395,8 @@ def build_action_plan() -> str:
                 grp = _gf.loc[_bsc[_gf.index].sort_values(ascending=False).index]
 
         # s56 Bloomberg-grade: RECOVERY quality-sort by market state
-        # No hard gates -- soft 97th-pct ranking. Shows depth via count.
+        # No hard gates -- pure quality ranking. Total = full depth.
+        _grp_total = len(grp)  # capture full depth before any display filter
         if b == "RECOVERY":
             def _rqsc(_r):
                 _d = cs_map.get(str(_r.get(sym_col,"")).strip().upper(),{})
@@ -403,24 +404,21 @@ def build_action_plan() -> str:
                             + _d.get("s",0)*1.0 + _d.get("c",0)*0.5)
             _rsc = grp.apply(_rqsc, axis=1)
             if mstate2 == "CAUTION":
-                # CAUTION: show top 5 by quality (same rigour as BEAR_ACCUM)
-                _rthr = _rsc.quantile(0.97) if len(_rsc) > 5 else _rsc.min()
-                _rgf  = grp[_rsc >= _rthr]
-                if not _rgf.empty:
-                    grp = _rgf.loc[_rsc[_rgf.index].sort_values(ascending=False).index]
-                LABELS["RECOVERY"] = "⚡ CAUTION WATCH (top 5)"
+                # CAUTION: quality-sort only, head(5) applied at display
+                # No percentile filter -- guarantees 5 shown not 3
+                grp = grp.loc[_rsc.sort_values(ascending=False).index]
+                LABELS["RECOVERY"] = ("⚡ CAUTION WATCH "
+                                      "(top 5 of " + str(_grp_total) + ")")
             elif mstate2 == "BEAR":
-                # BEAR: sort by quality, no cap (BEAR_ACCUM already has top 5)
                 grp = grp.loc[_rsc.sort_values(ascending=False).index]
                 LABELS["RECOVERY"] = "🌱 RECOVERY WATCH"
             else:
-                # BULL: laggards catching up -- sort by score
                 if score_col and score_col in grp.columns:
                     grp = grp.sort_values(score_col, ascending=False)
                 LABELS["RECOVERY"] = "🌱 RECOVERY WATCH"
 
-        total += len(grp)
-        lines.append(f"<b>{LABELS[b]}</b>  ({len(grp)})")
+        total += _grp_total  # always count full depth, not just displayed
+        lines.append(f"<b>{LABELS[b]}</b>  ({_grp_total})")
         if b == "BEAR_ACCUM":
             _disp = grp.head(BEAR_ACCUM_MAX)
         elif b == "RECOVERY" and mstate2 == "CAUTION":
