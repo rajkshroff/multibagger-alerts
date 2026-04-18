@@ -393,10 +393,38 @@ def build_action_plan() -> str:
             _gf  = grp[_bsc >= _thr]
             if not _gf.empty:
                 grp = _gf.loc[_bsc[_gf.index].sort_values(ascending=False).index]
+
+        # s56 Bloomberg-grade: RECOVERY quality-sort by market state
+        # No hard gates -- soft 97th-pct ranking. Shows depth via count.
+        if b == "RECOVERY":
+            def _rqsc(_r):
+                _d = cs_map.get(str(_r.get(sym_col,"")).strip().upper(),{})
+                return (_d.get("q",0)*2.0 + _d.get("g",0)*1.5
+                            + _d.get("s",0)*1.0 + _d.get("c",0)*0.5)
+            _rsc = grp.apply(_rqsc, axis=1)
+            if mstate2 == "CAUTION":
+                # CAUTION: show top 5 by quality (same rigour as BEAR_ACCUM)
+                _rthr = _rsc.quantile(0.97) if len(_rsc) > 5 else _rsc.min()
+                _rgf  = grp[_rsc >= _rthr]
+                if not _rgf.empty:
+                    grp = _rgf.loc[_rsc[_rgf.index].sort_values(ascending=False).index]
+                LABELS["RECOVERY"] = "⚡ CAUTION WATCH (top 5)"
+            elif mstate2 == "BEAR":
+                # BEAR: sort by quality, no cap (BEAR_ACCUM already has top 5)
+                grp = grp.loc[_rsc.sort_values(ascending=False).index]
+                LABELS["RECOVERY"] = "🌱 RECOVERY WATCH"
+            else:
+                # BULL: laggards catching up -- sort by score
+                if score_col and score_col in grp.columns:
+                    grp = grp.sort_values(score_col, ascending=False)
+                LABELS["RECOVERY"] = "🌱 RECOVERY WATCH"
+
         total += len(grp)
         lines.append(f"<b>{LABELS[b]}</b>  ({len(grp)})")
         if b == "BEAR_ACCUM":
             _disp = grp.head(BEAR_ACCUM_MAX)
+        elif b == "RECOVERY" and mstate2 == "CAUTION":
+            _disp = grp.head(5)   # top 5 only in CAUTION
         else:
             _disp = grp.head(15 if b == "BUY" else 8)
         for _, row in _disp.iterrows():
