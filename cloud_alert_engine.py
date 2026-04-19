@@ -47,11 +47,9 @@ except ImportError:
 
 # ── ARGS ─────────────────────────────────────────────────────
 parser = argparse.ArgumentParser(add_help=False)
-parser.add_argument("--test",  action="store_true")
-parser.add_argument("--type5", action="store_true")
+parser.add_argument("--test", action="store_true")
 args, _ = parser.parse_known_args()
 TEST_MODE = args.test
-TYPE5_MODE = args.type5
 
 # ── TELEGRAM ─────────────────────────────────────────────────
 BOT_TOKEN = (os.environ.get("TELEGRAM_BOT_TOKEN","")
@@ -1472,153 +1470,6 @@ def check_and_score_catalysts(bse_raw=None, seen=None):
 # ════════════════════════════════════════════════════════════════
 # MAIN
 # ════════════════════════════════════════════════════════════════
-# ============================================================
-# TYPE 5 - EARLY BUY / BOOK PROFITS / BEAR BUY
-# Fires from GitHub Actions on schedule - no PC needed
-# ============================================================
-
-def build_early_buy_alert():
-    """TYPE 5a: EARLY BUY - signals stacking before price moves."""
-    try:
-        import hashlib as _hl
-        from datetime import timedelta as _td
-        al = load("action")
-        if al.empty: return ''
-        eb = al[al["AI_ACTION"].astype(str).str.contains("EARLY BUY", na=False)].copy()
-        if eb.empty: return ''
-        ea = load("early_alerts")
-        bulk_map = {}
-        if not ea.empty:
-            for _, row in ea.iterrows():
-                sym  = str(row.get("NSE_SYMBOL","")).strip().upper()
-                atyp = str(row.get("ALERT_TYPE","")).strip().upper()
-                det  = str(row.get("ALERT_DETAIL","")).strip()
-                if atyp in ("BULK_BUY","INSIDER_BUY","PRE_BREAKOUT") and sym and det:
-                    if sym not in bulk_map:
-                        bulk_map[sym] = det[:80]
-        seen = load_seen()
-        now_str = now_ist().isoformat()
-        cutoff  = (now_ist() - _td(hours=12)).isoformat()
-        for col in ["N_SIGNALS","COMPOSITE_SCORE"]:
-            if col not in eb.columns: eb[col] = 0
-        eb = eb.sort_values(["N_SIGNALS","COMPOSITE_SCORE"], ascending=False)
-        ROCKET = "\U0001f680"
-        lines = [ROCKET + " <b>EARLY BUY RADAR</b>",
-                 "<i>Signals stacking BEFORE price moves</i>", ""]
-        shown = 0
-        new_seen = {}
-        for _, row in eb.iterrows():
-            sym   = str(row.get("NSE_SYMBOL","")).strip()
-            q     = _si(row.get("Q_SCORE",0))
-            g     = _si(row.get("G_SCORE",0))
-            score = _si(row.get("COMPOSITE_SCORE",0))
-            nsig  = _si(row.get("N_SIGNALS",0))
-            action= str(row.get("AI_ACTION",""))
-            em    = "\u2014"
-            reason= action.split(em)[1].strip() if em in action else ""
-            bulk  = bulk_map.get(sym.upper(),"")
-            key   = _hl.md5((sym + "eb5").encode()).hexdigest()[:12]
-            if seen.get(key,"") >= cutoff: continue
-            FULL  = "\u2588"
-            LIGHT = "\u2591"
-            pips  = FULL * min(nsig,5) + LIGHT * max(0,5-nsig)
-            lines.append(ROCKET + " <b>" + sym + "</b>  [" + pips + "] " + str(nsig) + "/5 signals  S:" + str(score))
-            if reason: lines.append('   ' + reason[:80])
-            if bulk:   lines.append("   \U0001f4b0 " + bulk)
-            lines.append('   Q:' + str(q) + ' G:' + str(g))
-            lines.append("")
-            new_seen[key] = now_str
-            shown += 1
-            if shown >= 5: break
-        if shown == 0: return ''
-        seen.update(new_seen); save_seen(seen)
-        NL = chr(10)
-        lines.append("<i>EARLY BUY: " + str(shown) + " pre-breakout stock(s)</i>")
-        return NL.join(lines)
-    except Exception as _e:
-        print("  [type5a] error: " + str(_e))
-        return ''
-
-
-def build_book_profits_alert():
-    """TYPE 5b: BOOK PROFITS - most urgent, trim positions."""
-    try:
-        import hashlib as _hl
-        from datetime import timedelta as _td
-        al = load("action")
-        if al.empty: return ''
-        bp = al[al["AI_ACTION"].astype(str).str.contains("BOOK PROFITS", na=False)].copy()
-        if bp.empty: return ''
-        seen   = load_seen()
-        now_str= now_ist().isoformat()
-        cutoff = (now_ist() - _td(hours=12)).isoformat()
-        CHART  = "\U0001f4c8"
-        WARN   = "\u26a0"
-        EM     = "\u2014"
-        lines  = [CHART + " <b>BOOK PROFITS " + EM + " EXIT SIGNAL</b>",
-                  "<i>Trim these positions NOW</i>", ""]
-        shown  = 0; new_seen = {}
-        for _, row in bp.iterrows():
-            sym    = str(row.get("NSE_SYMBOL","")).strip()
-            tier   = str(row.get("MULTIBAGGER_TIER","")).strip()
-            score  = _si(row.get("COMPOSITE_SCORE",0))
-            action = str(row.get("AI_ACTION",""))
-            reason = action.split(EM)[1].strip() if EM in action else action[:60]
-            q      = _si(row.get("Q_SCORE",0))
-            key    = _hl.md5((sym + "bp5").encode()).hexdigest()[:12]
-            if seen.get(key,"") >= cutoff: continue
-            lines.append(CHART + " <b>" + sym + "</b> [" + tier + "]  S:" + str(score) + "  Q:" + str(q))
-            lines.append("   " + WARN + " " + reason[:80])
-            lines.append("")
-            new_seen[key] = now_str; shown += 1
-            if shown >= 5: break
-        if shown == 0: return ''
-        seen.update(new_seen); save_seen(seen)
-        NL = chr(10)
-        lines.append("<i>Book Profits: " + str(shown) + " exit signal(s)</i>")
-        return NL.join(lines)
-    except Exception as _e:
-        print("  [type5b] error: " + str(_e))
-        return ''
-
-
-def build_bear_buy_alert():
-    """TYPE 5c: BEAR BUY - quality at beaten-down price."""
-    try:
-        import hashlib as _hl
-        from datetime import timedelta as _td
-        al = load("action")
-        if al.empty: return ''
-        bb = al[al["AI_ACTION"].astype(str).str.contains("BEAR BUY", na=False)].copy()
-        if bb.empty: return ''
-        seen   = load_seen()
-        now_str= now_ist().isoformat()
-        cutoff = (now_ist() - _td(hours=12)).isoformat()
-        SEED   = "\U0001f331"
-        lines  = [SEED + " <b>BEAR BUY " + "\u2014" + " QUALITY AT DISCOUNT</b>",
-                  "<i>Stage: 1/3 now, 1/3 at 50DMA, 1/3 on breakout</i>", ""]
-        shown  = 0; new_seen = {}
-        for _, row in bb.head(5).iterrows():
-            sym   = str(row.get("NSE_SYMBOL","")).strip()
-            score = _si(row.get("COMPOSITE_SCORE",0))
-            q     = _si(row.get("Q_SCORE",0))
-            g     = _si(row.get("G_SCORE",0))
-            phase = str(row.get("SECTOR_PHASE","")).strip()
-            key   = _hl.md5((sym + "bb5").encode()).hexdigest()[:12]
-            if seen.get(key,"") >= cutoff: continue
-            lines.append(SEED + " <b>" + sym + "</b>  S:" + str(score) + "  Q:" + str(q) + " G:" + str(g) + "  [" + phase + "]")
-            lines.append("")
-            new_seen[key] = now_str; shown += 1
-        if shown == 0: return ''
-        seen.update(new_seen); save_seen(seen)
-        NL = chr(10)
-        lines.append("<i>Bear Buy: " + str(shown) + " quality stock(s) beaten-down</i>")
-        return NL.join(lines)
-    except Exception as _e:
-        print("  [type5c] error: " + str(_e))
-        return ''
-
-
 def main():
     h, m = h_m()
     now_str = now_ist().strftime("%Y-%m-%d %H:%M:%S IST")
@@ -1679,16 +1530,6 @@ def main():
                f"<i>3 message types active. System verified.</i>")
         ok = send(msg)
         print(f"  Test sent: {ok}")
-        return
-
-    # TYPE 5: Early Buy / Book Profits / Bear Buy
-    if TYPE5_MODE:
-        print("  -> TYPE 5: Early Buy / Book Profits / Bear Buy")
-        _bp = build_book_profits_alert()
-        _eb = build_early_buy_alert()
-        _bb = build_bear_buy_alert()
-        for _m5 in [_bp, _eb, _bb]:
-            if _m5: send(_m5)
         return
 
     sent = 0
