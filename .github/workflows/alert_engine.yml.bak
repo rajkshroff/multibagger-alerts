@@ -25,8 +25,6 @@ on:
     branches: [ main ]
 
   schedule:
-    - cron: '0 3 * * 1-5'   # 08:30 IST TYPE5 alerts
-    - cron: '30 7 * * 1-5'  # 13:00 IST TYPE5 alerts
     - cron: '0 2  * * 1-5'   # 7:30am  IST Mon-Fri -- Morning Brief
     - cron: '30 3 * * 1-5'   # 9:00am  IST Mon-Fri -- News slot 1
     - cron: '0  7 * * 1-5'   # 12:30pm IST Mon-Fri -- News slot 2
@@ -85,18 +83,3 @@ jobs:
           git diff --staged --quiet || git commit -m "chore: alert state [skip ci]"
           git push || true
         continue-on-error: true
-
-  type5_alerts:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-      - run: pip install requests pandas -q
-      - name: TYPE 5 - Early Buy / Book Profits / Bear Buy
-        run: python cloud_alert_engine.py --type5
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
-          TELEGRAM_CHAT_IDS:  ${{ secrets.TELEGRAM_CHAT_IDS }}
