@@ -365,13 +365,6 @@ def build_action_plan() -> str:
         "",
     ]
 
-    # NEW: action language sections (BOOK PROFITS / SECTOR LEADER / CONFIRMED BUY / EARLY BUY / BEAR BUY)
-    _al_sections = _build_action_sections(load)
-    if _al_sections:
-        for _als in _al_sections:
-            lines.append(_als)
-            lines.append("")
-
     BEAR_ACCUM_MAX = 5  # s55: strict quality gate
     def _bear_q(r):
         _bc = cs_map.get(str(r.get(sym_col,"")).strip().upper(), {})
@@ -1477,94 +1470,6 @@ def check_and_score_catalysts(bse_raw=None, seen=None):
 # ════════════════════════════════════════════════════════════════
 # MAIN
 # ════════════════════════════════════════════════════════════════
-
-def _build_action_sections(load_fn):
-    """
-    Build BOOK PROFITS / SECTOR LEADER / CONFIRMED BUY / EARLY BUY / BEAR BUY
-    sections from action_language.csv for TYPE 1 Telegram message.
-    """
-    try:
-        al = load_fn("action")
-        if al.empty: return []
-        al.columns = [c.strip() for c in al.columns]
-        if "AI_ACTION" not in al.columns: return []
-
-        sections = []
-        SEP = chr(10)
-
-        # ── BOOK PROFITS (most urgent - exit signal) ─────────
-        bp = al[al["AI_ACTION"].astype(str).str.contains("BOOK PROFITS", na=False)]
-        if not bp.empty:
-            lines = [chr(128200) + " <b>BOOK PROFITS — EXIT SIGNAL</b>"]
-            for _, r in bp.head(3).iterrows():
-                sym = str(r.get("NSE_SYMBOL","")).strip()
-                act = str(r.get("AI_ACTION",""))
-                em  = chr(8212)
-                rsn = act.split(em)[1].strip() if em in act else act[:50]
-                lines.append("  " + chr(128200) + " <b>" + sym + "</b> — " + rsn[:60])
-            if len(bp) > 3:
-                lines.append("  +" + str(len(bp)-3) + " more — check Excel")
-            sections.append(SEP.join(lines))
-
-        # ── SECTOR LEADER ─────────────────────────────────────
-        sl = al[al["AI_ACTION"].astype(str).str.contains("SECTOR LEADER", na=False)]
-        if not sl.empty:
-            lines = [chr(9889) + " <b>SECTOR LEADER</b>"]
-            for _, r in sl.head(3).iterrows():
-                sym = str(r.get("NSE_SYMBOL","")).strip()
-                score = _si(r.get("COMPOSITE_SCORE",0))
-                lines.append("  " + chr(9889) + " <b>" + sym + "</b>  S:" + str(score))
-            sections.append(SEP.join(lines))
-
-        # ── CONFIRMED BUY ─────────────────────────────────────
-        cb = al[al["AI_ACTION"].astype(str).str.contains("CONFIRMED BUY", na=False)]
-        if not cb.empty:
-            lines = [chr(9989) + " <b>CONFIRMED BUY</b>"]
-            for _, r in cb.head(5).iterrows():
-                sym   = str(r.get("NSE_SYMBOL","")).strip()
-                tier  = str(r.get("MULTIBAGGER_TIER","")).strip()
-                score = _si(r.get("COMPOSITE_SCORE",0))
-                act   = str(r.get("AI_ACTION",""))
-                em    = chr(8212)
-                rsn   = act.split(em)[1].strip() if em in act else ""
-                short = "PRIME" if "PRIME" in tier else "STRONG" if "STRONG" in tier else tier
-                lines.append("  " + chr(9989) + " <b>" + sym + "</b> [" + short + "]  S:" + str(score))
-                if rsn: lines.append("    " + rsn[:70])
-            if len(cb) > 5:
-                lines.append("  +" + str(len(cb)-5) + " more in Excel")
-            sections.append(SEP.join(lines))
-
-        # ── EARLY BUY ─────────────────────────────────────────
-        eb = al[al["AI_ACTION"].astype(str).str.contains("EARLY BUY", na=False)]
-        if not eb.empty:
-            lines = [chr(128640) + " <b>EARLY BUY RADAR</b> — price not moved yet"]
-            for _, r in eb.head(4).iterrows():
-                sym  = str(r.get("NSE_SYMBOL","")).strip()
-                nsig = _si(r.get("N_SIGNALS",0))
-                score= _si(r.get("COMPOSITE_SCORE",0))
-                FULL = chr(9608); LIGHT = chr(9617)
-                pips = FULL*min(nsig,5) + LIGHT*max(0,5-nsig)
-                lines.append("  " + chr(128640) + " <b>" + sym + "</b>  [" + pips + "] " + str(nsig) + "/5 signals  S:" + str(score))
-            if len(eb) > 4:
-                lines.append("  +" + str(len(eb)-4) + " more radar stocks")
-            sections.append(SEP.join(lines))
-
-        # ── BEAR BUY ──────────────────────────────────────────
-        bb = al[al["AI_ACTION"].astype(str).str.contains("BEAR BUY", na=False)]
-        if not bb.empty:
-            lines = [chr(127807) + " <b>BEAR BUY — Quality at Discount</b>"]
-            for _, r in bb.head(3).iterrows():
-                sym  = str(r.get("NSE_SYMBOL","")).strip()
-                score= _si(r.get("COMPOSITE_SCORE",0))
-                q    = _si(r.get("Q_SCORE",0))
-                lines.append("  " + chr(127807) + " <b>" + sym + "</b>  S:" + str(score) + "  Q:" + str(q))
-            sections.append(SEP.join(lines))
-
-        return sections
-    except Exception as _e:
-        print("  [action_sections] " + str(_e))
-        return []
-
 def main():
     h, m = h_m()
     now_str = now_ist().strftime("%Y-%m-%d %H:%M:%S IST")
