@@ -114,6 +114,7 @@ IST = timezone(timedelta(hours=5, minutes=30))
 def now_ist(): return datetime.now(IST)
 def h_m(): n = now_ist(); return n.hour, n.minute
 
+<<<<<<< Updated upstream
 # ── TELEGRAM SEND ─────────────────────────────────────────────
 MAX = 4000
 def send(text: str) -> bool:
@@ -137,6 +138,85 @@ def send(text: str) -> bool:
             except Exception as e:
                 print(f"  [send→..{chat[-4:]}] Error: {e}"); ok = False
     return ok
+=======
+def now_ist():
+    return datetime.now(IST)
+
+def ist_hour_min():
+    n = now_ist()
+    return n.hour, n.minute
+
+MORNING_BRIEF_SENT_FILE = REPO / "morning_brief_sent.json"
+
+def _morning_brief_sent_today() -> bool:
+    """True if morning brief was already sent today (IST date)."""
+    import json as _json
+    today = now_ist().strftime("%Y-%m-%d")
+    if not MORNING_BRIEF_SENT_FILE.exists():
+        return False
+    try:
+        data = _json.loads(MORNING_BRIEF_SENT_FILE.read_text(encoding="utf-8"))
+        return data.get("date") == today
+    except Exception:
+        return False
+
+def _mark_morning_brief_sent():
+    """Record that morning brief was sent today. Commit to repo."""
+    import json as _json, subprocess as _sp
+    today = now_ist().strftime("%Y-%m-%d")
+    MORNING_BRIEF_SENT_FILE.write_text(
+        _json.dumps({"date": today}, indent=2), encoding="utf-8"
+    )
+    try:
+        _sp.run(["git", "config", "user.email", "bot@multibagger-alerts.local"],
+                cwd=str(REPO), check=False)
+        _sp.run(["git", "config", "user.name",  "Multibagger Alert Bot"],
+                cwd=str(REPO), check=False)
+        _sp.run(["git", "add", "morning_brief_sent.json"], cwd=str(REPO), check=True)
+        _sp.run(["git", "commit", "-m", f"chore: morning brief sent {today} [skip ci]"],
+                cwd=str(REPO), check=True)
+        _sp.run(["git", "push"], cwd=str(REPO), check=True)
+        print(f"  [brief] marked sent for {today}")
+    except Exception as e:
+        print(f"  [brief] git commit failed (non-fatal): {e}")
+
+def is_morning_brief():
+    """
+    True if we're in the 7:30-9:59 IST window AND brief not yet sent today.
+    WIDENED from h==8 to 7:30-9:59 IST — GitHub Actions free tier can delay
+    scheduled cron runs by up to 60 min. Widening to 2.5 hours ensures the
+    brief fires even with maximum delay.
+    Date-based dedup (morning_brief_sent.json) guarantees exactly one per day.
+    """
+    h, m = ist_hour_min()
+    in_window = (h == 7 and m >= 30) or (h == 8) or (h == 9)
+    if not in_window:
+        return False
+    return not _morning_brief_sent_today()
+
+def is_noon_heartbeat():
+    """
+    True 12:00-12:29 IST.
+    Sends a short market status even with no alerts — proves
+    system is alive. Replaces silence with status.
+    """
+    h, m = ist_hour_min()
+    return h == 12 and m < 30
+
+def is_status_slot():
+    """
+    True at 10am, 2pm, 6pm IST (first 30 min of those hours).
+    Sends 'no alerts' confirmation so silence = intentional.
+    """
+    h, m = ist_hour_min()
+    return h in (10, 14, 18) and m < 30
+
+def is_market_hours():
+    """True if 7am-8pm IST (inclusive)."""
+    h, _ = ist_hour_min()
+    return 7 <= h <= 20
+
+>>>>>>> Stashed changes
 
 # ── CSV LOADER ────────────────────────────────────────────────
 def load(key):
@@ -173,13 +253,42 @@ def save_seen(h: dict):
     SEEN_FILE.write_text(json.dumps(h, indent=2), encoding="utf-8")
     print(f"  [dedup] {len(h)} hashes saved (YML will commit)")
 
+<<<<<<< Updated upstream
 def alert_hash(row) -> str:
+=======
+def _save_seen_hashes(hashes: dict):
+    """Save updated hashes back to repo file + git commit."""
+    import json, subprocess
+    # Prune expired entries
+    cutoff = (datetime.now(IST) - timedelta(hours=SEEN_HASH_TTL_HOURS)).isoformat()
+    hashes = {k: v for k, v in hashes.items() if v >= cutoff}
+    SEEN_HASHES_FILE.write_text(json.dumps(hashes, indent=2), encoding="utf-8")
+    # Commit back to repo so next run sees updated hashes
+    try:
+        # Set git identity for GitHub Actions runner (no-op if already set)
+        subprocess.run(["git", "config", "user.email", "bot@multibagger-alerts.local"],
+                       cwd=str(REPO), check=False)
+        subprocess.run(["git", "config", "user.name", "Multibagger Alert Bot"],
+                       cwd=str(REPO), check=False)
+        subprocess.run(["git", "add", "seen_hashes.json"], cwd=str(REPO), check=True)
+        subprocess.run(["git", "commit", "-m", "chore: update seen alert hashes [skip ci]"],
+                       cwd=str(REPO), check=True)
+        subprocess.run(["git", "push"], cwd=str(REPO), check=True)
+        print("  [dedup] seen_hashes.json committed + pushed")
+    except Exception as e:
+        print(f"  [dedup] git commit failed (non-fatal): {e}")
+
+def _alert_hash(row) -> str:
+    """Stable hash for one alert row — SYMBOL + TYPE + DATE."""
+    import hashlib
+>>>>>>> Stashed changes
     key = f"{row.get('NSE_SYMBOL','')}-{row.get('ALERT_TYPE','')}-{row.get('ALERT_DATE','')}"
     return hashlib.md5(key.encode()).hexdigest()[:12]
 
 def news_hash(title: str) -> str:
     return hashlib.md5(title.strip().lower().encode()).hexdigest()[:12]
 
+<<<<<<< Updated upstream
 # ── MORNING BRIEF DEDUP ───────────────────────────────────────
 def morning_sent_today() -> bool:
     today = now_ist().strftime("%Y-%m-%d")
@@ -199,17 +308,58 @@ def mark_morning_sent():
 def hourly_sent_this_hour() -> bool:
     n = now_ist()
     if not HOURLY_FILE.exists(): return False
+=======
+# ── TELEGRAM SENDER ──────────────────────────────────────────
+TELEGRAM_MAX = 4000   # Telegram hard limit is 4096; use 4000 for safety
+
+def _send_raw(msg: str, parse_mode: str = "HTML") -> bool:
+    """Send one message chunk. Returns True on success."""
+    url  = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    data = {"chat_id": CHAT_ID, "text": msg, "parse_mode": parse_mode}
+>>>>>>> Stashed changes
     try:
         d = json.loads(HOURLY_FILE.read_text())
         return d.get("date") == n.strftime("%Y-%m-%d") and d.get("hour") == n.hour
     except: return False
 
+<<<<<<< Updated upstream
 def mark_hourly_sent():
     n = now_ist()
     HOURLY_FILE.write_text(json.dumps(
         {"date": n.strftime("%Y-%m-%d"), "hour": n.hour}, indent=2
     ))
     print(f"  [hourly] marked sent {n.strftime('%Y-%m-%d %H:00')}")
+=======
+def send(msg: str, parse_mode: str = "HTML") -> bool:
+    """Send a message to Telegram, splitting at TELEGRAM_MAX chars if needed."""
+    if not msg.strip():
+        print("  [send] Empty message — skipping")
+        return False
+    if len(msg) <= TELEGRAM_MAX:
+        return _send_raw(msg, parse_mode)
+    # Split on newlines, keep chunks under TELEGRAM_MAX
+    lines  = msg.split("\n")
+    chunks = []
+    buf    = []
+    cur_len = 0
+    for line in lines:
+        if cur_len + len(line) + 1 > TELEGRAM_MAX and buf:
+            chunks.append("\n".join(buf))
+            buf = [line]
+            cur_len = len(line)
+        else:
+            buf.append(line)
+            cur_len += len(line) + 1
+    if buf:
+        chunks.append("\n".join(buf))
+    print(f"  [send] Message split into {len(chunks)} parts ({len(msg)} chars total)")
+    ok = True
+    for i, chunk in enumerate(chunks, 1):
+        label = f"  (Part {i}/{len(chunks)})" if len(chunks) > 1 else ""
+        ok &= _send_raw(chunk + label, parse_mode)
+    return ok
+
+>>>>>>> Stashed changes
 
 # ── MARKET SUMMARY ────────────────────────────────────────────
 def market_summary():
@@ -1641,6 +1791,7 @@ def main():
 
     sent = 0
 
+<<<<<<< Updated upstream
     # ── TYPE 1: ACTION PLAN (push-triggered = engine just ran) ──
     if triggered_by_push:
         print("  → TYPE 1: Action Plan (push trigger — engine just ran)")
@@ -1682,6 +1833,41 @@ def main():
         ok  = send(msg)
         if ok: mark_morning_sent()
         print(f"  Morning Brief sent: {ok}")
+=======
+    # ── FORCE MORNING BRIEF (from workflow_dispatch) ─────────
+    force_brief = os.environ.get("FORCE_MORNING_BRIEF","false").lower() == "true"
+    if force_brief:
+        print("  → FORCE_MORNING_BRIEF mode")
+        msg = build_morning_brief()
+        ok = send(msg)
+        print(f"  → Forced Morning Brief sent: {ok}")
+        if ok:
+            _mark_morning_brief_sent()
+        return
+
+    # ── TEST MODE ─────────────────────────────────────────────
+    if TEST_MODE:
+        print("  → TEST MODE")
+        _, mkt_text = build_market_summary()
+        msg = (
+            f"🧪 <b>MULTIBAGGER — TEST MESSAGE</b>\n"
+            f"{now_ist().strftime('%H:%M IST')}\n"
+            f"{mkt_text}\n"
+            f"<i>System alive. Telegram verified.</i>"
+        )
+        ok = send(msg)
+        print(f"  → Test message sent: {ok}")
+        return
+
+    # ── MORNING BRIEF (7:30-9:59 IST, once per day) ──────────
+    if is_morning_brief():
+        print("  → Morning Brief mode")
+        msg = build_morning_brief()
+        ok = send(msg)
+        print(f"  → Morning Brief sent: {ok}")
+        if ok:
+            _mark_morning_brief_sent()
+>>>>>>> Stashed changes
         sent += 1
         # After brief, also run news scan for the morning
         # Fall through to TYPE 3
