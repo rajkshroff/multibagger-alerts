@@ -1,0 +1,52 @@
+name: AlphaLens Alerts
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Morning Brief -- 7:30 IST = 02:00 UTC Mon-Fri
+    - cron: '0 2 * * 1-5'
+    # News Slot 1 -- 09:00 IST = 03:30 UTC
+    - cron: '30 3 * * 1-5'
+    # News Slot 2 -- 12:30 IST = 07:00 UTC
+    - cron: '0 7 * * 1-5'
+    # News Slot 3 -- 16:30 IST = 11:00 UTC
+    - cron: '0 11 * * 1-5'
+    # Catalyst poller -- every 5 min, market hours 9:15-15:35 IST
+    - cron: '*/5 3-10 * * 1-5'
+
+jobs:
+  alert:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install requests pandas
+
+      - name: Run alerts
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_IDS: ${{ secrets.TELEGRAM_CHAT_IDS }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          TRIGGERED_BY_PUSH: ${{ github.event_name == 'push' && 'true' || '' }}
+        run: |
+          SCHED="${{ github.event.schedule }}"
+          if [ "$SCHED" = "0 2 * * 1-5" ]; then
+            echo "TYPE 2: Morning Brief"
+            python cloud_alert_engine.py --morning
+          elif [ "$SCHED" = "30 3 * * 1-5" ] || [ "$SCHED" = "0 7 * * 1-5" ] || [ "$SCHED" = "0 11 * * 1-5" ]; then
+            echo "TYPE 3: News"
+            python cloud_alert_engine.py --news
+          elif [ "$SCHED" = "*/5 3-10 * * 1-5" ]; then
+            echo "MSG4/5: Catalyst poller"
+            python cloud_alert_engine.py --catalyst-only
+          else
+            echo "TYPE 1: Action Plan (push trigger)"
+            python cloud_alert_engine.py
+          fi
