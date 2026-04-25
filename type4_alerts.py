@@ -19,7 +19,7 @@ def _si(v):
 
 def build_prebreakout_alert(load_fn, cs_map_in=None) -> str:
     """
-    TYPE 4a: PRE-BREAKOUT WATCH
+    TYPE 4a: EARLY BUY
     Stocks where FII/Revenue/VCP signals firing but RS not yet top-quartile.
     These are the stocks that WILL be flagged next run -- catch them BEFORE
     the 25% move.
@@ -63,7 +63,7 @@ def build_prebreakout_alert(load_fn, cs_map_in=None) -> str:
     sev_col = next((c for c in pb.columns if c.upper() == "SEVERITY"), None)
 
     lines_out = [
-        "\u26a1 <b>PRE-BREAKOUT WATCH</b>",
+        "\u26a1 <b>EARLY BUY</b>",
         "<i>Leading signals firing BEFORE price moves</i>",
         "",
     ]

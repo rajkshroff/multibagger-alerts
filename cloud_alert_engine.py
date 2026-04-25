@@ -69,8 +69,7 @@ print(f"  [telegram] {len(CHAT_IDS)} recipient(s)")
 REPO = Path(__file__).resolve().parent
 CSV  = {
     "composite":    REPO / "composite_scores.csv",
-        "events":        "recent_events.csv",
-        "early_alerts":  "early_alerts.csv",
+        "events":          REPO / "recent_events.csv",
     "market_intel": REPO / "market_intelligence.csv",
     "sector_cycle": REPO / "sector_cycle_status.csv",
     "action":       REPO / "action_language.csv",
@@ -201,13 +200,13 @@ def hourly_sent_this_hour() -> bool:
     if not HOURLY_FILE.exists(): return False
     try:
         d = json.loads(HOURLY_FILE.read_text())
-        return d.get("date") == n.strftime("%Y-%m-%d") and d.get("hour") == n.hour
+        return d.get("date") == n.strftime("%Y-%m-%d") and d.get("slot") == (1 if 9<=n.hour<12 else 2 if 12<=n.hour<15 else 3 if 15<=n.hour<=18 else 0)
     except: return False
 
 def mark_hourly_sent():
     n = now_ist()
     HOURLY_FILE.write_text(json.dumps(
-        {"date": n.strftime("%Y-%m-%d"), "hour": n.hour}, indent=2
+        {"date": n.strftime("%Y-%m-%d"), "slot": (1 if 9<=n.hour<12 else 2 if 12<=n.hour<15 else 3 if 15<=n.hour<=18 else 0)}, indent=2
     ))
     print(f"  [hourly] marked sent {n.strftime('%Y-%m-%d %H:00')}")
 
@@ -371,7 +370,7 @@ def build_action_plan() -> str:
         return (_bc.get("q",0)>=15 and _bc.get("g",0)>=8
                 and _bc.get("s",0)>=4 and _bc.get("c",0)>=8)
     LABELS = {"STRONG_BUY":"🟢 STRONG BUY","BUY":"🟢 BUY",
-               "ACCUMULATE":"🔵 ACCUMULATE","BEAR_ACCUM":"💜 BEAR ACCUM (top 5)",
+               "ACCUMULATE":"🔵 ACCUMULATE","BEAR_ACCUM":"📍 BEAR BUY",
                "RECOVERY":"🌱 RECOVERY WATCH"}
 
     import re as _re
@@ -379,9 +378,11 @@ def build_action_plan() -> str:
     # s55: ACCUMULATE removed -- per-model section is the source of truth
     # s55: ACCUMULATE removed -- per-model section is the source of truth
     # s56 revert: ACCUMULATE re-removed (82 stocks shown was wrong)
-    for b in ["STRONG_BUY","BUY","BEAR_ACCUM","RECOVERY"]:
+    for b in ["STRONG_BUY","BUY","ACCUMULATE","BEAR_ACCUM","RECOVERY"]:
         grp = act[act["_B"]==b]
         if grp.empty: continue
+        if b == "ACCUMULATE" and mstate2 == "BEAR":
+            continue
         # s55-bear-tight: 97th percentile quality sort, no hard gate
         if b == "BEAR_ACCUM":
             def _qsc(_r):
@@ -498,7 +499,7 @@ def build_action_plan() -> str:
                 _pc = cs2.copy(); _pc["_PS"] = _ps
                 _tc2 = "TIER" if "TIER" in _pc.columns else None
                 if _tc2:
-                    _top = _pc[_pc[_tc2].isin(_at)].sort_values("_PS",ascending=False).head(3)
+                    _top = _pc[_pc[_tc2].isin(_at)].sort_values("_PS",ascending=False).head(1)
                 else:
                     _top = _pc.sort_values("_PS",ascending=False).head(3)
                 lines.append(f"  {wts['i']} <b>{prof.replace('_',' ').title()}</b>")
@@ -1145,8 +1146,11 @@ def send_bse_live_announcements(bse_raw: list, seen: dict) -> int:
         now_s_la = now_ist().strftime("%H:%M IST, %d %b")
         lines_la = [f"\u26a1 <b>LIVE ANNOUNCEMENT \u2014 {now_s_la}</b>", ""]
         for ev in alerts_la[:8]:
-            disp_la = _html_la.escape(ev["name"])
-            lines_la.append(f"\U0001f6a8 <b>{disp_la}</b> <i>(BSE:{ev['scrip']})</i>")
+            _nm58 = ev.get('name','') or ev.get('nse','') or ('BSE:' + ev.get('scrip','?'))
+            _nse58d = ev.get('nse', '')
+            _disp58 = _html_la.escape(_nm58)
+            _code58 = ('  <code>' + _html_la.escape(_nse58d) + '</code>') if _nse58d else ''
+            lines_la.append("🚨 <b>" + _disp58 + "</b>" + _code58)
             # s55: clean boilerplate, show full sentence
             import re as _re_la
             _sc = ev["subj"]
@@ -1158,7 +1162,7 @@ def send_bse_live_announcements(bse_raw: list, seen: dict) -> int:
             ]:
                 _sc = _re_la.sub(_bp, "", _sc, flags=_re_la.I).strip()
             if _sc: _sc = _sc[0].upper() + _sc[1:]
-            _cut = min(120, len(_sc))
+            _cut = min(250, len(_sc))
             _se = _re_la.search(r"[.!?]", _sc[30:80])
             if _se: _cut = 30 + _se.end()
             _lbl_la = ev["label"]
@@ -1479,6 +1483,8 @@ def main():
     # Used by the dedicated 5-min GitHub Actions job
     import sys as _sys
     catalyst_only_mode = "--catalyst-only" in _sys.argv
+    morning_only_mode  = "--morning"        in _sys.argv
+    news_only_mode     = "--news"           in _sys.argv
 
     print(f"[{now_str}] cloud_alert_engine v3.0")
     print(f"  IST: {h:02d}:{m:02d} | push={triggered_by_push} | test={TEST_MODE} | catalyst_only={catalyst_only_mode}")
@@ -1491,35 +1497,31 @@ def main():
         if _bse_data:
             send_bse_live_announcements(_bse_data, _shared_seen)
 
-        # ── TYPE 4: PRE_BREAKOUT + CATALYST (s56) ────────────────
-        # SAFE: wrapped individually, TYPE 1 already sent above.
-        # Uses actual send function: send_bse_live_announcements
+        # TYPE 4a/4b -- s58-fix: send(msg) not send_bse_live_announcements(msg)
         try:
             from type4_alerts import (build_prebreakout_alert as _t4a,
                                       build_catalyst_alert    as _t4b)
-            try:
-                _pb = _t4a(load)
-                if _pb:
-                    send_bse_live_announcements(_pb)
-            except Exception as _e4a:
-                pass  # PRE_BREAKOUT failed silently -- TYPE 1 unaffected
-            try:
-                _cat = _t4b(load)
-                if _cat:
-                    send_bse_live_announcements(_cat)
-            except Exception as _e4b:
-                pass  # CATALYST failed silently -- TYPE 1 unaffected
+            _pb = _t4a(load)
+            if _pb:
+                send(_pb)
+                print('  [TYPE4a] EARLY BUY sent')
+            _cat = _t4b(load)
+            if _cat:
+                send(_cat)
+                print('  [TYPE4b] CATALYST sent')
         except ImportError:
-            pass  # type4_alerts.py not deployed yet
-        except Exception:
-            pass  # any other error -- TYPE 1 unaffected
-        # ── end TYPE 4 ────────────────────────────────────────────
+            print('  [TYPE4] type4_alerts.py not found')
+        except Exception as _e4:
+            print('  [TYPE4] ' + str(_e4))
 
-            print('  → MSG5: Catalyst Alerts (universe stocks only)')
+        # MSG5 -- s58-fix: always runs (was buried inside except handler before)
+        if _bse_data:
+            print('  -> MSG5: Catalyst Alerts')
             check_and_score_catalysts(bse_raw=_bse_data, seen=_shared_seen)
         else:
-            print('  [catalyst-only] BSE returned 0 items')
+            print('  [catalyst-only] BSE 0 items')
         save_seen(_shared_seen)
+        return
         return
 
     # ── TEST ─────────────────────────────────────────────────
@@ -1568,8 +1570,8 @@ def main():
     # ── TYPE 2: MORNING BRIEF (7:30am) ───────────────────────
     # Session 34: widened from 1hr to 2hr window
     # (7:30am–9:30am IST) so a missed cron doesn't lose the day
-    in_brief_window = (h == 7 and m >= 30) or (h == 8) or (h == 9 and m < 30)
-    if in_brief_window and not morning_sent_today():
+    in_brief_window = morning_only_mode or (h == 7 and m >= 30) or (h == 8) or (h == 9 and m < 30)
+    if in_brief_window and (not morning_sent_today() or morning_only_mode):
         print("  → TYPE 2: Morning Brief")
         msg = build_morning_brief()
         ok  = send(msg)
@@ -1582,7 +1584,7 @@ def main():
     # ── TYPE 3: HOURLY NEWS (9am-6pm) ────────────────────────
     # s55: 3 news slots per day (9-11, 12-14, 15-18)
     _nslot = (1 if 9<=h<12 else 2 if 12<=h<15 else 3 if 15<=h<=18 else 0)
-    if _nslot > 0:
+    if news_only_mode or _nslot > 0:
         if hourly_sent_this_hour():
             print(f"  → TYPE 3: slot {_nslot} already sent -- skip")
         else:
