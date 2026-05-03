@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   schedule:
+    # Daily Engine Audit -- 5:45 IST = 00:15 UTC Mon-Fri
+    - cron: '15 0 * * 1-5'
     # Morning Brief -- 7:30 IST = 02:00 UTC Mon-Fri
     - cron: '0 2 * * 1-5'
     # News Slot 1 -- 09:00 IST = 03:30 UTC
@@ -37,7 +39,10 @@ jobs:
           TRIGGERED_BY_PUSH: ${{ github.event_name == 'push' && 'true' || '' }}
         run: |
           SCHED="${{ github.event.schedule }}"
-          if [ "$SCHED" = "0 2 * * 1-5" ]; then
+          if [ "$SCHED" = "15 0 * * 1-5" ]; then
+            echo "AUDIT: Daily engine health audit"
+            python cloud_alert_engine.py --audit
+          elif [ "$SCHED" = "0 2 * * 1-5" ]; then
             echo "TYPE 2: Morning Brief"
             python cloud_alert_engine.py --morning
           elif [ "$SCHED" = "30 3 * * 1-5" ] || [ "$SCHED" = "0 7 * * 1-5" ] || [ "$SCHED" = "0 11 * * 1-5" ]; then
