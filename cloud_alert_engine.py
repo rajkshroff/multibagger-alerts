@@ -536,7 +536,19 @@ def build_morning_brief() -> str:
 
     cues = global_cues()
 
+    # 4-channel pick counts (s113)
+    _ch_line = ""
+    if not al.empty and ac:
+        _lm = al[al[ac].astype(str).str.contains("EXIT|LANDMINE",  case=False, na=False)].shape[0]
+        _bp = al[al[ac].astype(str).str.contains("BOOK PROFIT",    case=False, na=False)].shape[0]
+        _ba = al[al[ac].astype(str).str.contains("BEAR ACCUM",     case=False, na=False)].shape[0]
+        _ep = al[al[ac].astype(str).str.contains("ENGINE PICK",    case=False, na=False)].shape[0]
+        _ch_line = (f"☠ EXIT <b>{_lm}</b> | 📈 BOOK PROFIT <b>{_bp}</b> | "
+                    f"🐻 BEAR ACCUM <b>{_ba}</b> | ✅ ENGINE PICK <b>{_ep}</b>")
+
     msg = f"🇮🇳 <b>MULTIBAGGER — MORNING BRIEF</b>\n<b>{day}</b>\n\n{mkt_text}\n"
+    if _ch_line:
+        msg += f"\n{_ch_line}\n"
     if cues:
         msg += "\n<b>🌍 Global Cues</b>\n" + "\n".join(cues) + "\n"
     if picks:
