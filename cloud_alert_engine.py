@@ -313,11 +313,11 @@ def build_action_plan() -> str:
 
     # ── 5-label bucket (s90 unified pick names) ──────────────────────────
     # Reads directly from AI_ACTION strings set by build_action_language.py.
-    # Labels: ENGINE PICK | EARLY SIGNAL | DEEP VALUE | RECOVERY WATCH | BEAR ACCUMULATE | BOOK PROFIT | EXIT IMMEDIATELY
+    # Labels: ENGINE PICK | DEEP VALUE | RECOVERY WATCH | BEAR ACCUMULATE | BOOK PROFIT | EXIT IMMEDIATELY
+    # EARLY SIGNAL removed — monitor-only, not actionable for user (s111)
     def bucket(row):
         a = str(row.get(action_col,"")).upper()
         if "ENGINE PICK"      in a: return "ENGINE_PICK"
-        if "EARLY SIGNAL"     in a: return "EARLY_SIGNAL"
         if "DEEP VALUE"       in a: return "DEEP_VALUE"
         if "RECOVERY WATCH"   in a: return "RECOVERY_WATCH"
         if "BEAR ACCUM"       in a: return "BEAR_ACCUM"
@@ -355,26 +355,24 @@ def build_action_plan() -> str:
         "",
     ]
 
-    # 7 pick labels (s110: added RECOVERY_WATCH, BEAR_ACCUM)
+    # 6 pick labels (s111: EARLY_SIGNAL removed — monitor-only, not user-actionable)
     PICK_LABELS = {
         "ENGINE_PICK":     "✅ ENGINE PICK",
-        "EARLY_SIGNAL":    "🚀 EARLY SIGNAL",
         "DEEP_VALUE":      "💎 DEEP VALUE",
         "RECOVERY_WATCH":  "🌱 RECOVERY WATCH",
         "BEAR_ACCUM":      "🐻 BEAR ACCUMULATE",
         "BOOK_PROFIT":     "📈 BOOK PROFIT",
         "LANDMINE":        "☠ EXIT IMMEDIATELY",
     }
-    # Display limits per bucket: ENGINE/DEEP/LANDMINE show all; EARLY truncated
     PICK_LIMITS = {
-        "ENGINE_PICK": 20, "EARLY_SIGNAL": 8, "DEEP_VALUE": 15,
+        "ENGINE_PICK": 20, "DEEP_VALUE": 15,
         "RECOVERY_WATCH": 15, "BEAR_ACCUM": 10,
         "BOOK_PROFIT": 15, "LANDMINE": 20,
     }
 
     import re as _re
     total = 0
-    for b in ["ENGINE_PICK", "EARLY_SIGNAL", "DEEP_VALUE", "RECOVERY_WATCH", "BEAR_ACCUM", "BOOK_PROFIT", "LANDMINE"]:
+    for b in ["ENGINE_PICK", "DEEP_VALUE", "RECOVERY_WATCH", "BEAR_ACCUM", "BOOK_PROFIT", "LANDMINE"]:
         grp = act[act["_B"]==b]
         if grp.empty: continue
         _grp_total = len(grp)
@@ -406,15 +404,17 @@ def build_action_plan() -> str:
     cs2 = load("composite")
     if not cs2.empty and "TIER" in cs2.columns:
         tc = cs2["TIER"].value_counts()
-        _ep_n   = act[act["_B"]=="ENGINE_PICK"].shape[0]  if not act.empty else 0
-        _es_n   = act[act["_B"]=="EARLY_SIGNAL"].shape[0] if not act.empty else 0
-        _dv_n   = act[act["_B"]=="DEEP_VALUE"].shape[0]   if not act.empty else 0
-        _bp_n   = act[act["_B"]=="BOOK_PROFIT"].shape[0]  if not act.empty else 0
-        _lm_n   = act[act["_B"]=="LANDMINE"].shape[0]     if not act.empty else 0
+        _ep_n   = act[act["_B"]=="ENGINE_PICK"].shape[0]   if not act.empty else 0
+        _dv_n   = act[act["_B"]=="DEEP_VALUE"].shape[0]    if not act.empty else 0
+        _rw_n   = act[act["_B"]=="RECOVERY_WATCH"].shape[0] if not act.empty else 0
+        _ba_n   = act[act["_B"]=="BEAR_ACCUM"].shape[0]    if not act.empty else 0
+        _bp_n   = act[act["_B"]=="BOOK_PROFIT"].shape[0]   if not act.empty else 0
+        _lm_n   = act[act["_B"]=="LANDMINE"].shape[0]      if not act.empty else 0
         _tier_line = (
             f"<b>Picks:</b> ENGINE PICK <b>{_ep_n}</b> | "
-            f"EARLY SIGNAL <b>{_es_n}</b> | "
             f"DEEP VALUE <b>{_dv_n}</b> | "
+            f"RECOVERY <b>{_rw_n}</b> | "
+            f"BEAR ACCUM <b>{_ba_n}</b> | "
             f"BOOK PROFIT <b>{_bp_n}</b> | "
             f"EXIT <b>{_lm_n}</b>\n"
             f"<b>Universe:</b> PRIME <b>{tc.get('PRIME',0)}</b> | "
