@@ -77,6 +77,7 @@ CSV  = {
     "early_alerts": REPO / "early_alerts.csv",
     "watchlist":    REPO / "watchlist_for_cloud.csv",
 }
+PORTFOLIO_FILE = REPO / "user_portfolio.csv"
 SEEN_FILE    = REPO / "seen_hashes.json"
 MORNING_FILE = REPO / "morning_brief_sent.json"
 HOURLY_FILE  = REPO / "hourly_news_sent.json"    # per-hour dedup
@@ -310,32 +311,21 @@ def build_action_plan() -> str:
     _, mstate = market_summary()
     mstate2, mkt2 = market_summary()
 
-    # ── Tier-aware bucket ─────────────────────────────────────────────────
+    # ── 5-label bucket (s90 unified pick names) ──────────────────────────
+    # Reads directly from AI_ACTION strings set by build_action_language.py.
+    # Labels: ENGINE PICK | EARLY SIGNAL | DEEP VALUE | RECOVERY WATCH | BEAR ACCUMULATE | BOOK PROFIT | EXIT IMMEDIATELY
     def bucket(row):
         a = str(row.get(action_col,"")).upper()
-        t = str(row.get(tier_col, "")).upper() if tier_col else ""
-        if "BEAR ACCUM" in a or "3X POTENTIAL" in a or "STAGED ACCUM" in a: return "BEAR_ACCUM"
-        if "RECOVERY"   in a or "TRANCHE"      in a: return "RECOVERY"
-        if "STRONG_BUY" in a or "STRONG BUY"   in a: return "STRONG_BUY"
-        if "BUY" in a or "FRESH" in a:
-            # In BEAR, only STRONG+ gets BUY; WLC gets BEAR_ACCUM
-            if mstate2 == "BEAR" and t not in ("PRIME","STRONG"): return "BEAR_ACCUM"
-            # In CAUTION, only STRONG+ gets BUY; WLC gets ACCUMULATE
-            if mstate2 == "CAUTION" and t not in ("PRIME","STRONG"): return "ACCUMULATE"
-            return "BUY"
-        if "ACCUMULATE" in a or "ADD" in a:
-            if mstate2 == "BEAR" and t not in ("PRIME","STRONG","WATCHLIST_CONFIRMED"): return None
-            return "ACCUMULATE"
+        if "ENGINE PICK"      in a: return "ENGINE_PICK"
+        if "EARLY SIGNAL"     in a: return "EARLY_SIGNAL"
+        if "DEEP VALUE"       in a: return "DEEP_VALUE"
+        if "RECOVERY WATCH"   in a: return "RECOVERY_WATCH"
+        if "BEAR ACCUM"       in a: return "BEAR_ACCUM"
+        if "BOOK PROFIT"      in a: return "BOOK_PROFIT"
+        if "EXIT IMMEDIATELY" in a or "LANDMINE" in a: return "LANDMINE"
         return None
 
-    # Add BEATEN_DOWN_WATCH stocks to RECOVERY
-    _beaten = {sym for sym, d in cs_map.items() if d.get("beaten")}
-
     al["_B"] = al.apply(bucket, axis=1)
-    if sym_col and _beaten:
-        _bm = al[sym_col].str.upper().isin(_beaten) & al["_B"].isna()
-        al.loc[_bm, "_B"] = "RECOVERY"
-
     act = al[al["_B"].notna()].copy()
     if score_col and score_col in act.columns:
         act[score_col] = pd.to_numeric(act[score_col], errors="coerce")
@@ -365,69 +355,34 @@ def build_action_plan() -> str:
         "",
     ]
 
-    BEAR_ACCUM_MAX = 5  # s55: strict quality gate
-    def _bear_q(r):
-        _bc = cs_map.get(str(r.get(sym_col,"")).strip().upper(), {})
-        return (_bc.get("q",0)>=15 and _bc.get("g",0)>=8
-                and _bc.get("s",0)>=4 and _bc.get("c",0)>=8)
-    LABELS = {"STRONG_BUY":"🟢 STRONG BUY","BUY":"🟢 BUY",
-               "ACCUMULATE":"🔵 ACCUMULATE","BEAR_ACCUM":"💜 BEAR ACCUM (top 5)",
-               "RECOVERY":"🌱 RECOVERY WATCH"}
+    # 7 pick labels (s110: added RECOVERY_WATCH, BEAR_ACCUM)
+    PICK_LABELS = {
+        "ENGINE_PICK":     "✅ ENGINE PICK",
+        "EARLY_SIGNAL":    "🚀 EARLY SIGNAL",
+        "DEEP_VALUE":      "💎 DEEP VALUE",
+        "RECOVERY_WATCH":  "🌱 RECOVERY WATCH",
+        "BEAR_ACCUM":      "🐻 BEAR ACCUMULATE",
+        "BOOK_PROFIT":     "📈 BOOK PROFIT",
+        "LANDMINE":        "☠ EXIT IMMEDIATELY",
+    }
+    # Display limits per bucket: ENGINE/DEEP/LANDMINE show all; EARLY truncated
+    PICK_LIMITS = {
+        "ENGINE_PICK": 20, "EARLY_SIGNAL": 8, "DEEP_VALUE": 15,
+        "RECOVERY_WATCH": 15, "BEAR_ACCUM": 10,
+        "BOOK_PROFIT": 15, "LANDMINE": 20,
+    }
 
     import re as _re
     total = 0
-    # s55: ACCUMULATE removed -- per-model section is the source of truth
-    # s55: ACCUMULATE removed -- per-model section is the source of truth
-    # s56 revert: ACCUMULATE re-removed (82 stocks shown was wrong)
-    for b in ["STRONG_BUY","BUY","BEAR_ACCUM","RECOVERY"]:
+    for b in ["ENGINE_PICK", "EARLY_SIGNAL", "DEEP_VALUE", "RECOVERY_WATCH", "BEAR_ACCUM", "BOOK_PROFIT", "LANDMINE"]:
         grp = act[act["_B"]==b]
         if grp.empty: continue
-        # s55-bear-tight: 97th percentile quality sort, no hard gate
-        if b == "BEAR_ACCUM":
-            def _qsc(_r):
-                _d = cs_map.get(str(_r.get(sym_col,"")).strip().upper(),{})
-                return (_d.get("q",0)*2.0 + _d.get("g",0)*1.5
-                            + _d.get("s",0)*1.0 + _d.get("c",0)*0.5)
-            _bsc = grp.apply(_qsc, axis=1)
-            _thr = _bsc.quantile(0.97) if len(_bsc) > 5 else _bsc.min()
-            _gf  = grp[_bsc >= _thr]
-            if not _gf.empty:
-                grp = _gf.loc[_bsc[_gf.index].sort_values(ascending=False).index]
-
-        # s56 Bloomberg-grade: RECOVERY quality-sort by market state
-        # No hard gates -- pure quality ranking. Total = full depth.
-        _grp_total = len(grp)  # capture full depth before any display filter
-        if b == "RECOVERY":
-            def _rqsc(_r):
-                _d = cs_map.get(str(_r.get(sym_col,"")).strip().upper(),{})
-                return (_d.get("q",0)*2.0 + _d.get("g",0)*1.5
-                            + _d.get("s",0)*1.0 + _d.get("c",0)*0.5)
-            _rsc = grp.apply(_rqsc, axis=1)
-            if mstate2 == "CAUTION":
-                # CAUTION: quality-sort only, head(5) applied at display
-                # No percentile filter -- guarantees 5 shown not 3
-                grp = grp.loc[_rsc.sort_values(ascending=False).index]
-                LABELS["RECOVERY"] = ("⚡ CAUTION WATCH "
-                                      "(top 5 of " + str(_grp_total) + ")")
-            elif mstate2 == "BEAR":
-                grp = grp.loc[_rsc.sort_values(ascending=False).index]
-                LABELS["RECOVERY"] = "🌱 RECOVERY WATCH"
-            else:
-                if score_col and score_col in grp.columns:
-                    grp = grp.sort_values(score_col, ascending=False)
-                LABELS["RECOVERY"] = "🌱 RECOVERY WATCH"
-
-        total += _grp_total  # always count full depth, not just displayed
-        lines.append(f"<b>{LABELS[b]}</b>  ({_grp_total})")
-        if b == "BEAR_ACCUM":
-            _disp = grp.head(BEAR_ACCUM_MAX)
-        elif b == "RECOVERY" and mstate2 == "CAUTION":
-            _disp = grp.head(5)   # top 5 only in CAUTION
-        else:
-            _disp = grp.head(15 if b == "BUY" else 8)
+        _grp_total = len(grp)
+        total += _grp_total
+        lines.append(f"<b>{PICK_LABELS[b]}</b>  ({_grp_total})")
+        _disp = grp.head(PICK_LIMITS[b])
         for _, row in _disp.iterrows():
             sym   = str(row.get(sym_col,"")).strip()
-            nm    = str(row.get(name_col,""))[:16] if name_col else ""
             sc    = _si(row.get(score_col,0)) if score_col else 0
             phase = str(row.get(phase_col,"")).strip()[:12] if phase_col else ""
             ph_s  = f"[{phase}]" if phase and phase not in ("nan","None","—","") else ""
@@ -443,35 +398,36 @@ def build_action_plan() -> str:
                 f"  • <code>{sym:<10}</code> <b>{sc}</b> {ph_s}\n"
                 f"       Q:{q} G:{g} S:{s} C:{c} | {e_s} | {sl_s}"
             )
-        if len(grp) > 8:
-            lines.append(f"  ... +{len(grp)-8} more")
+        if _grp_total > PICK_LIMITS[b]:
+            lines.append(f"  ... +{_grp_total - PICK_LIMITS[b]} more")
         lines.append("")
 
-    # Always show tier counts
+    # Always show pick counts + universe summary
     cs2 = load("composite")
     if not cs2.empty and "TIER" in cs2.columns:
         tc = cs2["TIER"].value_counts()
-        _strong_n = tc.get('STRONG', 0)
-        _prime_n  = tc.get('PRIME', 0)
+        _ep_n   = act[act["_B"]=="ENGINE_PICK"].shape[0]  if not act.empty else 0
+        _es_n   = act[act["_B"]=="EARLY_SIGNAL"].shape[0] if not act.empty else 0
+        _dv_n   = act[act["_B"]=="DEEP_VALUE"].shape[0]   if not act.empty else 0
+        _bp_n   = act[act["_B"]=="BOOK_PROFIT"].shape[0]  if not act.empty else 0
+        _lm_n   = act[act["_B"]=="LANDMINE"].shape[0]     if not act.empty else 0
         _tier_line = (
-            f"📊 PRIME <b>{_prime_n}</b>  "
-            f"STRONG <b>{_strong_n}</b>  "
-            f"WLC <b>{tc.get('WATCHLIST_CONFIRMED',0)}</b>  "
-            f"LANDMINE <b>{tc.get('LANDMINE',0)}</b>"
+            f"<b>Picks:</b> ENGINE PICK <b>{_ep_n}</b> | "
+            f"EARLY SIGNAL <b>{_es_n}</b> | "
+            f"DEEP VALUE <b>{_dv_n}</b> | "
+            f"BOOK PROFIT <b>{_bp_n}</b> | "
+            f"EXIT <b>{_lm_n}</b>\n"
+            f"<b>Universe:</b> PRIME <b>{tc.get('PRIME',0)}</b> | "
+            f"STRONG <b>{tc.get('STRONG',0)}</b> | "
+            f"WLC <b>{tc.get('WATCHLIST_CONFIRMED',0)}</b>"
         )
-        if _strong_n == 0 and mstate2 == 'CAUTION':
-            _tier_line += (
-                "\n<i>CAUTION: threshold raised to 57pts — "
-                "prev STRONG stocks now WLC. Quality unchanged.</i>"
-            )
         lines.append(_tier_line)
 
     # No actionable stocks — market summary still sent
     if total == 0:
         wlc_n = int(cs2["TIER"].isin(["WATCHLIST_CONFIRMED","WATCHLIST_EXTERNAL"]).sum()) if not cs2.empty else 0
         lines.append(f"\n  No BUY signals — deep {mstate2} market.")
-        lines.append(f"  {wlc_n} watchlist stocks ready for sector recovery.")
-        lines.append(f"  Check Recovery Watch in Excel for beaten-down quality stocks.")
+        lines.append(f"  {wlc_n} watchlist stocks on watch for sector recovery.")
 
     # ── Per-model section ─────────────────────────────────────────────────
     try:
@@ -1468,6 +1424,148 @@ def check_and_score_catalysts(bse_raw=None, seen=None):
 
 
 # ════════════════════════════════════════════════════════════════
+# MSG6 — CONVICTION HOLD CHECK (P11, s83)
+# Fires at market close for portfolio stocks down >15% from entry.
+# Answers: "Is the thesis broken, or is this just volatility?"
+# ════════════════════════════════════════════════════════════════
+def check_conviction_hold_alerts(seen: dict) -> int:
+    """MSG6 — Conviction Hold Check.
+    For each portfolio stock with drawdown > 15%, send conviction assessment.
+    Deduplicates per stock per 10% drawdown floor per day.
+    Returns count of Telegram messages sent."""
+    if not PORTFOLIO_FILE.exists():
+        return 0
+    try:
+        port_df = pd.read_csv(PORTFOLIO_FILE, low_memory=False)
+        port_df.columns = [c.strip() for c in port_df.columns]
+    except Exception as e:
+        print(f"  [MSG6] portfolio read error: {e}")
+        return 0
+    if port_df.empty or "symbol" not in port_df.columns:
+        return 0
+
+    action_df = load("action")
+    comp_df   = load("composite")
+    if action_df.empty or comp_df.empty:
+        return 0
+
+    def _row_map(df, sym_col):
+        m = {}
+        for _, r in df.iterrows():
+            s = str(r.get(sym_col, "") or "").strip().upper()
+            if s:
+                m[s] = r
+        return m
+
+    action_map = _row_map(action_df, "NSE_SYMBOL")
+    comp_map   = _row_map(comp_df,   "NSE_SYMBOL")
+
+    sent      = 0
+    today_str = now_ist().strftime("%Y-%m-%d")
+
+    for _, holding in port_df.iterrows():
+        sym = str(holding.get("symbol", "") or "").strip().upper()
+        if not sym:
+            continue
+        entry_price = _sf(holding.get("entry_price", 0))
+        if entry_price <= 0:
+            continue
+
+        curr_price = _nse_live_price(sym)
+        if curr_price <= 0:
+            continue
+
+        drawdown_pct = (entry_price - curr_price) / entry_price * 100
+        if drawdown_pct < 15.0:
+            continue
+
+        # Floor key: alert fires at 15%, 25%, 35%
+        if drawdown_pct >= 35:
+            floor_key = "35"
+        elif drawdown_pct >= 25:
+            floor_key = "25"
+        else:
+            floor_key = "15"
+
+        dedup_key = f"msg6_{sym}_{floor_key}_{today_str}"
+        if dedup_key in seen:
+            continue
+
+        ar = action_map.get(sym, {})
+        cr = comp_map.get(sym,   {})
+
+        name          = str(ar.get("NAME") or cr.get("NAME") or sym).strip()
+        tier          = str(ar.get("MULTIBAGGER_TIER") or cr.get("TIER") or "").strip()
+        score         = _si(ar.get("COMPOSITE_SCORE") or cr.get("COMPOSITE_BALANCED") or 0)
+        score_vel     = str(cr.get("SCORE_VELOCITY") or ar.get("SCORE_VELOCITY") or "").strip()
+        conviction    = _si(ar.get("CONVICTION_SCORE", 0))
+        conv_label    = str(ar.get("CONVICTION_LABEL", "")).strip()
+        thesis        = str(ar.get("THESIS_WATCHPOINTS", "")).strip()
+        forensic      = str(cr.get("FORENSIC_WARNING", "")).strip()
+        phase         = str(cr.get("DISCOVERY_PHASE", "")).strip()
+        fpi           = _sf(cr.get("FPI_PCT", 0))
+        mf_pct        = _sf(cr.get("MF_PCT", 0))
+        exp_ret       = str(cr.get("EXPECTED_RETURN", "")).strip()
+        stop_loss_val = _sf(cr.get("STOP_LOSS", 0))
+        ai_action     = str(ar.get("AI_ACTION", "")).strip()
+
+        # Icons
+        if drawdown_pct >= 35:
+            dd_icon = "🔴"
+        elif drawdown_pct >= 25:
+            dd_icon = "🟠"
+        else:
+            dd_icon = "🟡"
+
+        if conviction >= 8:
+            conv_icon = "🟢"
+            engine_call = "HOLD — thesis intact, this is volatility"
+        elif conviction >= 5:
+            conv_icon = "🟡"
+            engine_call = "MONITOR — review watchpoints carefully"
+        else:
+            conv_icon = "🔴"
+            engine_call = "RE-EVALUATE — exit signals building"
+
+        vel_display = "↑ Rising" if "+" in score_vel else ("↓ Falling" if "-" in score_vel else "→ Stable")
+
+        # Build message
+        header = (f"📊 <b>CONVICTION CHECK</b> | {now_ist().strftime('%d %b %Y')}\n"
+                  f"<b>{name} ({sym})</b>")
+        if forensic and forensic not in ("nan", ""):
+            header += f"\n⚠️ FORENSIC: {forensic}"
+
+        drawdown_line = (f"\n{dd_icon} Down <b>{drawdown_pct:.0f}%</b> from entry "
+                         f"₹{entry_price:.0f} → now ₹{curr_price:.0f}")
+
+        watchpoints_block = f"\n\n<b>THESIS WATCHPOINTS:</b>\n{thesis}" if thesis and thesis not in ("nan", "") else ""
+
+        phase_line = (f"\n📍 Phase {phase} | FPI+MF: {fpi:.1f}%+{mf_pct:.1f}%"
+                      if phase and phase not in ("nan", "") else "")
+
+        target_line = (f"\n🎯 Expected return: {exp_ret} from today"
+                       if exp_ret and exp_ret not in ("nan", "") else "")
+
+        stop_breach = (f"\n\n🛑 <b>STOP LOSS BREACHED</b> — SL was ₹{stop_loss_val:.0f}"
+                       if stop_loss_val > 0 and curr_price < stop_loss_val else "")
+
+        msg = (f"{header}{drawdown_line}{watchpoints_block}\n\n"
+               f"<b>Score:</b> {score}/100  <b>{tier}</b>\n"
+               f"<b>Velocity:</b> {vel_display}  ({score_vel})\n"
+               f"<b>Conviction:</b> {conv_icon} <b>{conviction}/10</b> — {conv_label}\n"
+               f"{phase_line}{target_line}{stop_breach}\n\n"
+               f"<b>Engine says: {engine_call}</b>")
+
+        ok = send(msg)
+        print(f"  [MSG6] {sym} down {drawdown_pct:.0f}% | conviction {conviction}/10 | sent={ok}")
+        if ok:
+            sent += 1
+            seen[dedup_key] = now_ist().isoformat()
+
+    return sent
+
+
+# ════════════════════════════════════════════════════════════════
 # MAIN
 # ════════════════════════════════════════════════════════════════
 def main():
@@ -1479,9 +1577,38 @@ def main():
     # Used by the dedicated 5-min GitHub Actions job
     import sys as _sys
     catalyst_only_mode = "--catalyst-only" in _sys.argv
+    audit_mode         = "--audit" in _sys.argv
 
     print(f"[{now_str}] cloud_alert_engine v3.0")
-    print(f"  IST: {h:02d}:{m:02d} | push={triggered_by_push} | test={TEST_MODE} | catalyst_only={catalyst_only_mode}")
+    print(f"  IST: {h:02d}:{m:02d} | push={triggered_by_push} | test={TEST_MODE} | catalyst_only={catalyst_only_mode} | audit={audit_mode}")
+
+    # ── AUDIT MODE (s90) — 5:45am IST daily engine health report ──
+    if audit_mode:
+        print("  → AUDIT: Engine health audit")
+        try:
+            _val_path = Path(__file__).resolve().parent / "engine_validator.py"
+            if _val_path.exists():
+                import importlib.util as _ilu
+                _spec = _ilu.spec_from_file_location("engine_validator", _val_path)
+                _vm = _ilu.module_from_spec(_spec)
+                _spec.loader.exec_module(_vm)
+                _vr = _vm.run_audit(verbose=True)
+                # Send the Telegram summary
+                health = _vr.get("health", "UNKNOWN")
+                icon = {"HEALTHY": "OK", "DEGRADED": "DEGRADED", "CRITICAL": "CRITICAL"}.get(health, "?")
+                msg = (f"<b>[{icon}] Daily Engine Audit — {health}</b>\n"
+                       f"{now_str}\n"
+                       f"Pass={_vr['pass']}  Warn={_vr['warn']}  Fail={_vr['fail']}\n\n")
+                for s in _vr.get("sections", []):
+                    sico = {"PASS": "[+]", "WARN": "[~]", "FAIL": "[!]"}.get(s["status"], "?")
+                    msg += f"{sico} {s['section']}: {(s.get('detail') or '')[:70]}\n"
+                ok = send(msg)
+                print(f"  Audit Telegram sent: {ok}")
+            else:
+                send(f"<b>Audit ERROR</b> — engine_validator.py not found")
+        except Exception as _ae:
+            send(f"<b>Audit ERROR</b> — {_ae}")
+        return
 
     if catalyst_only_mode:
         # One BSE fetch, shared seen — live announcements first, then catalyst
@@ -1596,6 +1723,20 @@ def main():
                     sent += 1
             else:
                 print("  No new relevant news this hour")
+
+    # ── MSG6: CONVICTION HOLD CHECK (market close 15:00–18:00 IST) ──
+    # s83: Fires for portfolio stocks down >15% from entry price.
+    # One alert per stock per 10% drawdown floor per day.
+    if 15 <= h <= 18 and PORTFOLIO_FILE.exists():
+        print("  → MSG6: Conviction Hold Check (portfolio drawdown)")
+        _seen_mutable = load_seen()
+        _m6_sent = check_conviction_hold_alerts(_seen_mutable)
+        if _m6_sent > 0:
+            save_seen(_seen_mutable)
+            sent += _m6_sent
+            print(f"  MSG6 alerts sent: {_m6_sent}")
+        else:
+            print("  MSG6: no portfolio drawdowns >15% or no portfolio file")
 
     # Outside all windows
     if sent == 0 and not (9 <= h <= 18) and not in_brief_window:
