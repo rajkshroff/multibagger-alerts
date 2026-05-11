@@ -344,89 +344,75 @@ def build_action_plan() -> str:
         if bw is not None:
             b200 = f" | Above 200DMA: {bw:.1f}%"
 
+    # ── Load composite for tier summary + model re-scoring ───────────────
+    cs2 = load("composite")
+    tier_line = ""
+    if not cs2.empty and "TIER" in cs2.columns:
+        tc = cs2["TIER"].value_counts()
+        tier_line = (
+            f"📊 PRIME <b>{tc.get('PRIME',0)}</b> | "
+            f"STRONG <b>{tc.get('STRONG',0)}</b> | "
+            f"WLC <b>{tc.get('WATCHLIST_CONFIRMED',0)}</b> | "
+            f"MINE <b>{tc.get('LANDMINE',0)}</b>"
+        )
+
     lines = [
         f"<b>🔔 ACTION PLAN — ENGINE RUN COMPLETE</b>",
-        f"<b>{now_str}</b>  {mkt_icon} <b>{mstate2}</b>",
-        f"{mkt_icon} {mstate2}{fg_str}{b200}",
-        "",
+        f"<b>{now_str}</b>  {mkt_icon} <b>{mstate2}</b>{fg_str}{b200}",
     ]
+    if tier_line:
+        lines += ["", tier_line]
+    lines.append("")
 
-    # 4 action channels (s111b: LANDMINE→BOOK PROFIT→BEAR ACCUM→ENGINE PICK)
+    # 4 action channels — top 5 each, compact 1-line per stock
     PICK_LABELS = {
         "LANDMINE":    "☠ EXIT IMMEDIATELY",
         "BOOK_PROFIT": "📈 BOOK PROFIT",
         "BEAR_ACCUM":  "🐻 BEAR ACCUMULATE",
         "ENGINE_PICK": "✅ ENGINE PICK",
     }
-    PICK_LIMITS = {
-        "LANDMINE": 20, "BOOK_PROFIT": 15,
-        "BEAR_ACCUM": 10, "ENGINE_PICK": 20,
-    }
-
-    import re as _re
+    _lm_n = _bp_n = _ba_n = _ep_n = 0
     total = 0
     for b in ["LANDMINE", "BOOK_PROFIT", "BEAR_ACCUM", "ENGINE_PICK"]:
         grp = act[act["_B"]==b]
         if grp.empty: continue
-        _grp_total = len(grp)
-        total += _grp_total
-        lines.append(f"<b>{PICK_LABELS[b]}</b>  ({_grp_total})")
-        _disp = grp.head(PICK_LIMITS[b])
-        for _, row in _disp.iterrows():
-            sym   = str(row.get(sym_col,"")).strip()
-            sc    = _si(row.get(score_col,0)) if score_col else 0
-            phase = str(row.get(phase_col,"")).strip()[:12] if phase_col else ""
-            ph_s  = f"[{phase}]" if phase and phase not in ("nan","None","—","") else ""
-            cd    = cs_map.get(sym.upper(), {})
-            q,g,s,c = cd.get("q",0),cd.get("g",0),cd.get("s",0),cd.get("c",0)
-            er    = cd.get("entry","")
-            sl    = cd.get("sl","")
-            en    = _re.findall(r"₹([\d,]+)", er)
-            e_s   = f"₹{en[0]}–{en[1]}" if len(en)>=2 else (f"₹{en[0]}" if en else "—")
-            slm   = _re.search(r"₹([\d,]+(?:\.\d+)?)", sl)
-            sl_s  = f"SL₹{slm.group(1)}" if slm else "—"
-            lines.append(
-                f"  • <code>{sym:<10}</code> <b>{sc}</b> {ph_s}\n"
-                f"       Q:{q} G:{g} S:{s} C:{c} | {e_s} | {sl_s}"
-            )
-        if _grp_total > PICK_LIMITS[b]:
-            lines.append(f"  ... +{_grp_total - PICK_LIMITS[b]} more")
+        n = len(grp)
+        total += n
+        if   b == "LANDMINE":    _lm_n = n
+        elif b == "BOOK_PROFIT": _bp_n = n
+        elif b == "BEAR_ACCUM":  _ba_n = n
+        elif b == "ENGINE_PICK": _ep_n = n
+        lines.append(f"<b>{PICK_LABELS[b]}</b> ({n})")
+        for _, row in grp.head(5).iterrows():
+            sym = str(row.get(sym_col,"")).strip()
+            sc  = _si(row.get(score_col,0)) if score_col else 0
+            lines.append(f"  • <code>{sym:<10}</code> {sc}")
+        if n > 5:
+            lines.append(f"  … +{n-5} more")
         lines.append("")
 
-    # Always show pick counts + universe summary
-    cs2 = load("composite")
-    if not cs2.empty and "TIER" in cs2.columns:
-        tc = cs2["TIER"].value_counts()
-        _lm_n   = act[act["_B"]=="LANDMINE"].shape[0]      if not act.empty else 0
-        _bp_n   = act[act["_B"]=="BOOK_PROFIT"].shape[0]   if not act.empty else 0
-        _ba_n   = act[act["_B"]=="BEAR_ACCUM"].shape[0]    if not act.empty else 0
-        _ep_n   = act[act["_B"]=="ENGINE_PICK"].shape[0]   if not act.empty else 0
-        _tier_line = (
-            f"<b>Picks:</b> ☠ EXIT <b>{_lm_n}</b> | "
-            f"📈 BOOK PROFIT <b>{_bp_n}</b> | "
-            f"🐻 BEAR ACCUM <b>{_ba_n}</b> | "
-            f"✅ ENGINE PICK <b>{_ep_n}</b>\n"
-            f"<b>Universe:</b> PRIME <b>{tc.get('PRIME',0)}</b> | "
-            f"STRONG <b>{tc.get('STRONG',0)}</b> | "
-            f"WLC <b>{tc.get('WATCHLIST_CONFIRMED',0)}</b>"
-        )
-        lines.append(_tier_line)
+    # Pick count + universe summary
+    lines.append(
+        f"☠ EXIT <b>{_lm_n}</b> | 📈 BP <b>{_bp_n}</b> | "
+        f"🐻 BA <b>{_ba_n}</b> | ✅ EP <b>{_ep_n}</b>"
+    )
 
-    # No actionable stocks — market summary still sent
     if total == 0:
-        wlc_n = int(cs2["TIER"].isin(["WATCHLIST_CONFIRMED","WATCHLIST_EXTERNAL"]).sum()) if not cs2.empty else 0
         lines.append(f"\n  No BUY signals — deep {mstate2} market.")
-        lines.append(f"  {wlc_n} watchlist stocks on watch for sector recovery.")
 
-    # ── Per-model section ─────────────────────────────────────────────────
+    # ── Model picks: ENGINE PICK only, LANDMINE + BOOK PROFIT excluded ────
+    _excluded_syms = {
+        str(r.get(sym_col,"")).strip().upper()
+        for _, r in act[act["_B"].isin(["LANDMINE","BOOK_PROFIT"])].iterrows()
+    }
     try:
         if not cs2.empty and "Q_SCORE" in cs2.columns:
             PW = {
-                "BALANCED":           {"q":20,"g":15,"s":50,"c":15,"i":"⚖️"},
-                "MULTIBAGGER_HUNTER": {"q":15,"g":15,"s":55,"c":15,"i":"🎯"},
-                "SAFE_COMPOUNDER":    {"q":30,"g":20,"s":35,"c":15,"i":"🛡"},
-                "DIVIDEND_INCOME":    {"q":30,"g":20,"s":35,"c":15,"i":"💰"},
-                "SECTOR_SPECIALIST":  {"q":18,"g":15,"s":42,"c":25,"i":"🏭"},
+                "BALANCED":           {"q":20,"g":15,"s":50,"c":15,"i":"⚖️","label":"Balanced"},
+                "MULTIBAGGER_HUNTER": {"q":15,"g":15,"s":55,"c":15,"i":"🎯","label":"Multibagger"},
+                "SAFE_COMPOUNDER":    {"q":30,"g":20,"s":35,"c":15,"i":"🛡","label":"Safe"},
+                "DIVIDEND_INCOME":    {"q":30,"g":20,"s":35,"c":15,"i":"💰","label":"Dividend"},
+                "SECTOR_SPECIALIST":  {"q":18,"g":15,"s":42,"c":25,"i":"🏭","label":"Sector"},
             }
             Q_MAX,G_MAX,S_MAX,C_MAX = 20,15,50,15
             _qn = pd.to_numeric(cs2["Q_SCORE"],errors="coerce").fillna(0)/Q_MAX
@@ -435,44 +421,30 @@ def build_action_plan() -> str:
             _cn = pd.to_numeric(cs2["C_SCORE"],errors="coerce").fillna(0)/C_MAX
             _at = ["PRIME","STRONG"]
             if mstate2 in ("BEAR","CAUTION"): _at.append("WATCHLIST_CONFIRMED")
-            _al_map = {str(r.get(sym_col,"")).strip().upper(): str(r.get(action_col,"")).strip()
-                       for _, r in al.iterrows() if sym_col and action_col}
-            lines.append("\n<b>── TOP PICKS BY MODEL ──</b>")
+            _sym_col2 = "NSE_SYMBOL" if "NSE_SYMBOL" in cs2.columns else None
+            lines.append("\n<b>── MODEL PICKS ──</b>")
             for prof, wts in PW.items():
                 _ps = (_qn*wts["q"]+_gn*wts["g"]+_sn*wts["s"]+_cn*wts["c"]).round(1)
                 _pc = cs2.copy(); _pc["_PS"] = _ps
+                if _sym_col2:
+                    _pc = _pc[~_pc[_sym_col2].astype(str).str.strip().str.upper().isin(_excluded_syms)]
                 _tc2 = "TIER" if "TIER" in _pc.columns else None
                 if _tc2:
                     _top = _pc[_pc[_tc2].isin(_at)].sort_values("_PS",ascending=False).head(3)
                 else:
                     _top = _pc.sort_values("_PS",ascending=False).head(3)
-                lines.append(f"  {wts['i']} <b>{prof.replace('_',' ').title()}</b>")
-                if _top.empty:
-                    lines.append(f"    — none in {'/'.join(_at)} tier")
+                if _top.empty or _sym_col2 is None:
+                    lines.append(f"  {wts['i']} <b>{wts['label']}</b>: —")
                     continue
-                for _, _pr in _top.iterrows():
-                    _ps2  = str(_pr.get("NSE_SYMBOL","")).strip()
-                    _psc  = int(_pr.get("_PS",0))
-                    _pt   = str(_pr.get("TIER",""))[:6]
-                    _pq   = _si(_pr.get("Q_SCORE",0)); _pg=_si(_pr.get("G_SCORE",0))
-                    _pss  = _si(_pr.get("S_SCORE",0)); _pcc=_si(_pr.get("C_SCORE",0))
-                    _pcd  = cs_map.get(_ps2.upper(),{})
-                    _pen  = _re.findall(r"₹([\d,]+)", _pcd.get("entry",""))
-                    _pes  = f"₹{_pen[0]}–{_pen[1]}" if len(_pen)>=2 else (f"₹{_pen[0]}" if _pen else "—")
-                    _pslm = _re.search(r"₹([\d,]+(?:\.\d+)?)", _pcd.get("sl",""))
-                    _psls = f"SL₹{_pslm.group(1)}" if _pslm else "—"
-                    _act_m = _al_map.get(_ps2.upper(), "")
-                    _act_s = _re.sub(r'^[^A-Za-z]+', '', _act_m).split()[0] if _act_m else ""
-                    lines.append(
-                        f"    • <code>{_ps2:<10}</code> <b>{_psc}</b> [{_pt}] "
-                        f"Q:{_pq} G:{_pg} S:{_pss} C:{_pcc}\n"
-                        f"         {_pes} | {_psls}"
-                        + (f" | {_act_s}" if _act_s else "")
-                    )
+                _picks = "  ".join(
+                    f"<code>{str(_pr.get(_sym_col2,''))}</code>({int(_pr.get('_PS',0))})"
+                    for _, _pr in _top.iterrows()
+                )
+                lines.append(f"  {wts['i']} <b>{wts['label']}</b>: {_picks}")
     except Exception as _pme:
-        lines.append(f"<i>[model breakdown error: {_pme}]</i>")
+        lines.append(f"<i>[model error: {_pme}]</i>")
 
-    lines.append(f"\n<i>🤖 Engine run complete — {total} actionable stocks</i>")
+    lines.append(f"\n<i>🤖 Engine complete — {total} actionable stocks</i>")
     return "\n".join(lines)
 
 
