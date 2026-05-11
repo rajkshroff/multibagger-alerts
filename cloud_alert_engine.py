@@ -883,76 +883,81 @@ def _confidence(age_h: float) -> tuple:
 #   Cloud just reads the result. Zero logic divergence.
 # ══════════════════════════════════════════════════════════════
 
-# Material keywords — order wins, results, material events
-_CATALYST_MATERIAL_KW = [
-    # Orders & contracts (biggest price movers)
+# s115: 3-pass filter redesign — noise-first → high-priority-material → routine-skip
+# Pass 1 (absolute noise): transcript, conference calls, investor meets — never material
+_CATALYST_NOISE_ALWAYS = [
+    "transcript","conference call","investor meet","analyst meet",
+    "earnings call invite","earnings call schedule","webinar",
+    "press conference","investor day","investor presentation",
+]
+# Pass 2 (high-priority material): always pass regardless of other patterns
+_CATALYST_HIGH_PRI = [
+    # Orders & contracts
     "order win","order worth","new order","secures order","contract awarded",
     "contract won","loa received","ppa signed","mou signed","project award",
     "letter of award","purchase order","work order","epc contract","repeat order",
     "export order","government contract","bags order",
-    # Earnings
-    "financial results","quarterly results","q1 result","q2 result",
-    "q3 result","q4 result","annual result",
+    # Earnings & financial events
+    "financial result","quarterly result","annual result",
+    "q1 result","q2 result","q3 result","q4 result","half year result",
+    "audited result","unaudited result",
     # Corporate actions
     "dividend","bonus share","stock split","buyback","open offer","rights issue",
     # M&A
     "acquisition","merger","amalgamation","demerger","takeover",
-    # Business events (UP)
+    # Regulatory approvals
     "drug approval","usfda approval","dcgi approval","patent granted",
     "capacity expansion","new plant","plant commissioned","pli scheme",
-    "tariff hike","price hike","import duty","anti-dumping",
-    # Regulatory/negative (DOWN)
+    # Negative events
     "sebi order","sebi penalty","ed raid","income tax raid",
     "fraud","default","insolvency","pledge invoked",
-    "rating downgrade","ceo resign","md resign","cfo resign",
-    "auditor resign","going concern","plant fire","factory fire",
-    "force majeure","plant shutdown","contract cancelled","strike",
+    "rating downgrade","bulk deal","block deal",
+    "tariff hike","price hike","import duty","anti-dumping",
+    "plant fire","factory fire","force majeure","plant shutdown",
+    "contract cancelled","going concern",
+    "ceo resign","md resign","cfo resign","auditor resign",
 ]
-
-# Always skip — routine noise
+# Pass 3 (routine skip): low-value admin/scheduling notices
 _CATALYST_ROUTINE_SKIP = [
+    "board meeting","meeting of the board","board of directors",
+    "is scheduled","scheduled on","to be held on","scheduled to be held",
     "trading window","regulation 30","sebi (lodr)",
     "listing obligations","intimation of closure","new listing",
     "listing of securities",
-    # SEBI SAST shareholding disclosures — contain word "acquisition" in regulation
-    # name but are NOT actual acquisitions. Session 39 fix.
     "regulation 29","regulation 10(6)","regulation 10 (6)",
     "substantial acquisition of shares and takeovers",
     "sebi (substantial acquisition",
     "reg 29","reg. 29","intimation under regulation",
-    # Other routine
     "postal ballot","scrutinizer report","closure of trading window",
     "record date","book closure","change in directorate",
     "resignation of","appointment of","re-appointment",
-    # s55: board meeting noise
-    "board meeting scheduled","board meeting to be held",
-    "meeting of the board of directors",
-    "intimation of board meeting",
-    "convening of board meeting",
-    "intimation regarding board meeting",
     "change in registered office","shifting of registered",
+    "shareholding pattern","promoter holding",
 ]
 
-# Noisy categories — skip unless subject has material keyword
+# Noisy categories — pass only for the few material sub-types
 _CATALYST_NOISY_CATS = {"Insider Trading / SAST","Insider Trading","Company Update","Intimation"}
 
 def _catalyst_is_material(subject: str, category: str) -> bool:
-    """Return True if announcement is price-moving material."""
+    """Return True if announcement is price-moving material.
+    3-pass: noise-first (always skip) → high-priority (always pass) → routine-skip → default False.
+    """
     subj = subject.lower()
     cat  = category.strip()
-    # Routine skip always wins
-    for r in _CATALYST_ROUTINE_SKIP:
-        if r in subj:
-            return False
-    # Noisy category: require material keyword
+    # Pass 1: absolute noise — skip before checking material keywords
+    if any(kw in subj for kw in _CATALYST_NOISE_ALWAYS):
+        return False
+    # Pass 2: high-priority material — pass immediately
+    if any(kw in subj for kw in _CATALYST_HIGH_PRI):
+        return True
+    # Pass 3: routine admin/scheduling skip
+    if any(kw in subj for kw in _CATALYST_ROUTINE_SKIP):
+        return False
+    # Noisy categories: only specific high-value sub-types
     if cat in _CATALYST_NOISY_CATS:
         return any(kw in subj for kw in [
             "pledge invoked","acquisition","bulk deal","merger","order","fraud"
         ])
-    # Material keyword check
-    for m in _CATALYST_MATERIAL_KW:
-        if m in subj:
-            return True
     return False
 
 def _catalyst_event_label(subject: str) -> str:
