@@ -898,6 +898,9 @@ _CATALYST_NOISE_ALWAYS = [
     "transcript","conference call","investor meet","analyst meet",
     "earnings call invite","earnings call schedule","webinar",
     "press conference","investor day","investor presentation",
+    "newspaper publication",   # e.g. "Newspaper Publication - Financial Results" (just a newspaper ad)
+    "investor call",           # e.g. "Acquisition investor call" transcripts
+    "earnings presentation",   # investor slide decks
 ]
 # Pass 2 (high-priority material): always pass regardless of other patterns
 _CATALYST_HIGH_PRI = [
