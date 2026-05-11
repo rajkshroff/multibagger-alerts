@@ -301,10 +301,11 @@ def build_action_plan() -> str:
                 "g":  _si(_cr.get("G_SCORE",0)),
                 "s":  _si(_cr.get("S_SCORE",0)),
                 "c":  _si(_cr.get("C_SCORE",0)),
-                "entry": str(_cr.get("ENTRY_ZONE","—")).strip(),
-                "sl":    str(_cr.get("STOP_LOSS","—")).strip(),
-                "beaten": bool(_cr.get("BEATEN_DOWN_WATCH", False)),
-                "tier":  str(_cr.get("TIER","")).strip(),
+                "entry":   str(_cr.get("ENTRY_ZONE","—")).strip(),
+                "sl":      str(_cr.get("STOP_LOSS","—")).strip(),
+                "beaten":  bool(_cr.get("BEATEN_DOWN_WATCH", False)),
+                "tier":    str(_cr.get("TIER","")).strip(),
+                "exp_ret": str(_cr.get("EXPECTED_RETURN","")).strip(),
             }
 
     _, mstate = market_summary()
@@ -349,9 +350,15 @@ def build_action_plan() -> str:
     tier_line = ""
     if not cs2.empty and "TIER" in cs2.columns:
         tc = cs2["TIER"].value_counts()
+        _TG_ER = {
+            ("PRIME",  "BULL"):   (25,42), ("PRIME",  "CAUTION"): (15,30), ("PRIME",  "BEAR"): (18,40),
+            ("STRONG", "BULL"):   (15,28), ("STRONG", "CAUTION"): (10,22), ("STRONG", "BEAR"): (12,30),
+        }
+        _p_er = _TG_ER.get(("PRIME",  mstate2.upper()), (15,30))
+        _s_er = _TG_ER.get(("STRONG", mstate2.upper()), (10,22))
         tier_line = (
-            f"📊 PRIME <b>{tc.get('PRIME',0)}</b> | "
-            f"STRONG <b>{tc.get('STRONG',0)}</b> | "
+            f"📊 PRIME <b>{tc.get('PRIME',0)}</b> (+{_p_er[0]}–{_p_er[1]}%/yr) | "
+            f"STRONG <b>{tc.get('STRONG',0)}</b> (+{_s_er[0]}–{_s_er[1]}%/yr) | "
             f"WLC <b>{tc.get('WATCHLIST_CONFIRMED',0)}</b> | "
             f"MINE <b>{tc.get('LANDMINE',0)}</b>"
         )
@@ -386,7 +393,9 @@ def build_action_plan() -> str:
         for _, row in grp.head(5).iterrows():
             sym = str(row.get(sym_col,"")).strip()
             sc  = _si(row.get(score_col,0)) if score_col else 0
-            lines.append(f"  • <code>{sym:<10}</code> {sc}")
+            _er = cs_map.get(sym.upper(),{}).get("exp_ret","")
+            _er_s = (" +" + _er.split("(")[0].strip()) if "%" in _er else ""
+            lines.append(f"  • <code>{sym:<10}</code> {sc}{_er_s}")
         if n > 5:
             lines.append(f"  … +{n-5} more")
         lines.append("")
