@@ -464,32 +464,91 @@ def build_morning_brief() -> str:
     day = now_ist().strftime("%A, %d %b %Y")
     mstate, mkt_text = market_summary()
 
-    # Top picks
+    # Load action language — primary source for actions + tier
     al  = load("action")
-    picks = []
+    # Load composite scores for expected return projections (best-effort)
+    cs  = load("composite")
+    _er_map = {}
+    if not cs.empty and "NSE_SYMBOL" in cs.columns:
+        _er_col = next((c for c in cs.columns if "EXPECTED_RETURN" in c.upper()), None)
+        if _er_col:
+            for _, _r in cs.iterrows():
+                _s = str(_r.get("NSE_SYMBOL","")).strip().upper()
+                if _s: _er_map[_s] = str(_r.get(_er_col,"") or "").strip()
+
+    # Channel counts + exit set
+    _exit_syms = set()
+    _ba_syms   = set()
+    _ch_line   = ""
+    ac = None
     if not al.empty:
-        ac = next((c for c in al.columns if "ACTION" in c.upper()), None)
-        sc = next((c for c in al.columns if "COMPOSITE" in c.upper()), None)
-        if ac and sc:
-            al[sc] = pd.to_numeric(al[sc], errors="coerce")
-            buys = al[al[ac].str.contains("BUY|ACCUM", case=False, na=False)].copy()
-            TIER_RANK = {"PRIME":0,"STRONG":1,"WL_CONFIRMED":2,"WATCHLIST_CONFIRMED":2,"WL_EXTERNAL":3}
-            tc2 = next((c for c in al.columns if "TIER" in c.upper()), None)
-            if tc2:
-                buys["_tr"] = buys[tc2].map(TIER_RANK).fillna(5)
-                buys = buys.sort_values(["_tr", sc], ascending=[True, False])
-            else:
-                buys = buys.sort_values(sc, ascending=False)
-            for _, r in buys.head(7).iterrows():
-                sym   = str(r.get("NSE_SYMBOL",""))
-                tier  = str(r.get(tc2 if tc2 else "MULTIBAGGER_TIER",""))
-                score = _si(r.get(sc,0))
-                entry = (str(r.get("ENTRY_ZONE","") or "")).strip()
-                sl    = (str(r.get("STOP_LOSS","") or "")).strip()
-                act   = str(r.get(ac,""))[:35]
-                tbadge = {"PRIME":"PRIME","STRONG":"STRONG"}.get(tier, tier.replace("WATCHLIST_CONFIRMED","WLC").replace("WL_CONFIRMED","WLC"))
-                price_line = ("Entry:" + entry + " SL:" + sl if entry and entry not in ("-","nan") else "Run engine for price levels")
-                picks.append("  " + sym.ljust(10) + "  " + tbadge.ljust(8) + "  " + str(score) + "/100\n    Action: " + act + "  " + price_line)
+        ac  = next((c for c in al.columns if "ACTION" in c.upper()), None)
+        sc2 = next((c for c in al.columns if "COMPOSITE" in c.upper()), None)
+        if ac:
+            _lm_df = al[al[ac].astype(str).str.contains("EXIT|LANDMINE",  case=False, na=False)]
+            _bp_df = al[al[ac].astype(str).str.contains("BOOK PROFIT",    case=False, na=False)]
+            _ba_df = al[al[ac].astype(str).str.contains("BEAR ACCUM",     case=False, na=False)]
+            _ep_df = al[al[ac].astype(str).str.contains("ENGINE PICK",    case=False, na=False)]
+            _lm = _lm_df.shape[0]; _bp = _bp_df.shape[0]
+            _ba = _ba_df.shape[0]; _ep = _ep_df.shape[0]
+            _ch_line = (f"☠ EXIT <b>{_lm}</b> | 📈 BOOK PROFIT <b>{_bp}</b> | "
+                        f"🐻 BEAR ACCUM <b>{_ba}</b> | ✅ ENGINE PICK <b>{_ep}</b>")
+            # Build sets for exclusion
+            for _, _r in _lm_df.iterrows():
+                _s = str(_r.get("NSE_SYMBOL","")).strip().upper()
+                if _s: _exit_syms.add(_s)
+            for _, _r in _bp_df.iterrows():
+                _s = str(_r.get("NSE_SYMBOL","")).strip().upper()
+                if _s: _exit_syms.add(_s)
+            for _, _r in _ba_df.iterrows():
+                _s = str(_r.get("NSE_SYMBOL","")).strip().upper()
+                if _s: _ba_syms.add(_s)
+
+    # ENGINE PICK top picks (excludes BOOK PROFIT, LANDMINE, BEAR ACCUM)
+    picks = []
+    if not al.empty and ac:
+        sc2 = next((c for c in al.columns if "COMPOSITE" in c.upper()), None)
+        if sc2:
+            al[sc2] = pd.to_numeric(al[sc2], errors="coerce")
+        tc2 = next((c for c in al.columns if "TIER" in c.upper()), None)
+        TIER_RANK = {"PRIME":0,"STRONG":1,"WL_CONFIRMED":2,"WATCHLIST_CONFIRMED":2,"WL_EXTERNAL":3}
+
+        # Filter to ENGINE PICK actions only — not BEAR ACCUM or exit types
+        ep_df = al[al[ac].astype(str).str.contains("ENGINE PICK", case=False, na=False)].copy()
+        # Also exclude any that snuck into _exit_syms (safety guard)
+        if _exit_syms:
+            ep_df = ep_df[~ep_df["NSE_SYMBOL"].astype(str).str.upper().isin(_exit_syms)]
+        if tc2 and sc2:
+            ep_df["_tr"] = ep_df[tc2].map(TIER_RANK).fillna(5)
+            ep_df = ep_df.sort_values(["_tr", sc2], ascending=[True, False])
+        elif sc2:
+            ep_df = ep_df.sort_values(sc2, ascending=False)
+        for _, r in ep_df.head(6).iterrows():
+            sym    = str(r.get("NSE_SYMBOL",""))
+            tier   = str(r.get(tc2 if tc2 else "MULTIBAGGER_TIER",""))
+            score  = _si(r.get(sc2,0)) if sc2 else "—"
+            entry  = (str(r.get("ENTRY_ZONE","") or "")).strip()
+            _er    = _er_map.get(sym.upper(),"")
+            tbadge = {"PRIME":"PRIME","STRONG":"STRONG"}.get(tier, tier.replace("WATCHLIST_CONFIRMED","WLC").replace("WL_CONFIRMED","WLC"))
+            _er_sfx = f" | {_er}" if _er and "%" in _er else ""
+            price_line = ("Entry:" + entry if entry and entry not in ("-","nan") else "Run engine for price levels")
+            picks.append(f"  {sym.ljust(10)}  {tbadge.ljust(8)}  {score}/100{_er_sfx}
+    {price_line}")
+
+    # BEAR ACCUMULATE section with 1Y projections
+    bear_lines = []
+    if not al.empty and ac:
+        sc2 = next((c for c in al.columns if "COMPOSITE" in c.upper()), None)
+        ba_df = al[al[ac].astype(str).str.contains("BEAR ACCUM", case=False, na=False)].copy()
+        if sc2:
+            ba_df[sc2] = pd.to_numeric(ba_df[sc2], errors="coerce")
+            ba_df = ba_df.sort_values(sc2, ascending=False)
+        for _, r in ba_df.head(5).iterrows():
+            sym   = str(r.get("NSE_SYMBOL",""))
+            score = _si(r.get(sc2,0)) if sc2 else "—"
+            _er   = _er_map.get(sym.upper(),"")
+            _er_sfx = f" | {_er}" if _er and "%" in _er else ""
+            bear_lines.append(f"  🐻 <b>{sym}</b> S:{score}{_er_sfx}")
 
     # Early alerts
     ea = load("early_alerts")
@@ -517,28 +576,47 @@ def build_morning_brief() -> str:
 
     cues = global_cues()
 
-    # 4-channel pick counts (s113)
-    _ch_line = ""
-    if not al.empty and ac:
-        _lm = al[al[ac].astype(str).str.contains("EXIT|LANDMINE",  case=False, na=False)].shape[0]
-        _bp = al[al[ac].astype(str).str.contains("BOOK PROFIT",    case=False, na=False)].shape[0]
-        _ba = al[al[ac].astype(str).str.contains("BEAR ACCUM",     case=False, na=False)].shape[0]
-        _ep = al[al[ac].astype(str).str.contains("ENGINE PICK",    case=False, na=False)].shape[0]
-        _ch_line = (f"☠ EXIT <b>{_lm}</b> | 📈 BOOK PROFIT <b>{_bp}</b> | "
-                    f"🐻 BEAR ACCUM <b>{_ba}</b> | ✅ ENGINE PICK <b>{_ep}</b>")
+    msg = f"🇮🇳 <b>MULTIBAGGER — MORNING BRIEF</b>
+<b>{day}</b>
 
-    msg = f"🇮🇳 <b>MULTIBAGGER — MORNING BRIEF</b>\n<b>{day}</b>\n\n{mkt_text}\n"
+{mkt_text}
+"
     if _ch_line:
-        msg += f"\n{_ch_line}\n"
+        msg += f"
+{_ch_line}
+"
     if cues:
-        msg += "\n<b>🌍 Global Cues</b>\n" + "\n".join(cues) + "\n"
+        msg += "
+<b>🌍 Global Cues</b>
+" + "
+".join(cues) + "
+"
+    if bear_lines:
+        msg += "
+<b>🐻 Bear Accumulate (3× potential)</b>
+" + "
+".join(bear_lines) + "
+"
     if picks:
-        msg += "\n<b>🎯 Top Picks</b>\n" + "\n".join(picks) + "\n"
+        msg += "
+<b>✅ Engine Top Picks</b>
+" + "
+".join(picks) + "
+"
     if cycles:
-        msg += "\n<b>🔄 Sector Cycle</b>\n" + "\n".join(cycles) + "\n"
+        msg += "
+<b>🔄 Sector Cycle</b>
+" + "
+".join(cycles) + "
+"
     if alerts:
-        msg += "\n<b>⚡ Early Alerts</b>\n" + "\n".join(alerts) + "\n"
-    msg += f"\n<i>Engine data from last run. Open Excel for full detail.</i>"
+        msg += "
+<b>⚡ Early Alerts</b>
+" + "
+".join(alerts) + "
+"
+    msg += f"
+<i>Engine data from last run. Open Excel for full detail.</i>"
     return msg
 
 
@@ -893,14 +971,18 @@ def _confidence(age_h: float) -> tuple:
 # ══════════════════════════════════════════════════════════════
 
 # s115: 3-pass filter redesign — noise-first → high-priority-material → routine-skip
+# s117: added xbrl/initial disclosure; HTML stripping added inside _catalyst_is_material
 # Pass 1 (absolute noise): transcript, conference calls, investor meets — never material
 _CATALYST_NOISE_ALWAYS = [
     "transcript","conference call","investor meet","analyst meet",
     "earnings call invite","earnings call schedule","webinar",
     "press conference","investor day","investor presentation",
-    "newspaper publication",   # e.g. "Newspaper Publication - Financial Results" (just a newspaper ad)
+    "newspaper publication",   # e.g. "Newspaper Publication - Financial Results"
     "investor call",           # e.g. "Acquisition investor call" transcripts
     "earnings presentation",   # investor slide decks
+    "xbrl",                    # XBRL tagging wrappers (not standalone events)
+    "initial disclosure",      # SEBI SAST initial holding disclosures (LIC/FII threshold crossings)
+    "format of initial",       # "Format of Initial Disclosure to be made by..."
 ]
 # Pass 2 (high-priority material): always pass regardless of other patterns
 _CATALYST_HIGH_PRI = [
@@ -920,6 +1002,8 @@ _CATALYST_HIGH_PRI = [
     # Regulatory approvals
     "drug approval","usfda approval","dcgi approval","patent granted",
     "capacity expansion","new plant","plant commissioned","pli scheme",
+    # Legal/regulatory orders filed under LODR (HIGH_PRI beats ROUTINE_SKIP "sebi (lodr)")
+    "cestat","nclt","nclat","rera order","ngt order","court order received","stay granted","penalty waived",
     # Negative events
     "sebi order","sebi penalty","ed raid","income tax raid",
     "fraud","default","insolvency","pledge invoked",
@@ -945,6 +1029,13 @@ _CATALYST_ROUTINE_SKIP = [
     "resignation of","appointment of","re-appointment",
     "change in registered office","shifting of registered",
     "shareholding pattern","promoter holding",
+    # s117 additions — routine corporate governance events
+    "independent director","statutory auditor","auditor appointment",
+    "annual general meeting","extraordinary general meeting","agm notice","egm notice",
+    "familiarisation programme","induction programme",
+    "change of auditor","secretarial audit",
+    "corporate governance report","compliance report",
+    "lic of india","life insurance corporation",  # LIC's regular SAST holding disclosures
 ]
 
 # Noisy categories — pass only for the few material sub-types
@@ -953,8 +1044,11 @@ _CATALYST_NOISY_CATS = {"Insider Trading / SAST","Insider Trading","Company Upda
 def _catalyst_is_material(subject: str, category: str) -> bool:
     """Return True if announcement is price-moving material.
     3-pass: noise-first (always skip) → high-priority (always pass) → routine-skip → default False.
+    HTML tags stripped before matching so BSE's <b>/<br/> wrappers don't block keyword detection.
     """
-    subj = subject.lower()
+    # s117: BSE subjects sometimes contain HTML tags — strip before keyword matching
+    _clean = re.sub(r'<[^>]+>', '', subject).strip()
+    subj = _clean.lower()
     cat  = category.strip()
     # Pass 1: absolute noise — skip before checking material keywords
     if any(kw in subj for kw in _CATALYST_NOISE_ALWAYS):
@@ -1033,14 +1127,18 @@ def _fetch_bse_for_catalyst() -> list:
 
 def send_bse_live_announcements(bse_raw: list, seen: dict) -> int:
     """
-    Send ⚡ LIVE ANNOUNCEMENT for ALL material BSE events.
-    Universe stocks also get basic tier/score from composite_scores.csv.
+    Send LIVE ANNOUNCEMENTS for material BSE events.
+    s117: NSE symbol first, HTML stripped, same-company grouping.
+    s119: Universe gate — only PRIME/STRONG/WLC/WLE stocks fire alerts.
+          Results downgrade — financial results only for PRIME/STRONG.
     Returns count of new alerts sent.
     """
     import html as _html_la
+    import re as _re_la
     try:
         # Load score map for context enrichment (best-effort)
         _score_map_la = {}
+        _actions_la   = {}
         cs_la = load("composite")
         if not cs_la.empty:
             for _, _row_la in cs_la.iterrows():
@@ -1050,37 +1148,69 @@ def send_bse_live_announcements(bse_raw: list, seen: dict) -> int:
                         "tier":  str(_row_la.get("TIER","")).strip(),
                         "score": _row_la.get("COMPOSITE_BALANCED",""),
                         "name":  str(_row_la.get("NAME","")).strip(),
-                        "entry": str(_row_la.get("ENTRY_ZONE","")).strip(),
-                        "sl":    str(_row_la.get("STOP_LOSS","")).strip(),
                     }
-        # Load action language
-        _actions_la = {}
         al_la = load("action_language")
         if not al_la.empty and "NSE_SYMBOL" in al_la.columns and "AI_ACTION" in al_la.columns:
             for _, _r_la in al_la.iterrows():
                 _s_la = str(_r_la.get("NSE_SYMBOL","")).strip().upper()
                 if _s_la: _actions_la[_s_la] = str(_r_la.get("AI_ACTION","") or "").strip()
 
+        # s119: Universe gate — build tier map. Only fire alerts for engine-tracked stocks.
+        # Non-universe stocks (AVOID/MONITOR/LANDMINE/unmapped) are dropped silently.
+        _universe_tier_la = {}   # NSE_SYMBOL -> TIER (PRIME/STRONG/WLC/WLE only)
+        if not cs_la.empty and "NSE_SYMBOL" in cs_la.columns and "TIER" in cs_la.columns:
+            for _, _ur in cs_la.iterrows():
+                _us = str(_ur.get("NSE_SYMBOL","")).strip().upper()
+                _ut = str(_ur.get("TIER","")).strip()
+                if _us and _ut in ("PRIME","STRONG","WL_CONFIRMED","WL_EXTERNAL"):
+                    _universe_tier_la[_us] = _ut
+        _ps_la = {s for s,t in _universe_tier_la.items() if t in ("PRIME","STRONG")}
+
+        # Keywords that classify an event as "financial results" (scheduled event, not breaking news)
+        _RESULTS_KW_LA = ("financial result","quarterly result","annual result",
+                          "audited result","unaudited result","half year result",
+                          "q1 result","q2 result","q3 result","q4 result")
+
         alerts_la = []
-        for item in bse_raw[:50]:
-            scrip   = str(item.get("SCRIP_CD","") or "").strip()
-            subj    = str(item.get("HEADLINE","") or "").strip()
-            cat     = str(item.get("CATEGORYNAME","") or "").strip()
-            company = str(item.get("short_name","") or item.get("COMPANYNAME","") or "").strip()
-            if not scrip or not subj: continue
-            # Dedup with LIVE_ prefix (separate namespace from S16_ catalyst hashes)
-            h = "LIVE_" + hex(abs(hash(f"{scrip}|{subj[:60]}")))[2:14]
+        for item in bse_raw[:60]:
+            scrip    = str(item.get("SCRIP_CD","") or "").strip()
+            subj_raw = str(item.get("HEADLINE","") or "").strip()
+            cat      = str(item.get("CATEGORYNAME","") or "").strip()
+            company  = str(item.get("short_name","") or item.get("COMPANYNAME","") or "").strip()
+            if not scrip or not subj_raw: continue
+
+            # Dedup on raw subject (stable hash regardless of HTML in feed)
+            h = "LIVE_" + hex(abs(hash(f"{scrip}|{subj_raw[:60]}" )))[2:14]
             if h in seen: continue
             seen[h] = now_ist().isoformat()
+
+            # Strip HTML before filter + display (BSE subjects often contain <b>/<br/>)
+            subj = _re_la.sub(r'<[^>]+>', '', subj_raw).strip()
+
             if not _catalyst_is_material(subj, cat): continue
-            # Resolve company name from BSE map
-            _nse_la  = _BSE_NSE_MAP.get(scrip, "")
+
+            # Resolve NSE symbol first (needed for universe gate)
+            _nse_la = _BSE_NSE_MAP.get(scrip, "")
+
+            # Universe gate: skip stocks not in engine universe entirely
+            if _universe_tier_la and _nse_la not in _universe_tier_la:
+                continue
+
+            # Results downgrade: financial results only for PRIME/STRONG.
+            # WLC/WLE stocks' results are picked up by the next engine run — not urgent live alerts.
+            _subj_lo_la = subj.lower()
+            if (any(kw in _subj_lo_la for kw in _RESULTS_KW_LA)
+                    and _nse_la not in _ps_la):
+                continue
+
+            # Display name resolution
             _id_name = _BSE_NSE_MAP.get(f"NAME_{scrip}", "")
             _sc_name = _score_map_la.get(_nse_la, {}).get("name", "") if _nse_la else ""
-            _name_la = company or _id_name or _sc_name or _nse_la or f"BSE:{scrip}"
+            _name_la = _id_name or _sc_name or company or (_nse_la if _nse_la else f"BSE:{scrip}")
+
             alerts_la.append({
                 "scrip": scrip, "nse": _nse_la,
-                "name": _name_la, "subj": subj,
+                "name":  _name_la, "subj": subj,
                 "label": _catalyst_event_label(subj),
             })
 
@@ -1088,14 +1218,42 @@ def send_bse_live_announcements(bse_raw: list, seen: dict) -> int:
             print("  [live-ann] No new material events")
             return 0
 
+        # Group same company (same NSE symbol or same BSE code)
+        _grp_keys   = {}
+        _grouped_la = []
+        for ev in alerts_la:
+            _k = ev["nse"] if ev["nse"] else ev["scrip"]
+            if _k not in _grp_keys:
+                _grp_keys[_k] = ev.copy()
+                _grouped_la.append(_grp_keys[_k])
+            else:
+                _existing = _grp_keys[_k]["label"]
+                _new_lbl  = ev["label"]
+                if _new_lbl not in _existing:
+                    _grp_keys[_k]["label"] = _existing + " + " + _new_lbl
+
         now_s_la = now_ist().strftime("%H:%M IST, %d %b")
-        lines_la = [f"\u26a1 <b>LIVE ANNOUNCEMENT \u2014 {now_s_la}</b>", ""]
-        for ev in alerts_la[:8]:
-            disp_la = _html_la.escape(ev["name"])
-            lines_la.append(f"\U0001f6a8 <b>{disp_la}</b> <i>(BSE:{ev['scrip']})</i>")
-            # s55: clean boilerplate, show full sentence
-            import re as _re_la
-            _sc = ev["subj"]
+        lines_la = [f"⚡ <b>LIVE ANNOUNCEMENTS — {now_s_la}</b>", ""]
+
+        for ev in _grouped_la[:8]:
+            _nse_la  = ev["nse"]
+            _name_la = ev["name"]
+            _lbl_la  = ev["label"]
+            _subj    = ev["subj"]
+
+            # Header: NSE symbol first if known, otherwise company name
+            if _nse_la:
+                lines_la.append(
+                    f"🚨 <b>{_html_la.escape(_nse_la)}</b> "
+                    f"({_html_la.escape(_name_la)}) — {_html_la.escape(_lbl_la)}"
+                )
+            else:
+                lines_la.append(
+                    f"📰 <b>{_html_la.escape(_name_la)}</b> — {_html_la.escape(_lbl_la)}"
+                )
+
+            # Clean boilerplate from subject and show key sentence
+            _sc = _subj
             for _bp in [
                 r"^(The company|The Board|The Company).{0,60}(informs?|hereby).{0,30}that\s+",
                 r"^Pursuant to.{0,60}Regulation[^,]{0,20},\s*",
@@ -1104,45 +1262,36 @@ def send_bse_live_announcements(bse_raw: list, seen: dict) -> int:
             ]:
                 _sc = _re_la.sub(_bp, "", _sc, flags=_re_la.I).strip()
             if _sc: _sc = _sc[0].upper() + _sc[1:]
-            _cut = min(120, len(_sc))
+            _cut = min(110, len(_sc))
             _se = _re_la.search(r"[.!?]", _sc[30:80])
             if _se: _cut = 30 + _se.end()
-            _lbl_la = ev["label"]
-            lines_la.append(f"  {_html_la.escape(_lbl_la)} -- {_html_la.escape(_sc[:_cut])}")
-            # Engine context for universe stocks
-            _nse_la = ev["nse"]
+            lines_la.append(f"  {_html_la.escape(_sc[:_cut])}")
+
+            # Engine context line (only for universe stocks with meaningful tier)
             if _nse_la and _nse_la in _score_map_la:
                 _inf_la = _score_map_la[_nse_la]
                 _t_la   = _inf_la.get("tier","")
                 _sc_la  = _inf_la.get("score","")
-                _en_la  = _inf_la.get("entry","")
-                _sl_la  = _inf_la.get("sl","")
-                _ctx_la = []
-                if _t_la and _t_la not in ("AVOID","MONITOR"):
-                    try: _ctx_la.append(f"<b>{_t_la}</b> S:{int(float(str(_sc_la)))}")
-                    except: _ctx_la.append(f"<b>{_t_la}</b>")
-                if _en_la and "\u20b9" in _en_la:
-                    _ep_la = _en_la.split("\u20b9")[1:]
-                    _n1_la = _ep_la[0].split("\u2013")[0].strip().rstrip(",") if _ep_la else ""
-                    _n2_la = _ep_la[1].strip().rstrip(",") if len(_ep_la) > 1 else ""
-                    if _n1_la and _n2_la: _ctx_la.append(f"Entry \u20b9{_n1_la}\u2013{_n2_la}")
-                if _sl_la and "\u20b9" in _sl_la:
-                    _sl_n_la = _sl_la.split("\u20b9")[-1].split()[0].rstrip(",")
-                    if _sl_n_la: _ctx_la.append(f"SL \u20b9{_sl_n_la}")
                 _act_la = _actions_la.get(_nse_la,"")
+                _ctx_la = []
+                if _t_la and _t_la not in ("AVOID","MONITOR",""):
+                    try:    _ctx_la.append(f"<b>{_t_la}</b> S:{int(float(str(_sc_la)))}")
+                    except: _ctx_la.append(f"<b>{_t_la}</b>")
                 if _act_la and _act_la not in ("HOLD","AVOID","SKIP","MONITOR",""):
-                    _ctx_la.append(f"\u2192 {_act_la}")
+                    _ctx_la.append(f"→ {_act_la}")
                 if _ctx_la:
-                    lines_la.append(f"  \U0001f4ca {' | '.join(_ctx_la)}")
+                    lines_la.append(f"  📊 {' | '.join(_ctx_la)}")
             lines_la.append("")
-        if len(alerts_la) > 8:
-            lines_la.append(f"<i>+{len(alerts_la)-8} more</i>")
-        lines_la.append(f"<i>Cloud poller \u00b7 {len(alerts_la)} new announcement(s)</i>")
 
-        msg_la = "\n".join(lines_la)
+        if len(_grouped_la) > 8:
+            lines_la.append(f"<i>+{len(_grouped_la)-8} more material event(s)</i>")
+        lines_la.append(f"<i>{len(_grouped_la)} new event(s) this session</i>")
+
+        msg_la = "
+".join(lines_la)
         ok_la  = send(msg_la)
-        print(f"  [live-ann] {len(alerts_la)} alert(s) sent: {ok_la}")
-        return len(alerts_la)
+        print(f"  [live-ann] {len(_grouped_la)} alert(s) sent: {ok_la}")
+        return len(_grouped_la)
 
     except Exception as _e_la:
         print(f"  [live-ann] Error: {_e_la}")
@@ -1210,16 +1359,19 @@ def check_and_score_catalysts(bse_raw=None, seen=None):
         _non_universe_events = []  # non-universe material events
 
         for item in bse_raw[:50]:
-            scrip   = str(item.get("SCRIP_CD","") or "").strip()
-            subj    = str(item.get("HEADLINE","") or "").strip()
-            cat     = str(item.get("CATEGORYNAME","") or "").strip()
-            company = str(item.get("short_name","") or item.get("COMPANYNAME","") or "").strip()
-            if not scrip or not subj: continue
+            scrip    = str(item.get("SCRIP_CD","") or "").strip()
+            subj_raw = str(item.get("HEADLINE","") or "").strip()
+            cat      = str(item.get("CATEGORYNAME","") or "").strip()
+            company  = str(item.get("short_name","") or item.get("COMPANYNAME","") or "").strip()
+            if not scrip or not subj_raw: continue
 
             # Dedup — S16 prefix avoids collision with corp_ann hashes
-            h = "S16_" + hex(abs(hash(f"{scrip}|{subj[:60]}")))[2:14]
+            h = "S16_" + hex(abs(hash(f"{scrip}|{subj_raw[:60]}")))[2:14]
             if h in seen: continue
             seen[h] = now_ist().isoformat()
+
+            # Strip HTML tags before filter and display
+            subj = re.sub(r'<[^>]+>', '', subj_raw).strip()
 
             if not _catalyst_is_material(subj, cat): continue
 
