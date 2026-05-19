@@ -176,7 +176,7 @@ if not action_col or not sym_col:
 
 adf[action_col] = adf[action_col].astype(str).str.strip()
 
-# ── BUCKET MAPPING v4.1 ───────────────────────────────────────
+# ── BUCKET MAPPING v4.2 ───────────────────────────────────────
 def _to_bucket(act: str, tier: str = "") -> str:
     a = act.upper()
     t = str(tier).strip().upper()
@@ -185,11 +185,13 @@ def _to_bucket(act: str, tier: str = "") -> str:
                              "CYCLE CONFLICT","PRESERVE CAPITAL"]):
         return None
     # Actionable buckets
-    if "BOOK PARTIAL" in a:                                         return "PROFIT_BOOK"
+    if "BOOK PROFIT" in a or "BOOK PARTIAL" in a:                  return "PROFIT_BOOK"
     if "BEAR ACCUM" in a or "3X POTENTIAL" in a or "STAGED ACCUM" in a: return "BEAR_ACCUM"
     if "RECOVERY" in a or "TRANCHE" in a:                          return "RECOVERY"
     if "STRONG_BUY" in a or "STRONG BUY" in a:                    return "STRONG_BUY"
-    # BUY — must be PRIME or STRONG tier, not just any stock
+    if "ENGINE PICK" in a:                                          return "BUY"
+    if "EARLY SIGNAL" in a:                                         return "EARLY_SIGNAL"
+    # Legacy fallbacks — for older action strings without "ENGINE PICK"
     if "BUY" in a and t in ("PRIME","STRONG"):                     return "BUY"
     if "ACCUMULATE" in a and t in ("PRIME","STRONG","WATCHLIST_CONFIRMED"): return "ACCUMULATE"
     return None
@@ -240,14 +242,37 @@ if tier_counts:
     )
     lines.append("")
 
-BUCKET_ORDER = ["PROFIT_BOOK","STRONG_BUY","BUY","ACCUMULATE","BEAR_ACCUM","RECOVERY"]
+# ── LANDMINE SECTION — EXIT IMMEDIATELY ─────────────────────
+# Separate from actionable buckets; listed individually so user knows which to exit
+_lm_rows = []
+if not comp.empty:
+    _tc_col = next((c for c in comp.columns if c.upper() == "TIER"), None)
+    _sym_col_c = next((c for c in comp.columns if c.upper() in ("NSE_SYMBOL","SYMBOL")), None)
+    _nm_col_c  = next((c for c in comp.columns if c.upper() in ("NAME","COMPANY")), None)
+    if _tc_col and _sym_col_c:
+        _lm_df = comp[comp[_tc_col].astype(str).str.upper() == "LANDMINE"]
+        for _, _lr in _lm_df.iterrows():
+            _lm_rows.append({
+                "sym":  str(_lr.get(_sym_col_c,"")),
+                "name": str(_lr.get(_nm_col_c,""))[:20] if _nm_col_c else "",
+            })
+
+if _lm_rows:
+    lines.append(f"<b>☠ LANDMINE — EXIT ALL POSITIONS NOW</b>  ({len(_lm_rows)})")
+    lines.append("<i>Promoter pledging critical. Engine forced exit. No waiting.</i>")
+    for _lx in _lm_rows:
+        lines.append(f"  ☠ <code>{_lx['sym']:<12}</code> {_lx['name']}  → <b>EXIT IMMEDIATELY</b>")
+    lines.append("")
+
+BUCKET_ORDER = ["PROFIT_BOOK","STRONG_BUY","BUY","EARLY_SIGNAL","ACCUMULATE","BEAR_ACCUM","RECOVERY"]
 BUCKET_LABEL = {
-    "PROFIT_BOOK":  "📈 BOOK PARTIAL PROFITS",
-    "STRONG_BUY":   "🟢 STRONG BUY",
-    "BUY":          "🟢 BUY",
-    "ACCUMULATE":   "🔵 ACCUMULATE",
-    "BEAR_ACCUM":   "💜 BEAR ACCUM / STAGED (3x Potential)",
-    "RECOVERY":     "🌱 RECOVERY WATCH",
+    "PROFIT_BOOK":   "📈 BOOK PROFIT",
+    "STRONG_BUY":    "🟢 STRONG BUY",
+    "BUY":           "✅ ENGINE PICK",
+    "EARLY_SIGNAL":  "🚀 EARLY SIGNAL",
+    "ACCUMULATE":    "🔵 ACCUMULATE",
+    "BEAR_ACCUM":    "💜 BEAR ACCUM / STAGED (3x Potential)",
+    "RECOVERY":      "🌱 RECOVERY WATCH",
 }
 
 total_actionable = 0

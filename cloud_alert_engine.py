@@ -68,14 +68,14 @@ print(f"  [telegram] {len(CHAT_IDS)} recipient(s)")
 # ── PATHS ─────────────────────────────────────────────────────
 REPO = Path(__file__).resolve().parent
 CSV  = {
-    "composite":    REPO / "composite_scores.csv",
-        "events":        "recent_events.csv",
-        "early_alerts":  "early_alerts.csv",
-    "market_intel": REPO / "market_intelligence.csv",
-    "sector_cycle": REPO / "sector_cycle_status.csv",
-    "action":       REPO / "action_language.csv",
-    "early_alerts": REPO / "early_alerts.csv",
-    "watchlist":    REPO / "watchlist_for_cloud.csv",
+    "composite":       REPO / "composite_scores.csv",
+    "market_intel":    REPO / "market_intelligence.csv",
+    "sector_cycle":    REPO / "sector_cycle_status.csv",
+    "action":          REPO / "action_language.csv",
+    "early_alerts":    REPO / "early_alerts.csv",
+    "watchlist":       REPO / "watchlist_for_cloud.csv",
+    "event_pulse":     REPO / "event_pulse_signals.csv",
+    "portfolio_layer": REPO / "portfolio_layer.csv",
 }
 PORTFOLIO_FILE = REPO / "user_portfolio.csv"
 SEEN_FILE    = REPO / "seen_hashes.json"
@@ -158,6 +158,33 @@ def _sf(v, d=0.0):
 def _si(v, d=0):
     try: return int(float(str(v))) if str(v) not in ("nan","None","") else d
     except: return d
+
+def _load_conviction_picks() -> list[dict]:
+    """Return PRIME_CONVICTION stocks from portfolio_layer.csv, sorted by conviction desc."""
+    pl = load("portfolio_layer")
+    if pl.empty or "PRIME_CONVICTION" not in pl.columns:
+        return []
+    mask = pl["PRIME_CONVICTION"].astype(str).str.lower().isin(["true", "1", "1.0"])
+    picks = pl[mask].copy()
+    if "CONVICTION_SCORE" in picks.columns:
+        picks["CONVICTION_SCORE"] = pd.to_numeric(picks["CONVICTION_SCORE"], errors="coerce").fillna(0)
+        picks = picks.sort_values("CONVICTION_SCORE", ascending=False)
+    out = []
+    for _, r in picks.iterrows():
+        lo  = _sf(r.get("ENTRY_ZONE_LOW", 0))
+        hi  = _sf(r.get("ENTRY_ZONE_HIGH", 0))
+        out.append({
+            "sym":        str(r.get("NSE_SYMBOL", "")).strip(),
+            "composite":  _si(r.get("COMPOSITE", 0)),
+            "conviction": _si(r.get("CONVICTION_SCORE", 0)),
+            "zone_low":   lo,
+            "zone_high":  hi,
+            "zone_note":  str(r.get("ENTRY_ZONE_NOTE", "")).strip(),
+            "exit":       str(r.get("EXIT_SIGNAL", "HOLD")).strip(),
+            "dma200":     _sf(r.get("DMA200_PRICE", 0)),
+        })
+    return out
+
 
 # ── DEDUP (file-only, no git inside Python) ───────────────────
 HASH_TTL_H = 48
@@ -453,6 +480,25 @@ def build_action_plan() -> str:
     except Exception as _pme:
         lines.append(f"<i>[model error: {_pme}]</i>")
 
+    # ── Conviction Picks block ────────────────────────────────────────────
+    conv_picks = _load_conviction_picks()
+    if conv_picks:
+        lines.append("\n<b>🎯 CONVICTION PICKS</b> (PRIME · strict 5-gate · buy zone)")
+        for c in conv_picks:
+            stars = "★" * c["conviction"] + "☆" * (5 - c["conviction"])
+            zone  = (f"₹{c['zone_low']:,.0f}–₹{c['zone_high']:,.0f}"
+                     if c["zone_low"] > 0 else "no price data")
+            note  = c["zone_note"].replace("Near 200DMA — ideal dip entry zone", "✅ Ideal zone")
+            note  = note.replace("Extended — wait for ATR pullback", "⏳ Wait pullback")
+            note  = note.replace("Below 200DMA — enter on recovery above 200DMA", "🔻 Below 200DMA")
+            ex    = f"  ⚠ {c['exit']}" if c["exit"] not in ("HOLD", "") else ""
+            lines.append(
+                f"  <b>{c['sym']}</b> {stars} | Score {c['composite']}{ex}\n"
+                f"    Buy zone: <b>{zone}</b> · {note}"
+            )
+    else:
+        lines.append("\n<i>No conviction picks in current regime (tight conditions — by design)</i>")
+
     lines.append(f"\n<i>🤖 Engine complete — {total} actionable stocks</i>")
     return "\n".join(lines)
 
@@ -532,8 +578,7 @@ def build_morning_brief() -> str:
             tbadge = {"PRIME":"PRIME","STRONG":"STRONG"}.get(tier, tier.replace("WATCHLIST_CONFIRMED","WLC").replace("WL_CONFIRMED","WLC"))
             _er_sfx = f" | {_er}" if _er and "%" in _er else ""
             price_line = ("Entry:" + entry if entry and entry not in ("-","nan") else "Run engine for price levels")
-            picks.append(f"  {sym.ljust(10)}  {tbadge.ljust(8)}  {score}/100{_er_sfx}
-    {price_line}")
+            picks.append(f"  {sym.ljust(10)}  {tbadge.ljust(8)}  {score}/100{_er_sfx}\n    {price_line}")
 
     # BEAR ACCUMULATE section with 1Y projections
     bear_lines = []
@@ -576,47 +621,41 @@ def build_morning_brief() -> str:
 
     cues = global_cues()
 
-    msg = f"🇮🇳 <b>MULTIBAGGER — MORNING BRIEF</b>
-<b>{day}</b>
-
-{mkt_text}
-"
+    msg = (f"🇮🇳 <b>MULTIBAGGER — MORNING BRIEF</b>\n"
+           f"<b>{day}</b>\n\n"
+           f"{mkt_text}\n")
     if _ch_line:
-        msg += f"
-{_ch_line}
-"
+        msg += f"\n{_ch_line}\n"
     if cues:
-        msg += "
-<b>🌍 Global Cues</b>
-" + "
-".join(cues) + "
-"
+        msg += "\n<b>🌍 Global Cues</b>\n" + "\n".join(cues) + "\n"
     if bear_lines:
-        msg += "
-<b>🐻 Bear Accumulate (3× potential)</b>
-" + "
-".join(bear_lines) + "
-"
+        msg += "\n<b>🐻 Bear Accumulate (3× potential)</b>\n" + "\n".join(bear_lines) + "\n"
+    # ── Conviction Picks (PRIME_CONVICTION — strict 5-gate filter) ──────────
+    conv_picks = _load_conviction_picks()
+    if conv_picks:
+        conv_lines = []
+        for c in conv_picks:
+            stars = "★" * c["conviction"] + "☆" * (5 - c["conviction"])
+            zone  = (f"₹{c['zone_low']:,.0f}–₹{c['zone_high']:,.0f}"
+                     if c["zone_low"] > 0 else "—")
+            note  = c["zone_note"].replace("Near 200DMA — ideal dip entry zone", "Ideal zone")
+            note  = note.replace("Extended — wait for ATR pullback", "Wait — extended")
+            note  = note.replace("Below 200DMA — enter on recovery above 200DMA", "Below 200DMA")
+            ex    = f" | {c['exit']}" if c["exit"] not in ("HOLD", "") else ""
+            conv_lines.append(
+                f"  <b>{c['sym']}</b> {stars} | Score {c['composite']}{ex}\n"
+                f"    Buy zone: <b>{zone}</b> ({note})"
+            )
+        msg += "\n<b>🎯 Conviction Picks</b> (PRIME · 4/5 quality gates · no hardcoding)\n" \
+               + "\n".join(conv_lines) + "\n"
+
     if picks:
-        msg += "
-<b>✅ Engine Top Picks</b>
-" + "
-".join(picks) + "
-"
+        msg += "\n<b>✅ Engine Top Picks</b>\n" + "\n".join(picks) + "\n"
     if cycles:
-        msg += "
-<b>🔄 Sector Cycle</b>
-" + "
-".join(cycles) + "
-"
+        msg += "\n<b>🔄 Sector Cycle</b>\n" + "\n".join(cycles) + "\n"
     if alerts:
-        msg += "
-<b>⚡ Early Alerts</b>
-" + "
-".join(alerts) + "
-"
-    msg += f"
-<i>Engine data from last run. Open Excel for full detail.</i>"
+        msg += "\n<b>⚡ Early Alerts</b>\n" + "\n".join(alerts) + "\n"
+    msg += "\n<i>Engine data from last run. Open Excel for full detail.</i>"
     return msg
 
 
@@ -1287,8 +1326,7 @@ def send_bse_live_announcements(bse_raw: list, seen: dict) -> int:
             lines_la.append(f"<i>+{len(_grouped_la)-8} more material event(s)</i>")
         lines_la.append(f"<i>{len(_grouped_la)} new event(s) this session</i>")
 
-        msg_la = "
-".join(lines_la)
+        msg_la = "\n".join(lines_la)
         ok_la  = send(msg_la)
         print(f"  [live-ann] {len(_grouped_la)} alert(s) sent: {ok_la}")
         return len(_grouped_la)
@@ -1708,6 +1746,95 @@ def check_conviction_hold_alerts(seen: dict) -> int:
 
 
 # ════════════════════════════════════════════════════════════════
+# TYPE 5 — EVENT PULSE ALERT (s122, hourly 9am-6pm)
+# Reads event_pulse_signals.csv written by event_pulse_engine.py
+# Hard label: EVENT TRADE ≠ multibagger position
+# ════════════════════════════════════════════════════════════════
+_EP_SEEN_FILE = REPO / "event_pulse_sent.json"
+
+def _ep_load_seen() -> set:
+    if not _EP_SEEN_FILE.exists():
+        return set()
+    try:
+        import json as _json_ep
+        d = _json_ep.loads(_EP_SEEN_FILE.read_text(encoding="utf-8"))
+        return set(d.get("sent", []))
+    except Exception:
+        return set()
+
+def _ep_save_seen(seen: set) -> None:
+    import json as _json_ep
+    try:
+        _EP_SEEN_FILE.write_text(
+            _json_ep.dumps({"sent": list(seen)}),
+            encoding="utf-8"
+        )
+    except Exception:
+        pass
+
+def build_event_pulse_alert() -> str:
+    """
+    Build TYPE 5 Event Pulse Telegram message.
+    Returns formatted message string or "" if nothing actionable.
+    Deduplicates by NSE_SYMBOL+EVENT_DATE within 24h.
+    """
+    ep_df = load("event_pulse")
+    if ep_df.empty:
+        return ""
+
+    # Only actionable, non-suppressed, high-impact signals
+    mask = (
+        ep_df.get("SUPPRESSED", pd.Series(False, index=ep_df.index))
+            .astype(str).str.lower().isin(["false", "0"])
+        & ep_df.get("SIGNAL_TYPE", pd.Series("", index=ep_df.index))
+            .isin(["BUY_SIGNAL_STRONG", "BUY_SIGNAL", "INSIDER_BUY_SIGNAL", "BONUS_SPLIT_SIGNAL"])
+        & (ep_df.get("IMPACT_SCORE", pd.Series(0, index=ep_df.index)).astype(float) >= 5)
+    )
+    actionable = ep_df[mask].copy() if not ep_df.empty else pd.DataFrame()
+    if actionable.empty:
+        return ""
+
+    seen = _ep_load_seen()
+    lines = []
+
+    for _, r in actionable.iterrows():
+        sym      = str(r.get("NSE_SYMBOL", "")).strip()
+        ev_date  = str(r.get("EVENT_DATE", "")).strip()
+        dedup_key = f"{sym}_{ev_date}"
+        if dedup_key in seen:
+            continue
+
+        event_class = str(r.get("EVENT_CLASS", "")).strip()
+        signal_type = str(r.get("SIGNAL_TYPE", "")).strip()
+        impact_tier = str(r.get("IMPACT_TIER", "")).strip()
+        tier        = str(r.get("TIER", "")).strip()
+        composite   = r.get("COMPOSITE", 0)
+        price_status = str(r.get("PRICE_STATUS", "")).strip()
+        alert_text  = str(r.get("ALERT_TEXT", "")).strip()
+
+        icon = {"BUY_SIGNAL_STRONG": "🔥", "BUY_SIGNAL": "📈",
+                "INSIDER_BUY_SIGNAL": "👥", "BONUS_SPLIT_SIGNAL": "🎯"}.get(signal_type, "⚡")
+
+        line_parts = [f"{icon} <b>{sym}</b> — {event_class}"]
+        if impact_tier:
+            line_parts.append(f"Impact: {impact_tier}")
+        if tier:
+            line_parts.append(f"Tier: {tier}")
+        if price_status == "PRICED_IN":
+            line_parts.append("⚠️ LIKELY PRICED IN")
+
+        lines.append(" | ".join(line_parts))
+        seen.add(dedup_key)
+
+    if not lines:
+        return ""
+
+    _ep_save_seen(seen)
+    header = "⚡ <b>EVENT PULSE</b> — Live Announcements\n<i>⚠️ EVENT TRADE ≠ multibagger position</i>\n"
+    return header + "\n".join(lines)
+
+
+# ════════════════════════════════════════════════════════════════
 # MAIN
 # ════════════════════════════════════════════════════════════════
 def main():
@@ -1865,6 +1992,17 @@ def main():
                     sent += 1
             else:
                 print("  No new relevant news this hour")
+
+    # ── TYPE 5: EVENT PULSE (s122, 9am-6pm) ────────────────────────
+    if 9 <= h <= 18:
+        _ep_msg = build_event_pulse_alert()
+        if _ep_msg:
+            ok = send(_ep_msg)
+            if ok:
+                sent += 1
+            print(f"  → TYPE 5 Event Pulse sent: {ok}")
+        else:
+            print("  → TYPE 5 Event Pulse: no new actionable signals")
 
     # ── MSG6: CONVICTION HOLD CHECK (market close 15:00–18:00 IST) ──
     # s83: Fires for portfolio stocks down >15% from entry price.
