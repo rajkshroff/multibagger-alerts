@@ -333,6 +333,7 @@ def build_action_plan() -> str:
 
     safe_df = _model_df("BUY_NOW_SAFE")
     bal_df  = _model_df("BUY_NOW_BALANCED")
+    comm_df = _model_df("BUY_NOW_COMMODITY")
 
     # Backward compat: if new columns absent, fall to BUY_NOW
     if safe_df.empty and bal_df.empty:
@@ -341,6 +342,10 @@ def build_action_plan() -> str:
     # Balanced-only = stocks in BALANCED but NOT in SAFE (incremental)
     safe_syms = set(safe_df["NSE_SYMBOL"].astype(str)) if not safe_df.empty else set()
     bal_only_df = bal_df[~bal_df["NSE_SYMBOL"].astype(str).isin(safe_syms)].copy() if not bal_df.empty else pd.DataFrame()
+
+    # Commodity-only = commodity picks not already shown in SAFE or BALANCED
+    qual_syms = safe_syms | (set(bal_only_df["NSE_SYMBOL"].astype(str)) if not bal_only_df.empty else set())
+    comm_only_df = comm_df[~comm_df["NSE_SYMBOL"].astype(str).isin(qual_syms)].copy() if not comm_df.empty else pd.DataFrame()
 
     # SELL/TRIM: PRIME+STRONG only
     _held = pl[pl["TIER"].isin({"PRIME","STRONG"})] if "TIER" in pl.columns else pl
@@ -355,6 +360,7 @@ def build_action_plan() -> str:
     # ── Build message ──────────────────────────────────────────────────────
     n_safe = len(safe_df)
     n_bal  = len(bal_only_df)
+    n_comm = len(comm_only_df)
     lines = [
         f"<b>🔔 ACTION PLAN — {now_str}</b>",
         mkt_text,
@@ -379,6 +385,22 @@ def build_action_plan() -> str:
     else:
         for _, r in bal_only_df.iterrows():
             lines.append(_sym_line(r))
+    lines.append("")
+
+    # ── COMMODITY CYCLE — parallel thesis (94% win rate on STRONG, backtest) ─
+    lines.append(f"<b>⛏ COMMODITY CYCLE ({n_comm})</b> <i>PRIME/STRONG · sector mid-cycle + RS momentum · 94% win rate</i>")
+    if n_comm == 0:
+        lines.append("  No commodity cycle picks active.")
+    else:
+        for _, r in comm_only_df.iterrows():
+            sym  = str(r.get("NSE_SYMBOL","")).strip()
+            comp = _si(r.get("COMPOSITE",0))
+            tier = str(r.get("TIER","")).strip()
+            lo   = _sf(r.get("ENTRY_ZONE_LOW",0))
+            hi   = _sf(r.get("ENTRY_ZONE_HIGH",0))
+            zone = f"₹{lo:,.0f}–₹{hi:,.0f}" if lo > 0 and hi > 0 else "—"
+            note = _note_short(str(r.get("ENTRY_ZONE_NOTE","")).strip())
+            lines.append(f"  <code>{sym:<12}</code> <b>{comp}</b> [{tier}] | {zone} · {note}")
     lines.append("")
 
     # ── SELL TODAY ─────────────────────────────────────────────────────────
