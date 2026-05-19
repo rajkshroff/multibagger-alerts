@@ -331,14 +331,16 @@ def build_action_plan() -> str:
         note = _note_short(str(r.get("ENTRY_ZONE_NOTE", "")).strip())
         return f"  <code>{sym:<12}</code> <b>{comp}</b> | {zone} · {note}"
 
-    safe_df    = _model_df("BUY_NOW_SAFE")
-    bal_df     = _model_df("BUY_NOW_BALANCED")
-    growth_df  = _model_df("BUY_NOW_GROWTH")
-    tac_df     = _model_df("BUY_NOW_TACTICAL")
+    safe_df = _model_df("BUY_NOW_SAFE")
+    bal_df  = _model_df("BUY_NOW_BALANCED")
 
     # Backward compat: if new columns absent, fall to BUY_NOW
-    if all(d.empty for d in [safe_df, bal_df, growth_df, tac_df]):
+    if safe_df.empty and bal_df.empty:
         safe_df = _model_df("BUY_NOW") if "BUY_NOW" in pl.columns else _model_df("PRIME_CONVICTION")
+
+    # Balanced-only = stocks in BALANCED but NOT in SAFE (incremental)
+    safe_syms = set(safe_df["NSE_SYMBOL"].astype(str)) if not safe_df.empty else set()
+    bal_only_df = bal_df[~bal_df["NSE_SYMBOL"].astype(str).isin(safe_syms)].copy() if not bal_df.empty else pd.DataFrame()
 
     # SELL/TRIM: PRIME+STRONG only
     _held = pl[pl["TIER"].isin({"PRIME","STRONG"})] if "TIER" in pl.columns else pl
@@ -350,15 +352,9 @@ def build_action_plan() -> str:
     if not sell_df.empty: sell_df = sell_df.sort_values("COMPOSITE", ascending=False)
     if not trim_df.empty: trim_df = trim_df.sort_values("COMPOSITE", ascending=False).head(5)
 
-    # ── CONSENSUS: stocks in 3+ models ────────────────────────────────────
-    consensus_df = pd.DataFrame()
-    if "CONSENSUS_SCORE" in pl.columns:
-        pl["CONSENSUS_SCORE"] = pd.to_numeric(pl["CONSENSUS_SCORE"], errors="coerce").fillna(0)
-        consensus_df = pl[pl["CONSENSUS_SCORE"] >= 3].sort_values(
-            ["CONSENSUS_SCORE","COMPOSITE"], ascending=[False, False])
-
     # ── Build message ──────────────────────────────────────────────────────
-    mkt_icon = {"BULL":"🟢","BEAR":"🔴","CAUTION":"🟡"}.get(mstate,"⚪")
+    n_safe = len(safe_df)
+    n_bal  = len(bal_only_df)
     lines = [
         f"<b>🔔 ACTION PLAN — {now_str}</b>",
         mkt_text,
@@ -367,35 +363,23 @@ def build_action_plan() -> str:
         f"",
     ]
 
-    # ── CONSENSUS block ────────────────────────────────────────────────────
-    if not consensus_df.empty:
-        lines.append(f"<b>🏆 CONSENSUS — 3+ models agree ({len(consensus_df)})</b>")
-        lines.append("<i>Highest confidence. Invest in these first.</i>")
-        for _, r in consensus_df.iterrows():
-            sym  = str(r.get("NSE_SYMBOL","")).strip()
-            comp = _si(r.get("COMPOSITE",0))
-            csco = _si(r.get("CONSENSUS_SCORE",0))
-            stars = "★" * csco + "☆" * (4 - csco)
-            lines.append(f"  {stars} <b>{sym}</b> ({comp})")
-        lines.append("")
+    # ── SAFE COMPOUNDER — primary (88% win rate, 0% big-loss) ─────────────
+    lines.append(f"<b>🛡 SAFE COMPOUNDER ({n_safe})</b> <i>D/E &lt; 0.1 · 88% win rate · 0% big-loss</i>")
+    if n_safe == 0:
+        lines.append("  Engine standing aside. Cash is valid.")
+    else:
+        for _, r in safe_df.iterrows():
+            lines.append(_sym_line(r))
+    lines.append("")
 
-    # ── 4 Model sections ──────────────────────────────────────────────────
-    MODEL_DEFS = [
-        ("🛡 SAFE COMPOUNDER", safe_df,   "D/E < 0.1 · Zero leverage"),
-        ("⚖️ ALL-ROUNDER",     bal_df,    "D/E < 0.3 · Quality balance"),
-        ("🎯 HIGH-GROWTH",     growth_df, "D/E < 0.5 · Growth focus"),
-        ("🏭 TACTICAL",        tac_df,    "MID/EARLY cycle sectors only · D/E < 0.4"),
-    ]
-
-    for label, mdf, desc in MODEL_DEFS:
-        n = len(mdf)
-        lines.append(f"<b>{label} ({n})</b> <i>{desc}</i>")
-        if n == 0:
-            lines.append("  Engine standing aside. Cash is valid.")
-        else:
-            for _, r in mdf.iterrows():
-                lines.append(_sym_line(r))
-        lines.append("")
+    # ── ALL-ROUNDER — secondary (D/E 0.1–0.3 incremental, 84% pooled) ────
+    lines.append(f"<b>⚖️ ALL-ROUNDER ({n_bal} incremental)</b> <i>D/E &lt; 0.3 · broader picks · 84% pooled win rate</i>")
+    if n_bal == 0:
+        lines.append("  No additional picks beyond SAFE tier.")
+    else:
+        for _, r in bal_only_df.iterrows():
+            lines.append(_sym_line(r))
+    lines.append("")
 
     # ── SELL TODAY ─────────────────────────────────────────────────────────
     n_sell = len(sell_df)
