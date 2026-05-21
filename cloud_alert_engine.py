@@ -465,15 +465,33 @@ def build_action_plan() -> str:
         return "\n".join(lines)
 
     except Exception as _e:
+        import traceback as _tb
+        print(f"[build_action_plan] EXCEPTION: {_e}\n{_tb.format_exc()}")
         try:
-            conv = _load_conviction_picks()
-            _, ms2 = market_summary()
-            hdr = f"<b>🔔 ENGINE RUN COMPLETE</b>\n{now_ist().strftime('%d %b %Y %H:%M')} {ms2}\n"
-            if conv:
-                return hdr + "<b>🛡 BUY NOW</b>\n" + "\n".join(f"  • {c['sym']} ({c['composite']})" for c in conv[:5])
-            return hdr + "<i>No picks today</i>"
+            pl_fb = load("portfolio_layer")
+            _, ms_fb = market_summary()
+            now_str_fb = now_ist().strftime("%a %d %b  %H:%M")
+            mkt_icon_fb = {"BULL":"🟢","BEAR":"🔴","CAUTION":"🟡","RECOVERY":"🔵","PANIC":"⚫"}.get(
+                (ms_fb or "").upper(), "⚪")
+            hdr_fb = (f"<b>🔔 ACTION PLAN — ENGINE RUN COMPLETE</b>\n"
+                      f"<b>{now_str_fb}</b>  {mkt_icon_fb} <b>{ms_fb or ''}</b>\n\n")
+            lines_fb = []
+            for _fc, _ic, _lbl in [
+                ("BUY_NOW_SAFE",      "🛡", "SAFE COMPOUNDER  88% win"),
+                ("BUY_NOW_BALANCED",  "⚖️", "ALL-ROUNDER  84% win"),
+                ("BUY_NOW_COMMODITY", "⛏", "COMMODITY CYCLE  94% win"),
+            ]:
+                lines_fb.append(f"<b>{_ic} {_lbl}</b>")
+                if not pl_fb.empty and _fc in pl_fb.columns:
+                    _mask = pl_fb[_fc].astype(str).str.lower().isin(["true","1","1.0","yes"])
+                    _syms = pl_fb[_mask]["NSE_SYMBOL"].dropna().str.strip().str.upper().tolist()[:3]
+                    lines_fb += ([f"  • <b>{s}</b>" for s in _syms] if _syms else ["  <i>(none)</i>"])
+                else:
+                    lines_fb.append("  <i>(no data)</i>")
+                lines_fb.append("")
+            return hdr_fb + "\n".join(lines_fb)
         except Exception:
-            return ""
+            return f"<b>🔔 ENGINE RUN COMPLETE</b>\n{now_ist().strftime('%a %d %b  %H:%M')}"
 
 
 # ════════════════════════════════════════════════════════════════
