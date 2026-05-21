@@ -523,36 +523,6 @@ def build_morning_brief() -> str:
                 _s = str(_r.get("NSE_SYMBOL","")).strip().upper()
                 if _s: _ba_syms.add(_s)
 
-    # ENGINE PICK top picks (excludes BOOK PROFIT, LANDMINE, BEAR ACCUM)
-    picks = []
-    if not al.empty and ac:
-        sc2 = next((c for c in al.columns if "COMPOSITE" in c.upper()), None)
-        if sc2:
-            al[sc2] = pd.to_numeric(al[sc2], errors="coerce")
-        tc2 = next((c for c in al.columns if "TIER" in c.upper()), None)
-        TIER_RANK = {"PRIME":0,"STRONG":1,"WL_CONFIRMED":2,"WATCHLIST_CONFIRMED":2,"WL_EXTERNAL":3}
-
-        # Filter to ENGINE PICK actions only — not BEAR ACCUM or exit types
-        ep_df = al[al[ac].astype(str).str.contains("ENGINE PICK", case=False, na=False)].copy()
-        # Also exclude any that snuck into _exit_syms (safety guard)
-        if _exit_syms:
-            ep_df = ep_df[~ep_df["NSE_SYMBOL"].astype(str).str.upper().isin(_exit_syms)]
-        if tc2 and sc2:
-            ep_df["_tr"] = ep_df[tc2].map(TIER_RANK).fillna(5)
-            ep_df = ep_df.sort_values(["_tr", sc2], ascending=[True, False])
-        elif sc2:
-            ep_df = ep_df.sort_values(sc2, ascending=False)
-        for _, r in ep_df.head(6).iterrows():
-            sym    = str(r.get("NSE_SYMBOL",""))
-            tier   = str(r.get(tc2 if tc2 else "MULTIBAGGER_TIER",""))
-            score  = _si(r.get(sc2,0)) if sc2 else "—"
-            entry  = (str(r.get("ENTRY_ZONE","") or "")).strip()
-            _er    = _er_map.get(sym.upper(),"")
-            tbadge = {"PRIME":"PRIME","STRONG":"STRONG"}.get(tier, tier.replace("WATCHLIST_CONFIRMED","WLC").replace("WL_CONFIRMED","WLC"))
-            _er_sfx = f" | {_er}" if _er and "%" in _er else ""
-            price_line = ("Entry:" + entry if entry and entry not in ("-","nan") else "Run engine for price levels")
-            picks.append(f"  {sym.ljust(10)}  {tbadge.ljust(8)}  {score}/100{_er_sfx}\n    {price_line}")
-
     # BEAR ACCUMULATE section with 1Y projections
     bear_lines = []
     if not al.empty and ac:
@@ -603,27 +573,48 @@ def build_morning_brief() -> str:
         msg += "\n<b>🌍 Global Cues</b>\n" + "\n".join(cues) + "\n"
     if bear_lines:
         msg += "\n<b>🐻 Bear Accumulate (3× potential)</b>\n" + "\n".join(bear_lines) + "\n"
-    # ── Conviction Picks (PRIME_CONVICTION — strict 5-gate filter) ──────────
-    conv_picks = _load_conviction_picks()
-    if conv_picks:
-        conv_lines = []
-        for c in conv_picks:
-            stars = "★" * c["conviction"] + "☆" * (5 - c["conviction"])
-            zone  = (f"₹{c['zone_low']:,.0f}–₹{c['zone_high']:,.0f}"
-                     if c["zone_low"] > 0 else "—")
-            note  = c["zone_note"].replace("Near 200DMA — ideal dip entry zone", "Ideal zone")
-            note  = note.replace("Extended — wait for ATR pullback", "Wait — extended")
-            note  = note.replace("Below 200DMA — enter on recovery above 200DMA", "Below 200DMA")
-            ex    = f" | {c['exit']}" if c["exit"] not in ("HOLD", "") else ""
-            conv_lines.append(
-                f"  <b>{c['sym']}</b> {stars} | Score {c['composite']}{ex}\n"
-                f"    Buy zone: <b>{zone}</b> ({note})"
-            )
-        msg += "\n<b>🎯 Conviction Picks</b> (PRIME · 4/5 quality gates · no hardcoding)\n" \
-               + "\n".join(conv_lines) + "\n"
 
-    if picks:
-        msg += "\n<b>✅ Engine Top Picks</b>\n" + "\n".join(picks) + "\n"
+    # ── 3-MODEL BUY NOW ───────────────────────────────────────────
+    pl_data = load("portfolio_layer")
+    if not pl_data.empty:
+        safe_lines, ar_lines, comm_lines = [], [], []
+        _shown_mb = set()
+
+        def _mb_picks(flag_col, max_n, exclude=set()):
+            if flag_col not in pl_data.columns:
+                return []
+            mask = pl_data[flag_col].astype(str).str.lower().isin(["true","1","1.0"])
+            sub = pl_data[mask].copy()
+            if "CONVICTION_SCORE" in sub.columns:
+                sub["CONVICTION_SCORE"] = pd.to_numeric(sub["CONVICTION_SCORE"], errors="coerce")
+                sub = sub.sort_values("CONVICTION_SCORE", ascending=False)
+            result = []
+            for _, r in sub.iterrows():
+                if len(result) >= max_n: break
+                s = str(r.get("NSE_SYMBOL","")).strip().upper()
+                if not s or s in _shown_mb or s in exclude: continue
+                if str(r.get("EXIT_SIGNAL","")).upper() == "EXIT": continue
+                score = _si(r.get("CONVICTION_SCORE", r.get("Q_SCORE", 0)))
+                tier = str(r.get("TIER","")).strip()
+                tbadge = {"PRIME":"PRIME","STRONG":"STRONG"}.get(tier, "WLC")
+                result.append(f"  <b>{s}</b> {tbadge} S:{score}")
+                _shown_mb.add(s)
+            return result
+
+        safe_lines = _mb_picks("BUY_NOW_SAFE", 3)
+        ar_lines   = _mb_picks("BUY_NOW_BALANCED", 3, exclude=_shown_mb.copy())
+        comm_lines = _mb_picks("BUY_NOW_COMMODITY", 2, exclude=_shown_mb.copy())
+
+        bn_block = ""
+        if safe_lines:
+            bn_block += "  🛡 <b>SAFE</b> (88% win)\n" + "\n".join(safe_lines) + "\n"
+        if ar_lines:
+            bn_block += "  ⚖️ <b>ALL-ROUNDER</b> (84% win)\n" + "\n".join(ar_lines) + "\n"
+        if comm_lines:
+            bn_block += "  ⛏ <b>COMMODITY</b> (94% win)\n" + "\n".join(comm_lines) + "\n"
+        if bn_block:
+            msg += "\n<b>🎯 BUY NOW — High Conviction</b>\n" + bn_block
+
     if cycles:
         msg += "\n<b>🔄 Sector Cycle</b>\n" + "\n".join(cycles) + "\n"
     if alerts:
