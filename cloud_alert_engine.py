@@ -284,151 +284,196 @@ def global_cues():
 # ════════════════════════════════════════════════════════════════
 # TYPE 1 — ACTION PLAN (push-triggered, after every engine run)
 # ════════════════════════════════════════════════════════════════
+BUY_ACTIONS = {"BUY","STRONG_BUY","FRESH_BUY","ACCUMULATE","ADD",
+               "BEAR ACCUMULATE — 3X POTENTIAL","BEAR_ACCUM"}
 
 def build_action_plan() -> str:
-    """
-    TYPE 1 — Action Plan. Fires on git push (engine just ran).
-    5-model BUY NOW: CONSENSUS + SAFE / BALANCED / GROWTH / TACTICAL
-    + SELL TODAY + TRIM. All data from portfolio_layer.csv.
-    """
-    pl = load("portfolio_layer")
-    if pl.empty:
-        return ""
+    """TYPE 1 — Action Plan. s138: 3-model BUY NOW + Opportunity Buy."""
+    try:
+        pl  = load("portfolio_layer")
+        cs  = load("composite")
+        ea  = load("early_alerts")
+        mi  = load("market_intel")
+        _, mstate = market_summary()
+        mstate = (mstate or "").upper()
 
-    mstate, mkt_text = market_summary()
-    now_str = now_ist().strftime("%d %b %Y  %H:%M")
+        def _str(v, d=""):
+            if v is None: return d
+            s = str(v).strip()
+            return d if s in ("nan","None","") else s
 
-    cs2 = load("composite")
-    prime = strong = wlc = 0
-    if not cs2.empty and "TIER" in cs2.columns:
-        tc     = cs2["TIER"].value_counts()
-        prime  = _si(tc.get("PRIME", 0))
-        strong = _si(tc.get("STRONG", 0))
-        wlc    = _si(tc.get("WATCHLIST_CONFIRMED", 0))
+        pl_map, cs_map = {}, {}
+        if not pl.empty and "NSE_SYMBOL" in pl.columns:
+            for _, r in pl.iterrows():
+                k = _str(r.get("NSE_SYMBOL","")).upper()
+                if k: pl_map[k] = r.to_dict()
+        if not cs.empty and "NSE_SYMBOL" in cs.columns:
+            for _, r in cs.iterrows():
+                k = _str(r.get("NSE_SYMBOL","")).upper()
+                if k: cs_map[k] = r.to_dict()
 
-    # ── Helper: get picks for a model column ──────────────────────────────
-    def _model_df(col):
-        if col not in pl.columns:
-            return pd.DataFrame()
-        mask = pl[col].astype(str).str.lower().isin(["true", "1", "1.0"])
-        df = pl[mask].copy()
-        if "COMPOSITE" in df.columns:
-            df["COMPOSITE"] = pd.to_numeric(df["COMPOSITE"], errors="coerce").fillna(0)
-            df = df.sort_values("COMPOSITE", ascending=False)
-        return df
+        def _reason(sym):
+            cr = cs_map.get(sym, {}); plr = pl_map.get(sym, {})
+            parts = []
+            phase = _str(cr.get("SECTOR_PHASE", plr.get("SECTOR_PHASE",""))).upper()
+            PMAP = {"MID_CYCLE":"mid cycle","EARLY_RECOVERY":"early recovery",
+                    "LATE_CYCLE":"late cycle","BASING":"basing","EARLY_CYCLE":"early cycle"}
+            if phase in PMAP: parts.append(PMAP[phase])
+            sigs = []
+            if _sf(cr.get("SIG_FII 3Q Trend",0))>0:         sigs.append("FII 3Q")
+            if _sf(cr.get("SIG_Insider Buy",0))>0:           sigs.append("insider buy")
+            if _sf(cr.get("SIG_MF Change",0))>0:             sigs.append("MF buying")
+            if _sf(cr.get("SIG_Earnings Acceleration",0))>0: sigs.append("earnings accel")
+            if _sf(cr.get("SIG_VCP",0))>0:                   sigs.append("VCP base")
+            if sigs: parts.append(" + ".join(sigs[:2]))
+            above_50 = _str(plr.get("ABOVE_50DMA","")).lower() in ("true","1","1.0","yes")
+            et = _si(plr.get("ENTRY_TIMING_SCORE",0))
+            if et >= 4: parts.append("prime entry")
+            elif above_50: parts.append("above 50DMA")
+            return " · ".join(parts[:3]) if parts else "engine pick"
 
-    def _note_short(n):
-        return (n.replace("Near 200DMA — ideal dip entry zone", "Near 200DMA")
-                 .replace("Extended — wait for ATR pullback", "Extended")
-                 .replace("Below 200DMA — enter on recovery above 200DMA", "Below 200DMA"))
+        shown = set()
 
-    def _sym_line(r):
-        sym  = str(r.get("NSE_SYMBOL", "")).strip()
-        comp = _si(r.get("COMPOSITE", 0))
-        lo   = _sf(r.get("ENTRY_ZONE_LOW", 0))
-        hi   = _sf(r.get("ENTRY_ZONE_HIGH", 0))
-        zone = f"₹{lo:,.0f}–₹{hi:,.0f}" if lo > 0 and hi > 0 else "—"
-        note = _note_short(str(r.get("ENTRY_ZONE_NOTE", "")).strip())
-        return f"  <code>{sym:<12}</code> <b>{comp}</b> | {zone} · {note}"
+        def _buy_section(flag_col, max_n, exclude=None):
+            exclude = exclude or set()
+            if pl.empty or flag_col not in pl.columns: return []
+            mask = pl[flag_col].astype(str).str.lower().isin(["true","1","1.0","yes"])
+            sub  = pl[mask].copy()
+            for c in ("COMPOSITE","COMPOSITE_BALANCED","COMPOSITE_SCORE"):
+                if c in sub.columns:
+                    sub[c] = pd.to_numeric(sub[c], errors="coerce")
+                    sub = sub.sort_values(c, ascending=False); break
+            picks = []
+            for _, r in sub.iterrows():
+                if len(picks) >= max_n: break
+                sym = _str(r.get("NSE_SYMBOL","")).upper()
+                if not sym or sym in shown or sym in exclude: continue
+                if _str(r.get("EXIT_SIGNAL","")).upper() == "EXIT": continue
+                score = _si(r.get("COMPOSITE", r.get("COMPOSITE_BALANCED", r.get("COMPOSITE_SCORE",0))))
+                tier  = _str(r.get("TIER","")).upper()
+                picks.append((sym, score, tier, _reason(sym)))
+                shown.add(sym)
+            return picks
 
-    safe_df = _model_df("BUY_NOW_SAFE")
-    bal_df  = _model_df("BUY_NOW_BALANCED")
-    comm_df = _model_df("BUY_NOW_COMMODITY")
+        safe_p = _buy_section("BUY_NOW_SAFE",     3)
+        ar_p   = _buy_section("BUY_NOW_BALANCED", 3, exclude={s[0] for s in safe_p})
+        com_p  = _buy_section("BUY_NOW_COMMODITY",2, exclude={s[0] for s in safe_p+ar_p})
 
-    # Backward compat: if new columns absent, fall to BUY_NOW
-    if safe_df.empty and bal_df.empty:
-        safe_df = _model_df("BUY_NOW") if "BUY_NOW" in pl.columns else _model_df("PRIME_CONVICTION")
+        opp_p = []
+        if not ea.empty and "ALERT_DATE" in ea.columns and "NSE_SYMBOL" in ea.columns:
+            today_d = now_ist().date()
+            ea2 = ea.copy()
+            ea2["ALERT_DATE"] = pd.to_datetime(ea2["ALERT_DATE"], errors="coerce")
+            ea2 = ea2.dropna(subset=["ALERT_DATE","NSE_SYMBOL"])
+            ea2["_days"] = ea2["ALERT_DATE"].apply(
+                lambda d: (today_d - d.date()).days if pd.notna(d) else 999)
+            ea2 = ea2[ea2["_days"] <= 21].sort_values("_days")
+            for _, r in ea2.iterrows():
+                if len(opp_p) >= 3: break
+                sym = _str(r.get("NSE_SYMBOL","")).upper()
+                if not sym or sym in shown: continue
+                cr   = cs_map.get(sym, {})
+                tier = _str(cr.get("TIER","")).upper()
+                if tier not in ("PRIME","STRONG","WATCHLIST_CONFIRMED"): continue
+                if _str(cr.get("SECTOR_PHASE","")).upper() in ("CORRECTION","TOPPING"): continue
+                plr = pl_map.get(sym,{})
+                if plr and _str(plr.get("EXIT_SIGNAL","")).upper() == "EXIT": continue
+                if plr:
+                    ab50 = _str(plr.get("ABOVE_50DMA","")).lower() in ("true","1","1.0","yes")
+                    if not ab50: continue
+                days  = int(r.get("_days",0))
+                atype = _str(r.get("ALERT_TYPE","")).replace("_"," ").lower()
+                detail= _str(r.get("ALERT_DETAIL",""))[:55]
+                score = _si(cr.get("COMPOSITE_BALANCED", cr.get("COMPOSITE_SCORE",0)))
+                opp_p.append((sym, score, tier, atype, detail, days))
+                shown.add(sym)
 
-    # Balanced-only = stocks in BALANCED but NOT in SAFE (incremental)
-    safe_syms = set(safe_df["NSE_SYMBOL"].astype(str)) if not safe_df.empty else set()
-    bal_only_df = bal_df[~bal_df["NSE_SYMBOL"].astype(str).isin(safe_syms)].copy() if not bal_df.empty else pd.DataFrame()
+        sell_p, trim_p = [], []
+        if not pl.empty and "EXIT_SIGNAL" in pl.columns and "NSE_SYMBOL" in pl.columns:
+            sort_c = next((c for c in ("COMPOSITE","COMPOSITE_BALANCED") if c in pl.columns), None)
+            sub2 = pl.copy()
+            if sort_c:
+                sub2[sort_c] = pd.to_numeric(sub2[sort_c], errors="coerce")
+                sub2 = sub2.sort_values(sort_c, ascending=False)
+            for _, r in sub2.iterrows():
+                sym  = _str(r.get("NSE_SYMBOL","")).upper()
+                tier = _str(r.get("TIER","")).upper()
+                if tier not in ("PRIME","STRONG"): continue
+                sig  = _str(r.get("EXIT_SIGNAL","")).upper()
+                rsn  = _str(r.get("EXIT_REASON",""))[:40]
+                if   sig == "EXIT"         and len(sell_p) < 5: sell_p.append((sym, tier, rsn))
+                elif sig == "PARTIAL_EXIT" and len(trim_p) < 5: trim_p.append((sym, tier))
 
-    # Commodity-only = commodity picks not already shown in SAFE or BALANCED
-    qual_syms = safe_syms | (set(bal_only_df["NSE_SYMBOL"].astype(str)) if not bal_only_df.empty else set())
-    comm_only_df = comm_df[~comm_df["NSE_SYMBOL"].astype(str).isin(qual_syms)].copy() if not comm_df.empty else pd.DataFrame()
+        now_str  = now_ist().strftime("%a %d %b  %H:%M")
+        mkt_icon = {"BULL":"🟢","BEAR":"🔴","CAUTION":"🟡","RECOVERY":"🔵","PANIC":"⚫"}.get(mstate,"⚪")
+        fg_str = b200 = ""
+        if not mi.empty:
+            fg_s = mi.iloc[0].get("FEAR_GREED_SCORE")
+            fg_l = _str(mi.iloc[0].get("FEAR_GREED_LABEL",""))
+            if fg_s is not None: fg_str = f" | F&G: {fg_l} ({int(fg_s)})"
+            bw   = mi.iloc[0].get("BREADTH_ABOVE_200DMA")
+            if bw is not None: b200 = f" | Above 200DMA: {bw:.1f}%"
 
-    # SELL/TRIM: PRIME+STRONG only
-    _held = pl[pl["TIER"].isin({"PRIME","STRONG"})] if "TIER" in pl.columns else pl
-    sell_df = _held[_held.get("EXIT_SIGNAL", pd.Series()).astype(str).str.upper() == "EXIT"].copy()
-    trim_df = _held[_held.get("EXIT_SIGNAL", pd.Series()).astype(str).str.upper() == "PARTIAL_EXIT"].copy()
-    for _df in [sell_df, trim_df]:
-        if "COMPOSITE" in _df.columns:
-            _df["COMPOSITE"] = pd.to_numeric(_df["COMPOSITE"], errors="coerce").fillna(0)
-    if not sell_df.empty: sell_df = sell_df.sort_values("COMPOSITE", ascending=False)
-    if not trim_df.empty: trim_df = trim_df.sort_values("COMPOSITE", ascending=False).head(5)
+        lines = [
+            "<b>🔔 ACTION PLAN — ENGINE RUN COMPLETE</b>",
+            f"<b>{now_str}</b>  {mkt_icon} <b>{mstate}</b>{fg_str}{b200}",
+            "",
+        ]
 
-    # ── Build message ──────────────────────────────────────────────────────
-    n_safe = len(safe_df)
-    n_bal  = len(bal_only_df)
-    n_comm = len(comm_only_df)
-    lines = [
-        f"<b>🔔 ACTION PLAN — {now_str}</b>",
-        mkt_text,
-        f"",
-        f"📊 PRIME <b>{prime}</b> | STRONG <b>{strong}</b> | WLC <b>{wlc}</b>",
-        f"",
-    ]
+        def _fmt(picks):
+            return [f"  • <b>{sym}</b> ({sc},{tr}) — <i>{rsn}</i>" for sym,sc,tr,rsn in picks]
 
-    # ── SAFE COMPOUNDER — primary (88% win rate, 0% big-loss) ─────────────
-    lines.append(f"<b>🛡 SAFE COMPOUNDER ({n_safe})</b> <i>D/E &lt; 0.1 · 88% win rate · 0% big-loss</i>")
-    if n_safe == 0:
-        lines.append("  Engine standing aside. Cash is valid.")
-    else:
-        for _, r in safe_df.iterrows():
-            lines.append(_sym_line(r))
-    lines.append("")
+        lines.append("<b>🛡 SAFE COMPOUNDER</b>  88% win · zero leverage")
+        lines += _fmt(safe_p) if safe_p else ["  <i>(no picks today)</i>"]
+        lines.append("")
+        lines.append("<b>⚖️ ALL-ROUNDER</b>  84% win · incremental picks")
+        lines += _fmt(ar_p) if ar_p else ["  <i>(none beyond SAFE today)</i>"]
+        lines.append("")
+        lines.append("<b>⛏ COMMODITY CYCLE</b>  94% win · sector momentum")
+        lines += _fmt(com_p) if com_p else ["  <i>(no commodity setups today)</i>"]
+        lines.append("")
 
-    # ── ALL-ROUNDER — secondary (D/E 0.1–0.3 incremental, 84% pooled) ────
-    lines.append(f"<b>⚖️ ALL-ROUNDER ({n_bal} incremental)</b> <i>D/E &lt; 0.3 · broader picks · 84% pooled win rate</i>")
-    if n_bal == 0:
-        lines.append("  No additional picks beyond SAFE tier.")
-    else:
-        for _, r in bal_only_df.iterrows():
-            lines.append(_sym_line(r))
-    lines.append("")
+        lines.append("<b>💡 OPPORTUNITY BUY</b>  catalyst-driven · exit when catalyst &gt; 21d old")
+        if opp_p:
+            for sym,sc,tr,atype,detail,days in opp_p:
+                lines.append(f"  • <b>{sym}</b> ({sc},{tr}) — {atype}: {detail} ({days}d ago)")
+        else:
+            lines.append("  <i>(no fresh catalysts today)</i>")
+        lines.append("")
 
-    # ── COMMODITY CYCLE — parallel thesis (94% win rate on STRONG, backtest) ─
-    lines.append(f"<b>⛏ COMMODITY CYCLE ({n_comm})</b> <i>PRIME/STRONG · sector mid-cycle + RS momentum · 94% win rate</i>")
-    if n_comm == 0:
-        lines.append("  No commodity cycle picks active.")
-    else:
-        for _, r in comm_only_df.iterrows():
-            sym  = str(r.get("NSE_SYMBOL","")).strip()
-            comp = _si(r.get("COMPOSITE",0))
-            tier = str(r.get("TIER","")).strip()
-            lo   = _sf(r.get("ENTRY_ZONE_LOW",0))
-            hi   = _sf(r.get("ENTRY_ZONE_HIGH",0))
-            zone = f"₹{lo:,.0f}–₹{hi:,.0f}" if lo > 0 and hi > 0 else "—"
-            note = _note_short(str(r.get("ENTRY_ZONE_NOTE","")).strip())
-            lines.append(f"  <code>{sym:<12}</code> <b>{comp}</b> [{tier}] | {zone} · {note}")
-    lines.append("")
+        if sell_p:
+            lines.append("<b>🔴 SELL TODAY</b>")
+            for sym,tier,rsn in sell_p:
+                lines.append(f"  • <b>{sym}</b> ({tier})" + (f" — {rsn}" if rsn else ""))
+            lines.append("")
+        if trim_p:
+            lines.append("<b>🟡 TRIM</b>")
+            lines.append("  " + " · ".join(f"<b>{s}</b>({t})" for s,t in trim_p))
+            lines.append("")
 
-    # ── SELL TODAY ─────────────────────────────────────────────────────────
-    n_sell = len(sell_df)
-    lines.append(f"<b>🔴 SELL TODAY ({n_sell}) — PRIME/STRONG exits</b>")
-    if n_sell == 0:
-        lines.append("  No exits flagged.")
-    else:
-        for _, r in sell_df.iterrows():
-            sym    = str(r.get("NSE_SYMBOL","")).strip()
-            reason = str(r.get("EXIT_REASON","")).strip() or "—"
-            lines.append(f"  ⚠ <b>{sym}</b> — {reason}")
-    lines.append("")
+        if not cs.empty and "TIER" in cs.columns:
+            tc = cs["TIER"].value_counts()
+            _TG = {("PRIME","BULL"):(25,42),("PRIME","CAUTION"):(15,30),("PRIME","BEAR"):(18,40),
+                   ("STRONG","BULL"):(15,28),("STRONG","CAUTION"):(10,22),("STRONG","BEAR"):(12,30)}
+            pe = _TG.get(("PRIME",mstate),(15,30)); se = _TG.get(("STRONG",mstate),(10,22))
+            lines.append(
+                f"📊 PRIME <b>{tc.get('PRIME',0)}</b> (+{pe[0]}–{pe[1]}%/yr) | "
+                f"STRONG <b>{tc.get('STRONG',0)}</b> (+{se[0]}–{se[1]}%/yr) | "
+                f"WLC <b>{tc.get('WATCHLIST_CONFIRMED',0)}</b> | "
+                f"MINE <b>{tc.get('LANDMINE',0)}</b>")
 
-    # ── TRIM ────────────────────────────────────────────────────────────────
-    n_trim = len(trim_df)
-    lines.append(f"<b>🟡 TRIM ({n_trim}) — Extended above 200DMA</b>")
-    if n_trim == 0:
-        lines.append("  No partial exits flagged.")
-    else:
-        for _, r in trim_df.iterrows():
-            sym    = str(r.get("NSE_SYMBOL","")).strip()
-            reason = str(r.get("EXIT_REASON","")).strip() or "—"
-            lines.append(f"  📉 <b>{sym}</b> — {reason}")
+        return "\n".join(lines)
 
-    lines.append("")
-    lines.append("<i>🤖 Engine complete</i>")
-    return "\n".join(lines)
+    except Exception as _e:
+        try:
+            conv = _load_conviction_picks()
+            _, ms2 = market_summary()
+            hdr = f"<b>🔔 ENGINE RUN COMPLETE</b>\n{now_ist().strftime('%d %b %Y %H:%M')} {ms2}\n"
+            if conv:
+                return hdr + "<b>🛡 BUY NOW</b>\n" + "\n".join(f"  • {c['sym']} ({c['composite']})" for c in conv[:5])
+            return hdr + "<i>No picks today</i>"
+        except Exception:
+            return ""
 
 
 # ════════════════════════════════════════════════════════════════
@@ -558,34 +603,24 @@ def build_morning_brief() -> str:
         msg += "\n<b>🌍 Global Cues</b>\n" + "\n".join(cues) + "\n"
     if bear_lines:
         msg += "\n<b>🐻 Bear Accumulate (3× potential)</b>\n" + "\n".join(bear_lines) + "\n"
-    # ── BUY NOW (Blackstone-filtered, 83% win rate) ──────────────────────────
-    pl_brief = load("portfolio_layer")
-    buy_now_lines = []
-    if not pl_brief.empty:
-        _bn_col = "BUY_NOW" if "BUY_NOW" in pl_brief.columns else None
-        if _bn_col:
-            _bn_mask = pl_brief[_bn_col].astype(str).str.lower().isin(["true","1","1.0"])
-        else:
-            _bn_mask = pl_brief.get("PRIME_CONVICTION", pd.Series(False, index=pl_brief.index)).astype(str).str.lower().isin(["true","1","1.0"])
-        _bn_df = pl_brief[_bn_mask].copy()
-        if "COMPOSITE" in _bn_df.columns:
-            _bn_df["COMPOSITE"] = pd.to_numeric(_bn_df["COMPOSITE"], errors="coerce").fillna(0)
-            _bn_df = _bn_df.sort_values("COMPOSITE", ascending=False)
-        for _, _br in _bn_df.iterrows():
-            _bsym  = str(_br.get("NSE_SYMBOL","")).strip()
-            _bcomp = _si(_br.get("COMPOSITE",0))
-            _bconv = _si(_br.get("CONVICTION_SCORE",0))
-            _bstars = "★" * _bconv + "☆" * (5 - _bconv)
-            _blo = _sf(_br.get("ENTRY_ZONE_LOW",0))
-            _bhi = _sf(_br.get("ENTRY_ZONE_HIGH",0))
-            _bzone = f"₹{_blo:,.0f}–₹{_bhi:,.0f}" if _blo > 0 else "—"
-            _bnote = str(_br.get("ENTRY_ZONE_NOTE","")).strip()
-            _bnote = _bnote.replace("Near 200DMA — ideal dip entry zone","Ideal zone").replace("Extended — wait for ATR pullback","Extended").replace("Below 200DMA — enter on recovery above 200DMA","Below 200DMA")
-            buy_now_lines.append(f"  <b>{_bsym}</b> {_bstars} | Score {_bcomp} | {_bzone} · {_bnote}")
-    if buy_now_lines:
-        msg += "\n<b>✅ BUY NOW</b> (Blackstone-filter · 83% win rate validated)\n" + "\n".join(buy_now_lines) + "\n"
-    else:
-        msg += "\n<b>✅ BUY NOW</b>: Engine standing aside — no picks meet threshold. Cash is valid.\n"
+    # ── Conviction Picks (PRIME_CONVICTION — strict 5-gate filter) ──────────
+    conv_picks = _load_conviction_picks()
+    if conv_picks:
+        conv_lines = []
+        for c in conv_picks:
+            stars = "★" * c["conviction"] + "☆" * (5 - c["conviction"])
+            zone  = (f"₹{c['zone_low']:,.0f}–₹{c['zone_high']:,.0f}"
+                     if c["zone_low"] > 0 else "—")
+            note  = c["zone_note"].replace("Near 200DMA — ideal dip entry zone", "Ideal zone")
+            note  = note.replace("Extended — wait for ATR pullback", "Wait — extended")
+            note  = note.replace("Below 200DMA — enter on recovery above 200DMA", "Below 200DMA")
+            ex    = f" | {c['exit']}" if c["exit"] not in ("HOLD", "") else ""
+            conv_lines.append(
+                f"  <b>{c['sym']}</b> {stars} | Score {c['composite']}{ex}\n"
+                f"    Buy zone: <b>{zone}</b> ({note})"
+            )
+        msg += "\n<b>🎯 Conviction Picks</b> (PRIME · 4/5 quality gates · no hardcoding)\n" \
+               + "\n".join(conv_lines) + "\n"
 
     if picks:
         msg += "\n<b>✅ Engine Top Picks</b>\n" + "\n".join(picks) + "\n"
