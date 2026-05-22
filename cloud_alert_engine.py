@@ -1025,6 +1025,11 @@ _CATALYST_HIGH_PRI = [
     "capacity expansion","new plant","plant commissioned","pli scheme",
     # Legal/regulatory orders filed under LODR (HIGH_PRI beats ROUTINE_SKIP "sebi (lodr)")
     "cestat","nclt","nclat","rera order","ngt order","court order received","stay granted","penalty waived",
+    # Insider / institutional transactions
+    "insider buy","insider bought","insider acqui",
+    "promoter acqui","promoter bought","promoter purchased",
+    "pledge creat","pledge creation",
+    "preferential allot","preferential issue","preferential allotment",
     # Negative events
     "sebi order","sebi penalty","ed raid","income tax raid",
     "fraud","default","insolvency","pledge invoked",
