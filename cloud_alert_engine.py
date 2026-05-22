@@ -1092,6 +1092,69 @@ def _catalyst_is_material(subject: str, category: str) -> bool:
         ])
     return False
 
+def _classify_catalyst(subject: str, category: str) -> tuple:
+    """Returns (direction, severity, catalyst_code).
+    direction: 'BUY' | 'SELL' | 'INFO'
+    severity : 'HIGH' | 'MED' | ''
+    """
+    sl = subject.lower()
+    # SELL — checked first to prevent 'sebi order' matching BUY 'order' keywords
+    if any(k in sl for k in ("pledge invok","pledge invoke","pledge invocation")):
+        return ("SELL","HIGH","PLEDGE_INV")
+    if any(k in sl for k in ("sebi order","sebi penalty")):
+        return ("SELL","HIGH","SEBI")
+    if any(k in sl for k in ("ed raid","enforcement directorate","income tax raid")):
+        return ("SELL","HIGH","RAID")
+    if any(k in sl for k in ("insolvency","nclt admission","nclt admit","going concern")):
+        return ("SELL","HIGH","DEFAULT")
+    if any(k in sl for k in ("payment default","npa declared")):
+        return ("SELL","HIGH","DEFAULT")
+    if any(k in sl for k in ("fraud","material weakness","auditor resign")):
+        return ("SELL","HIGH","AUDITOR")
+    if any(k in sl for k in ("ceo resign","md resign","cfo resign",
+                              "managing director resign","chief executive resign")):
+        return ("SELL","MED","KMP_EXIT")
+    if any(k in sl for k in ("plant fire","factory fire","force majeure","plant shutdown")):
+        return ("SELL","MED","FIRE")
+    if any(k in sl for k in ("rating downgrade","outlook downgrade")):
+        return ("SELL","MED","DOWNGRADE")
+    if any(k in sl for k in ("contract cancel","order cancel")):
+        return ("SELL","MED","CANCEL")
+    if any(k in sl for k in ("pledge creat","pledge creation")):
+        return ("SELL","MED","PLEDGE_CRE")
+    # BULK/BLOCK DEAL — direction from text
+    if any(k in sl for k in ("bulk deal","block deal")):
+        if any(k in sl for k in ("sold","sell","dispos","offload","transfer")):
+            return ("SELL","MED","BULK_SELL")
+        if any(k in sl for k in ("bought","buy","purchas","acqui")):
+            return ("BUY","HIGH","BULK_BUY")
+        return ("INFO","MED","BULK")
+    # INSIDER / PROMOTER
+    if "insider" in sl or "promoter" in sl:
+        if any(k in sl for k in ("sold","sell","dispos","transfer")):
+            return ("SELL","MED","INSIDER_SELL")
+        if any(k in sl for k in ("bought","buy","purchas","acqui","increas")):
+            return ("BUY","MED","INSIDER_BUY")
+        return ("INFO","MED","INSIDER")
+    # BUY
+    if any(k in sl for k in ("new order","order win","secures order","bags order",
+                              "contract awarded","loa received","ppa signed","work order",
+                              "purchase order","export order")):
+        return ("BUY","HIGH","ORDER")
+    if any(k in sl for k in ("acquisition","merger","amalgam")):
+        return ("BUY","HIGH","MA")
+    if any(k in sl for k in ("drug approval","usfda","dcgi approval","patent granted")):
+        return ("BUY","HIGH","APPROVAL")
+    if any(k in sl for k in ("buyback","buy-back")):
+        return ("BUY","HIGH","BUYBACK")
+    if any(k in sl for k in ("rights issue","qip","preferential allot")):
+        return ("BUY","MED","CAPITAL_RAISE")
+    if any(k in sl for k in ("capacity expansion","new plant","commissioned")):
+        return ("BUY","MED","EXPANSION")
+    if any(k in sl for k in ("bonus share","stock split")):
+        return ("BUY","MED","CA_BONUS")
+    return ("INFO","","MATERIAL")
+
 def _catalyst_event_label(subject: str) -> str:
     """Extract short human-readable event label."""
     subj = subject.lower()
@@ -1298,15 +1361,22 @@ def send_bse_live_announcements(bse_raw: list, seen: dict) -> int:
             _lbl_la  = ev["label"]
             _subj    = ev["subj"]
 
+            # Direction classification for emoji prefix
+            _dir_la, _sev_la, _ = _classify_catalyst(_subj, "")
+            _icon_la = "🟢" if _dir_la == "BUY" else "🔴" if _dir_la == "SELL" else "🚨"
+            _dir_tag = " — <b>BUY CATALYST</b>" if _dir_la == "BUY" else \
+                       (" — <b>⚠ RISK ALERT</b>" if _sev_la == "HIGH" else " — <b>⚠ RISK</b>") \
+                       if _dir_la == "SELL" else ""
+
             # Header: NSE symbol first if known, otherwise company name
             if _nse_la:
                 lines_la.append(
-                    f"🚨 <b>{_html_la.escape(_nse_la)}</b> "
-                    f"({_html_la.escape(_name_la)}) — {_html_la.escape(_lbl_la)}"
+                    f"{_icon_la} <b>{_html_la.escape(_nse_la)}</b> "
+                    f"({_html_la.escape(_name_la)}) — {_html_la.escape(_lbl_la)}{_dir_tag}"
                 )
             else:
                 lines_la.append(
-                    f"📰 <b>{_html_la.escape(_name_la)}</b> — {_html_la.escape(_lbl_la)}"
+                    f"{_icon_la} <b>{_html_la.escape(_name_la)}</b> — {_html_la.escape(_lbl_la)}{_dir_tag}"
                 )
 
             # Clean boilerplate from subject and show key sentence
@@ -1446,12 +1516,16 @@ def check_and_score_catalysts(bse_raw=None, seen=None):
                         matched = (sym, info)
                         break
 
+            _dir_ev, _sev_ev, _code_ev = _classify_catalyst(subj, cat)
             events_to_alert.append({
-                "scrip":   scrip,
-                "company": company,
-                "subj":    subj,
-                "label":   _catalyst_event_label(subj),
-                "matched": matched,
+                "scrip":     scrip,
+                "company":   company,
+                "subj":      subj,
+                "label":     _catalyst_event_label(subj),
+                "matched":   matched,
+                "direction": _dir_ev,
+                "severity":  _sev_ev,
+                "code":      _code_ev,
             })
 
         # Save seen only if we own it (not when called from catalyst_only_mode)
@@ -1579,13 +1653,26 @@ def check_and_score_catalysts(bse_raw=None, seen=None):
             sigs = info.get("signals","")
             sigs_str = f"{int(float(str(sigs)))} signals" if sigs and str(sigs) not in ("","nan") else ""
 
+            # Direction-aware formatting
+            _ev_dir = ev.get("direction","INFO")
+            _ev_sev = ev.get("severity","")
+            _ev_icon = "🟢" if _ev_dir == "BUY" else "🔴" if _ev_dir == "SELL" else "🚨"
+            # For SELL events override action with exit guidance
+            _display_action = action
+            if _ev_dir == "SELL":
+                if _ev_sev == "HIGH":
+                    _display_action = "🔴 EXIT — high-severity risk event"
+                elif tier in ("PRIME","STRONG"):
+                    _display_action = "⚠️ REDUCE — monitor closely"
+                else:
+                    _display_action = "⚠️ HOLD & WATCH — risk event"
             lines.append(
-                f"\n🚨 <b>{_html.escape(name)}</b>\n"
+                f"\n{_ev_icon} <b>{_html.escape(name)}</b>\n"
                 f"   {tier} | Score: <b>{score_str}/100</b>{' | '+sigs_str if sigs_str else ''}{boundary_note}\n"
                 f"   📋 <b>{_html.escape(label)}</b>{vel_note}\n"
                 f"   📌 {_html.escape(subj[:120])}\n"
                 f"   💰 Entry: {entry_clean}  |  SL: {sl_clean}\n"
-                f"   ⚡ {_html.escape(action)}\n"
+                f"   ⚡ {_html.escape(_display_action)}\n"
                 + (f"   ⚠️ <b>PRICE BELOW SL — broken setup</b>\n" if broken_flag else "")
             )
             count += 1
