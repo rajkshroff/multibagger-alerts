@@ -287,6 +287,50 @@ def global_cues():
 BUY_ACTIONS = {"BUY","STRONG_BUY","FRESH_BUY","ACCUMULATE","ADD",
                "BEAR ACCUMULATE — 3X POTENTIAL","BEAR_ACCUM"}
 
+def _build_todays_events_prefix() -> str:
+    """Read recent_events.csv for today's BUY/SELL events.
+    Prepended to the Action Plan so the user immediately sees what happened
+    today on their portfolio stocks — the 'why' behind the update."""
+    try:
+        import pandas as _pd, html as _html
+        from datetime import datetime, timedelta, timezone
+        _re_path = Path(__file__).resolve().parent / "recent_events.csv"
+        if not _re_path.exists():
+            return ""
+        df = _pd.read_csv(_re_path, dtype=str)
+        if df.empty:
+            return ""
+        _IST  = timezone(timedelta(hours=5, minutes=30))
+        _today = datetime.now(_IST).strftime("%Y-%m-%d")
+        # Filter to today using ADDED_AT (always present) or EVENT_DATE
+        _date_col = "ADDED_AT" if "ADDED_AT" in df.columns else "EVENT_DATE"
+        df["_d"] = df[_date_col].astype(str).str[:10]
+        df = df[df["_d"] == _today]
+        if df.empty:
+            return ""
+        lines, seen = [], set()
+        for _, row in df.iterrows():
+            subj = str(row.get("EVENT_SUBJECT","")).strip()
+            nse  = str(row.get("NSE_SYMBOL","")).strip()
+            if not subj or nse in ("","nan") or nse in seen:
+                continue
+            d, s, c = _classify_catalyst(subj, str(row.get("EVENT_TYPE","")))
+            if d == "INFO":
+                continue
+            seen.add(nse)
+            icon = "🟢" if d == "BUY" else "🔴"
+            sev  = " ⚠️" if d == "SELL" and s == "HIGH" else ""
+            lines.append(f"{icon}{sev} <b>{_html.escape(nse)}</b>: {_html.escape(subj[:80])}")
+            if len(lines) >= 6:
+                break
+        if not lines:
+            return ""
+        return "⚡ <b>TODAY'S SIGNIFICANT EVENTS</b>\n" + "\n".join(lines) + "\n"
+    except Exception as _e:
+        print(f"  [events-prefix] {_e}")
+        return ""
+
+
 def build_action_plan() -> str:
     """TYPE 1 — Action Plan. s138: 3-model BUY NOW + Opportunity Buy."""
     try:
@@ -2038,7 +2082,12 @@ def main():
     # ── TYPE 1: ACTION PLAN (push-triggered = engine just ran) ──
     if triggered_by_push:
         print("  → TYPE 1: Action Plan (push trigger — engine just ran)")
+        _events_prefix = _build_todays_events_prefix()
         msg = build_action_plan()
+        if _events_prefix and msg:
+            msg = _events_prefix + "\n" + msg
+        elif _events_prefix:
+            msg = _events_prefix
         
 
         if not msg:
