@@ -281,55 +281,112 @@ def global_cues():
         except: continue
     return lines
 
+def _classify_catalyst(subject: str, category: str) -> tuple:
+    """Returns (direction, severity, catalyst_code). direction: BUY|SELL|INFO."""
+    sl = subject.lower()
+    if any(k in sl for k in ("pledge invok","pledge invoke","pledge invocation")):
+        return ("SELL","HIGH","PLEDGE_INV")
+    if any(k in sl for k in ("sebi order","sebi penalty")):
+        return ("SELL","HIGH","SEBI")
+    if any(k in sl for k in ("ed raid","enforcement directorate","income tax raid")):
+        return ("SELL","HIGH","RAID")
+    if any(k in sl for k in ("insolvency","nclt admission","nclt admit","going concern")):
+        return ("SELL","HIGH","DEFAULT")
+    if any(k in sl for k in ("payment default","npa declared")):
+        return ("SELL","HIGH","DEFAULT")
+    if any(k in sl for k in ("fraud","material weakness","auditor resign")):
+        return ("SELL","HIGH","AUDITOR")
+    if any(k in sl for k in ("ceo resign","md resign","cfo resign",
+                              "managing director resign","chief executive resign")):
+        return ("SELL","MED","KMP_EXIT")
+    if any(k in sl for k in ("plant fire","factory fire","force majeure","plant shutdown")):
+        return ("SELL","MED","FIRE")
+    if any(k in sl for k in ("rating downgrade","outlook downgrade")):
+        return ("SELL","MED","DOWNGRADE")
+    if any(k in sl for k in ("contract cancel","order cancel")):
+        return ("SELL","MED","CANCEL")
+    if any(k in sl for k in ("pledge creat","pledge creation")):
+        return ("SELL","MED","PLEDGE_CRE")
+    if any(k in sl for k in ("bulk deal","block deal")):
+        if any(k in sl for k in ("sold","sell","dispos","offload","transfer")):
+            return ("SELL","MED","BULK_SELL")
+        if any(k in sl for k in ("bought","buy","purchas","acqui")):
+            return ("BUY","HIGH","BULK_BUY")
+        return ("INFO","MED","BULK")
+    if "insider" in sl or "promoter" in sl:
+        if any(k in sl for k in ("sold","sell","dispos","transfer")):
+            return ("SELL","MED","INSIDER_SELL")
+        if any(k in sl for k in ("bought","buy","purchas","acqui","increas")):
+            return ("BUY","MED","INSIDER_BUY")
+        return ("INFO","MED","INSIDER")
+    if any(k in sl for k in ("new order","order win","secures order","bags order",
+                              "contract awarded","loa received","ppa signed","work order",
+                              "purchase order","export order")):
+        return ("BUY","HIGH","ORDER")
+    if any(k in sl for k in ("acquisition","merger","amalgam")):
+        return ("BUY","HIGH","MA")
+    if any(k in sl for k in ("drug approval","usfda","dcgi approval","patent granted")):
+        return ("BUY","HIGH","APPROVAL")
+    if any(k in sl for k in ("buyback","buy-back")):
+        return ("BUY","HIGH","BUYBACK")
+    if any(k in sl for k in ("rights issue","qip","preferential allot")):
+        return ("BUY","MED","CAPITAL_RAISE")
+    if any(k in sl for k in ("capacity expansion","new plant","commissioned")):
+        return ("BUY","MED","EXPANSION")
+    if any(k in sl for k in ("bonus share","stock split")):
+        return ("BUY","MED","CA_BONUS")
+    return ("INFO","","MATERIAL")
+
+def _build_todays_events_prefix() -> str:
+    """Return a brief header of today's BUY/SELL BSE events to prepend to Action Plan.
+    Shows up to 6 events (high-severity first) with 🟢/🔴 icons so user knows why plan fired."""
+    try:
+        import csv, os
+        from datetime import datetime, timezone, timedelta
+        IST = timezone(timedelta(hours=5, minutes=30))
+        today = datetime.now(IST).strftime("%Y-%m-%d")
+        re_path = os.path.join(os.path.dirname(__file__), "recent_events.csv")
+        if not os.path.exists(re_path):
+            return ""
+        rows = []
+        with open(re_path, encoding="utf-8", errors="replace") as f:
+            for r in csv.DictReader(f):
+                added = str(r.get("ADDED_AT",""))[:10]
+                if added != today:
+                    continue
+                subj = str(r.get("EVENT_SUBJECT","") or "").strip()
+                nse  = str(r.get("NSE_SYMBOL","") or "").strip()
+                co   = str(r.get("COMPANY","") or "").strip()
+                label = nse if nse and nse != "nan" else co[:18]
+                if not label or not subj:
+                    continue
+                _dir, _sev, _ = _classify_catalyst(subj, "")
+                if _dir == "INFO":
+                    continue
+                rows.append((_dir, _sev, label, subj))
+        if not rows:
+            return ""
+        # Sort: SELL HIGH first, then BUY HIGH, then others
+        def _rank(r):
+            d, s = r[0], r[1]
+            return (0 if d == "SELL" and s == "HIGH" else
+                    1 if d == "SELL" else
+                    2 if d == "BUY" and s == "HIGH" else 3)
+        rows.sort(key=_rank)
+        lines = ["⚡ <b>TODAY'S SIGNIFICANT EVENTS</b>"]
+        for _dir, _sev, label, subj in rows[:6]:
+            icon = "🔴⚠️" if (_dir == "SELL" and _sev == "HIGH") else "🔴" if _dir == "SELL" else "🟢"
+            short = subj[:80] + ("…" if len(subj) > 80 else "")
+            lines.append(f"{icon} <b>{label}</b>: {short}")
+        return "\n".join(lines)
+    except Exception:
+        return ""
+
 # ════════════════════════════════════════════════════════════════
 # TYPE 1 — ACTION PLAN (push-triggered, after every engine run)
 # ════════════════════════════════════════════════════════════════
 BUY_ACTIONS = {"BUY","STRONG_BUY","FRESH_BUY","ACCUMULATE","ADD",
                "BEAR ACCUMULATE — 3X POTENTIAL","BEAR_ACCUM"}
-
-def _build_todays_events_prefix() -> str:
-    """Read recent_events.csv for today's BUY/SELL events.
-    Prepended to the Action Plan so the user immediately sees what happened
-    today on their portfolio stocks — the 'why' behind the update."""
-    try:
-        import pandas as _pd, html as _html
-        from datetime import datetime, timedelta, timezone
-        _re_path = Path(__file__).resolve().parent / "recent_events.csv"
-        if not _re_path.exists():
-            return ""
-        df = _pd.read_csv(_re_path, dtype=str)
-        if df.empty:
-            return ""
-        _IST  = timezone(timedelta(hours=5, minutes=30))
-        _today = datetime.now(_IST).strftime("%Y-%m-%d")
-        # Filter to today using ADDED_AT (always present) or EVENT_DATE
-        _date_col = "ADDED_AT" if "ADDED_AT" in df.columns else "EVENT_DATE"
-        df["_d"] = df[_date_col].astype(str).str[:10]
-        df = df[df["_d"] == _today]
-        if df.empty:
-            return ""
-        lines, seen = [], set()
-        for _, row in df.iterrows():
-            subj = str(row.get("EVENT_SUBJECT","")).strip()
-            nse  = str(row.get("NSE_SYMBOL","")).strip()
-            if not subj or nse in ("","nan") or nse in seen:
-                continue
-            d, s, c = _classify_catalyst(subj, str(row.get("EVENT_TYPE","")))
-            if d == "INFO":
-                continue
-            seen.add(nse)
-            icon = "🟢" if d == "BUY" else "🔴"
-            sev  = " ⚠️" if d == "SELL" and s == "HIGH" else ""
-            lines.append(f"{icon}{sev} <b>{_html.escape(nse)}</b>: {_html.escape(subj[:80])}")
-            if len(lines) >= 6:
-                break
-        if not lines:
-            return ""
-        return "⚡ <b>TODAY'S SIGNIFICANT EVENTS</b>\n" + "\n".join(lines) + "\n"
-    except Exception as _e:
-        print(f"  [events-prefix] {_e}")
-        return ""
-
 
 def build_action_plan() -> str:
     """TYPE 1 — Action Plan. s138: 3-model BUY NOW + Opportunity Buy."""
@@ -1069,11 +1126,6 @@ _CATALYST_HIGH_PRI = [
     "capacity expansion","new plant","plant commissioned","pli scheme",
     # Legal/regulatory orders filed under LODR (HIGH_PRI beats ROUTINE_SKIP "sebi (lodr)")
     "cestat","nclt","nclat","rera order","ngt order","court order received","stay granted","penalty waived",
-    # Insider / institutional transactions
-    "insider buy","insider bought","insider acqui",
-    "promoter acqui","promoter bought","promoter purchased",
-    "pledge creat","pledge creation",
-    "preferential allot","preferential issue","preferential allotment",
     # Negative events
     "sebi order","sebi penalty","ed raid","income tax raid",
     "fraud","default","insolvency","pledge invoked",
@@ -1136,69 +1188,6 @@ def _catalyst_is_material(subject: str, category: str) -> bool:
         ])
     return False
 
-def _classify_catalyst(subject: str, category: str) -> tuple:
-    """Returns (direction, severity, catalyst_code).
-    direction: 'BUY' | 'SELL' | 'INFO'
-    severity : 'HIGH' | 'MED' | ''
-    """
-    sl = subject.lower()
-    # SELL — checked first to prevent 'sebi order' matching BUY 'order' keywords
-    if any(k in sl for k in ("pledge invok","pledge invoke","pledge invocation")):
-        return ("SELL","HIGH","PLEDGE_INV")
-    if any(k in sl for k in ("sebi order","sebi penalty")):
-        return ("SELL","HIGH","SEBI")
-    if any(k in sl for k in ("ed raid","enforcement directorate","income tax raid")):
-        return ("SELL","HIGH","RAID")
-    if any(k in sl for k in ("insolvency","nclt admission","nclt admit","going concern")):
-        return ("SELL","HIGH","DEFAULT")
-    if any(k in sl for k in ("payment default","npa declared")):
-        return ("SELL","HIGH","DEFAULT")
-    if any(k in sl for k in ("fraud","material weakness","auditor resign")):
-        return ("SELL","HIGH","AUDITOR")
-    if any(k in sl for k in ("ceo resign","md resign","cfo resign",
-                              "managing director resign","chief executive resign")):
-        return ("SELL","MED","KMP_EXIT")
-    if any(k in sl for k in ("plant fire","factory fire","force majeure","plant shutdown")):
-        return ("SELL","MED","FIRE")
-    if any(k in sl for k in ("rating downgrade","outlook downgrade")):
-        return ("SELL","MED","DOWNGRADE")
-    if any(k in sl for k in ("contract cancel","order cancel")):
-        return ("SELL","MED","CANCEL")
-    if any(k in sl for k in ("pledge creat","pledge creation")):
-        return ("SELL","MED","PLEDGE_CRE")
-    # BULK/BLOCK DEAL — direction from text
-    if any(k in sl for k in ("bulk deal","block deal")):
-        if any(k in sl for k in ("sold","sell","dispos","offload","transfer")):
-            return ("SELL","MED","BULK_SELL")
-        if any(k in sl for k in ("bought","buy","purchas","acqui")):
-            return ("BUY","HIGH","BULK_BUY")
-        return ("INFO","MED","BULK")
-    # INSIDER / PROMOTER
-    if "insider" in sl or "promoter" in sl:
-        if any(k in sl for k in ("sold","sell","dispos","transfer")):
-            return ("SELL","MED","INSIDER_SELL")
-        if any(k in sl for k in ("bought","buy","purchas","acqui","increas")):
-            return ("BUY","MED","INSIDER_BUY")
-        return ("INFO","MED","INSIDER")
-    # BUY
-    if any(k in sl for k in ("new order","order win","secures order","bags order",
-                              "contract awarded","loa received","ppa signed","work order",
-                              "purchase order","export order")):
-        return ("BUY","HIGH","ORDER")
-    if any(k in sl for k in ("acquisition","merger","amalgam")):
-        return ("BUY","HIGH","MA")
-    if any(k in sl for k in ("drug approval","usfda","dcgi approval","patent granted")):
-        return ("BUY","HIGH","APPROVAL")
-    if any(k in sl for k in ("buyback","buy-back")):
-        return ("BUY","HIGH","BUYBACK")
-    if any(k in sl for k in ("rights issue","qip","preferential allot")):
-        return ("BUY","MED","CAPITAL_RAISE")
-    if any(k in sl for k in ("capacity expansion","new plant","commissioned")):
-        return ("BUY","MED","EXPANSION")
-    if any(k in sl for k in ("bonus share","stock split")):
-        return ("BUY","MED","CA_BONUS")
-    return ("INFO","","MATERIAL")
-
 def _catalyst_event_label(subject: str) -> str:
     """Extract short human-readable event label."""
     subj = subject.lower()
@@ -1234,46 +1223,16 @@ def _catalyst_event_label(subject: str) -> str:
     return "Material Event"
 
 def _fetch_bse_for_catalyst() -> list:
-    """Fetch BSE announcements: today's full date-range + latest (union, deduped).
-    Date-range catches pre-market filings that scroll off the latest-only feed.
-    s141: extended to cover 5am IST pre-market ORDER_WIN announcements.
-    """
+    """Fetch latest BSE announcements."""
     try:
         import requests as _req
-        _hdr = {"User-Agent": "Mozilla/5.0", "Referer": "https://www.bseindia.com/"}
-        _today = now_ist().strftime("%Y%m%d")  # YYYYMMDD — BSE date format
-
-        _all, _seen_keys = [], set()
-
-        def _fetch_url(url):
-            try:
-                r = _req.get(url, headers=_hdr, timeout=12)
-                if r.ok:
-                    d = r.json()
-                    return d if isinstance(d, list) else d.get("Table", []) or []
-            except Exception as e:
-                print(f"  [catalyst] fetch error: {e}")
-            return []
-
-        # Query 1: ALL of today's price-sensitive announcements (catches pre-market filings)
-        items_dated = _fetch_url(
-            f"https://api.bseindia.com/BseIndiaAPI/api/AnnSubCategoryGetData/w"
-            f"?strCat=-1&strPrevDate={_today}&strScrip=&strSearch=P&strToDate={_today}&strType=C"
-        )
-        # Query 2: latest page (catches very recent items that may not appear in dated query)
-        items_latest = _fetch_url(
-            "https://api.bseindia.com/BseIndiaAPI/api/AnnSubCategoryGetData/w"
-            "?strCat=-1&strPrevDate=&strScrip=&strSearch=P&strToDate=&strType=C"
-        )
-
-        for item in items_dated + items_latest:
-            key = (str(item.get("SCRIP_CD", "")), str(item.get("HEADLINE", ""))[:60])
-            if key not in _seen_keys:
-                _seen_keys.add(key)
-                _all.append(item)
-
-        print(f"  [catalyst] BSE items: dated={len(items_dated)} latest={len(items_latest)} union={len(_all)}")
-        return _all
+        url = ("https://api.bseindia.com/BseIndiaAPI/api/AnnSubCategoryGetData/w"
+               "?strCat=-1&strPrevDate=&strScrip=&strSearch=P&strToDate=&strType=C")
+        r = _req.get(url, headers={"User-Agent":"Mozilla/5.0",
+                                    "Referer":"https://www.bseindia.com/"}, timeout=12)
+        if r.ok:
+            d = r.json()
+            return d if isinstance(d, list) else d.get("Table", []) or []
     except Exception as e:
         print(f"  [catalyst] BSE fetch error: {e}")
     return []
@@ -1325,8 +1284,7 @@ def send_bse_live_announcements(bse_raw: list, seen: dict) -> int:
             for _, _ur in cs_la.iterrows():
                 _us = str(_ur.get("NSE_SYMBOL","")).strip().upper()
                 _ut = str(_ur.get("TIER","")).strip()
-                if _us and _ut in ("PRIME","STRONG","WL_CONFIRMED","WL_EXTERNAL",
-                                   "WATCHLIST_CONFIRMED","WATCHLIST_EXTERNAL"):
+                if _us and _ut in ("PRIME","STRONG","WL_CONFIRMED","WL_EXTERNAL"):
                     _universe_tier_la[_us] = _ut
         _ps_la = {s for s,t in _universe_tier_la.items() if t in ("PRIME","STRONG")}
 
@@ -1405,22 +1363,15 @@ def send_bse_live_announcements(bse_raw: list, seen: dict) -> int:
             _lbl_la  = ev["label"]
             _subj    = ev["subj"]
 
-            # Direction classification for emoji prefix
-            _dir_la, _sev_la, _ = _classify_catalyst(_subj, "")
-            _icon_la = "🟢" if _dir_la == "BUY" else "🔴" if _dir_la == "SELL" else "🚨"
-            _dir_tag = " — <b>BUY CATALYST</b>" if _dir_la == "BUY" else \
-                       (" — <b>⚠ RISK ALERT</b>" if _sev_la == "HIGH" else " — <b>⚠ RISK</b>") \
-                       if _dir_la == "SELL" else ""
-
             # Header: NSE symbol first if known, otherwise company name
             if _nse_la:
                 lines_la.append(
-                    f"{_icon_la} <b>{_html_la.escape(_nse_la)}</b> "
-                    f"({_html_la.escape(_name_la)}) — {_html_la.escape(_lbl_la)}{_dir_tag}"
+                    f"🚨 <b>{_html_la.escape(_nse_la)}</b> "
+                    f"({_html_la.escape(_name_la)}) — {_html_la.escape(_lbl_la)}"
                 )
             else:
                 lines_la.append(
-                    f"{_icon_la} <b>{_html_la.escape(_name_la)}</b> — {_html_la.escape(_lbl_la)}{_dir_tag}"
+                    f"📰 <b>{_html_la.escape(_name_la)}</b> — {_html_la.escape(_lbl_la)}"
                 )
 
             # Clean boilerplate from subject and show key sentence
@@ -1560,16 +1511,12 @@ def check_and_score_catalysts(bse_raw=None, seen=None):
                         matched = (sym, info)
                         break
 
-            _dir_ev, _sev_ev, _code_ev = _classify_catalyst(subj, cat)
             events_to_alert.append({
-                "scrip":     scrip,
-                "company":   company,
-                "subj":      subj,
-                "label":     _catalyst_event_label(subj),
-                "matched":   matched,
-                "direction": _dir_ev,
-                "severity":  _sev_ev,
-                "code":      _code_ev,
+                "scrip":   scrip,
+                "company": company,
+                "subj":    subj,
+                "label":   _catalyst_event_label(subj),
+                "matched": matched,
             })
 
         # Save seen only if we own it (not when called from catalyst_only_mode)
@@ -1697,26 +1644,13 @@ def check_and_score_catalysts(bse_raw=None, seen=None):
             sigs = info.get("signals","")
             sigs_str = f"{int(float(str(sigs)))} signals" if sigs and str(sigs) not in ("","nan") else ""
 
-            # Direction-aware formatting
-            _ev_dir = ev.get("direction","INFO")
-            _ev_sev = ev.get("severity","")
-            _ev_icon = "🟢" if _ev_dir == "BUY" else "🔴" if _ev_dir == "SELL" else "🚨"
-            # For SELL events override action with exit guidance
-            _display_action = action
-            if _ev_dir == "SELL":
-                if _ev_sev == "HIGH":
-                    _display_action = "🔴 EXIT — high-severity risk event"
-                elif tier in ("PRIME","STRONG"):
-                    _display_action = "⚠️ REDUCE — monitor closely"
-                else:
-                    _display_action = "⚠️ HOLD & WATCH — risk event"
             lines.append(
-                f"\n{_ev_icon} <b>{_html.escape(name)}</b>\n"
+                f"\n🚨 <b>{_html.escape(name)}</b>\n"
                 f"   {tier} | Score: <b>{score_str}/100</b>{' | '+sigs_str if sigs_str else ''}{boundary_note}\n"
                 f"   📋 <b>{_html.escape(label)}</b>{vel_note}\n"
                 f"   📌 {_html.escape(subj[:120])}\n"
                 f"   💰 Entry: {entry_clean}  |  SL: {sl_clean}\n"
-                f"   ⚡ {_html.escape(_display_action)}\n"
+                f"   ⚡ {_html.escape(action)}\n"
                 + (f"   ⚠️ <b>PRICE BELOW SL — broken setup</b>\n" if broken_flag else "")
             )
             count += 1
@@ -2085,10 +2019,7 @@ def main():
         _events_prefix = _build_todays_events_prefix()
         msg = build_action_plan()
         if _events_prefix and msg:
-            msg = _events_prefix + "\n" + msg
-        elif _events_prefix:
-            msg = _events_prefix
-        
+            msg = _events_prefix + "\n\n" + msg
 
         if not msg:
             # Build minimal market summary even with 0 actionable stocks
