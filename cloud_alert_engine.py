@@ -1122,16 +1122,46 @@ def _catalyst_event_label(subject: str) -> str:
     return "Material Event"
 
 def _fetch_bse_for_catalyst() -> list:
-    """Fetch latest BSE announcements."""
+    """Fetch BSE announcements: today's full date-range + latest (union, deduped).
+    Date-range catches pre-market filings that scroll off the latest-only feed.
+    s141: extended to cover 5am IST pre-market ORDER_WIN announcements.
+    """
     try:
         import requests as _req
-        url = ("https://api.bseindia.com/BseIndiaAPI/api/AnnSubCategoryGetData/w"
-               "?strCat=-1&strPrevDate=&strScrip=&strSearch=P&strToDate=&strType=C")
-        r = _req.get(url, headers={"User-Agent":"Mozilla/5.0",
-                                    "Referer":"https://www.bseindia.com/"}, timeout=12)
-        if r.ok:
-            d = r.json()
-            return d if isinstance(d, list) else d.get("Table", []) or []
+        _hdr = {"User-Agent": "Mozilla/5.0", "Referer": "https://www.bseindia.com/"}
+        _today = now_ist().strftime("%Y%m%d")  # YYYYMMDD — BSE date format
+
+        _all, _seen_keys = [], set()
+
+        def _fetch_url(url):
+            try:
+                r = _req.get(url, headers=_hdr, timeout=12)
+                if r.ok:
+                    d = r.json()
+                    return d if isinstance(d, list) else d.get("Table", []) or []
+            except Exception as e:
+                print(f"  [catalyst] fetch error: {e}")
+            return []
+
+        # Query 1: ALL of today's price-sensitive announcements (catches pre-market filings)
+        items_dated = _fetch_url(
+            f"https://api.bseindia.com/BseIndiaAPI/api/AnnSubCategoryGetData/w"
+            f"?strCat=-1&strPrevDate={_today}&strScrip=&strSearch=P&strToDate={_today}&strType=C"
+        )
+        # Query 2: latest page (catches very recent items that may not appear in dated query)
+        items_latest = _fetch_url(
+            "https://api.bseindia.com/BseIndiaAPI/api/AnnSubCategoryGetData/w"
+            "?strCat=-1&strPrevDate=&strScrip=&strSearch=P&strToDate=&strType=C"
+        )
+
+        for item in items_dated + items_latest:
+            key = (str(item.get("SCRIP_CD", "")), str(item.get("HEADLINE", ""))[:60])
+            if key not in _seen_keys:
+                _seen_keys.add(key)
+                _all.append(item)
+
+        print(f"  [catalyst] BSE items: dated={len(items_dated)} latest={len(items_latest)} union={len(_all)}")
+        return _all
     except Exception as e:
         print(f"  [catalyst] BSE fetch error: {e}")
     return []
@@ -1183,7 +1213,8 @@ def send_bse_live_announcements(bse_raw: list, seen: dict) -> int:
             for _, _ur in cs_la.iterrows():
                 _us = str(_ur.get("NSE_SYMBOL","")).strip().upper()
                 _ut = str(_ur.get("TIER","")).strip()
-                if _us and _ut in ("PRIME","STRONG","WL_CONFIRMED","WL_EXTERNAL"):
+                if _us and _ut in ("PRIME","STRONG","WL_CONFIRMED","WL_EXTERNAL",
+                                   "WATCHLIST_CONFIRMED","WATCHLIST_EXTERNAL"):
                     _universe_tier_la[_us] = _ut
         _ps_la = {s for s,t in _universe_tier_la.items() if t in ("PRIME","STRONG")}
 

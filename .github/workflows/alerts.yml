@@ -14,8 +14,11 @@ on:
     - cron: '0 7 * * 1-5'
     # News Slot 3 -- 16:30 IST = 11:00 UTC
     - cron: '0 11 * * 1-5'
-    # Catalyst poller -- every 5 min, market hours 9:15-15:35 IST
-    - cron: '*/5 3-10 * * 1-5'
+    # Catalyst poller -- every 5 min, 4:30am-3:30pm IST (s141: extended from 8:30am)
+    # 4:30am-5:30am IST = 23:00-00:00 UTC (prev day Sun-Thu)
+    - cron: '*/5 23 * * 0-4'
+    # 5:30am-3:30pm IST = 00:00-10:00 UTC Mon-Fri
+    - cron: '*/5 0-10 * * 1-5'
 
 jobs:
   alert:
@@ -48,10 +51,20 @@ jobs:
           elif [ "$SCHED" = "30 3 * * 1-5" ] || [ "$SCHED" = "0 7 * * 1-5" ] || [ "$SCHED" = "0 11 * * 1-5" ]; then
             echo "TYPE 3: News"
             python cloud_alert_engine.py --news
-          elif [ "$SCHED" = "*/5 3-10 * * 1-5" ]; then
+          elif [ "$SCHED" = "*/5 23 * * 0-4" ] || [ "$SCHED" = "*/5 0-10 * * 1-5" ]; then
             echo "MSG4/5: Catalyst poller"
             python cloud_alert_engine.py --catalyst-only
           else
             echo "TYPE 1: Action Plan (push trigger)"
             python cloud_alert_engine.py
           fi
+
+      - name: Save seen_hashes (dedup across runs)
+        if: always()
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git pull --rebase --autostash 2>/dev/null || true
+          git add seen_hashes.json
+          git diff --staged --quiet || git commit -m "ci: update seen_hashes [skip ci]"
+          git push 2>/dev/null || true
