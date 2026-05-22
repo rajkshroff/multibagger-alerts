@@ -2,3 +2,8 @@
 # Auto-managed by alert engine — causes push conflicts
 seen_hashes.json
 morning_brief_sent.json
+
+# Python cache — never push compiled bytecode
+__pycache__/
+*.pyc
+*.pyo
