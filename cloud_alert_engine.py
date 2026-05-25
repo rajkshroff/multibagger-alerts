@@ -2046,7 +2046,7 @@ def main():
                 _scored = pd.to_datetime(_cs_chk["SCORED_AT"].max(), errors="coerce")
                 if pd.notna(_scored):
                     _age_h = (now_ist().replace(tzinfo=None) - _scored.to_pydatetime().replace(tzinfo=None)).total_seconds() / 3600
-                    _engine_fresh = _age_h <= 8
+                    _engine_fresh = _age_h <= 4
         except Exception as _fe:
             print(f"  [freshness] check error: {_fe}")
             _engine_fresh = True   # fail-open: assume fresh if check errors
