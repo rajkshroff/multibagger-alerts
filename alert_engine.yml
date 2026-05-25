@@ -42,20 +42,9 @@ on:
     - cron: '0 14 * * *'    # 19:30 IST
     - cron: '30 14 * * *'   # 20:00 IST — end of day
 
-  # ── Auto-trigger when git_sync pushes fresh CSV data ────────
-  # Engine runs → git_sync.cmd pushes → this fires within ~60s
-  # Means: no manual Quick Run click needed to get Telegram alerts
-  push:
-    branches:
-      - main
-    paths:
-      - 'composite_scores.csv'
-      - 'market_intelligence.csv'
-      - 'sector_cycle_status.csv'
-      - 'watchlist_for_cloud.csv'
-      - 'action_language.csv'
-
   # ── Manual trigger from GitHub UI ───────────────────────────
+  # NOTE: push trigger removed — local launcher now sends run-complete
+  # Telegrams via _notify_run_complete(), avoiding duplicate messages.
   workflow_dispatch:
     inputs:
       force_morning_brief:
@@ -102,6 +91,9 @@ jobs:
           FORCE_MORNING_BRIEF: ${{ github.event.inputs.force_morning_brief || 'false' }}
           # Tells alert engine this was triggered by a CSV push (fresh data)
           TRIGGERED_BY: ${{ github.event_name }}
+          # Always false — local launcher now handles run-complete notifications
+          # via _notify_run_complete(); cloud handles scheduled digests only.
+          TRIGGERED_BY_PUSH: "false"
         run: |
           python cloud_alert_engine.py
 
