@@ -151,7 +151,8 @@ def h_m(): n = now_ist(); return n.hour, n.minute
 # ── TELEGRAM SEND ─────────────────────────────────────────────
 MAX = 4000
 def send(text: str) -> bool:
-    """Send to all recipients in CHAT_IDS."""
+    """Send to all recipients in CHAT_IDS. Retries 3× on transient failures."""
+    import time as _time
     if not text.strip(): return False
     url    = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     chunks = [text[i:i+MAX] for i in range(0, len(text), MAX)]
@@ -159,17 +160,26 @@ def send(text: str) -> bool:
     for chat in CHAT_IDS:
         for i, chunk in enumerate(chunks):
             suffix = f"\n<i>Part {i+1}/{len(chunks)}</i>" if len(chunks) > 1 else ""
-            try:
-                r = requests.post(url, json={
-                    "chat_id": chat, "text": chunk+suffix, "parse_mode": "HTML"
-                }, timeout=15)
-                if r.ok:
-                    print(f"  [send→..{chat[-4:]}] ✅ {len(chunk)} chars")
-                else:
-                    print(f"  [send→..{chat[-4:]}] HTTP {r.status_code}: {r.text[:100]}")
-                    ok = False
-            except Exception as e:
-                print(f"  [send→..{chat[-4:]}] Error: {e}"); ok = False
+            sent = False
+            for attempt in range(3):
+                try:
+                    r = requests.post(url, json={
+                        "chat_id": chat, "text": chunk+suffix, "parse_mode": "HTML"
+                    }, timeout=15)
+                    if r.ok:
+                        print(f"  [send→..{chat[-4:]}] ✅ {len(chunk)} chars")
+                        sent = True; break
+                    elif r.status_code == 429:
+                        retry_after = r.json().get("parameters",{}).get("retry_after", 5)
+                        print(f"  [send→..{chat[-4:]}] 429 rate-limit — retry in {retry_after}s")
+                        _time.sleep(retry_after)
+                    else:
+                        print(f"  [send→..{chat[-4:]}] HTTP {r.status_code}: {r.text[:100]}")
+                        break
+                except Exception as e:
+                    print(f"  [send→..{chat[-4:]}] Error (attempt {attempt+1}): {e}")
+                    if attempt < 2: _time.sleep(2)
+            if not sent: ok = False
     return ok
 
 # ── CSV LOADER ────────────────────────────────────────────────
@@ -533,9 +543,10 @@ def build_action_plan() -> str:
         lines.append("<b>⚖️ ALL-ROUNDER</b>  84% win · incremental picks")
         lines += _fmt(ar_p) if ar_p else ["  <i>(none beyond SAFE today)</i>"]
         lines.append("")
-        lines.append("<b>⛏ COMMODITY CYCLE</b>  94% win · sector momentum")
-        lines += _fmt(com_p) if com_p else ["  <i>(no commodity setups today)</i>"]
-        lines.append("")
+        if com_p:
+            lines.append("<b>⛏ COMMODITY CYCLE</b>  94% win · sector momentum")
+            lines += _fmt(com_p)
+            lines.append("")
 
         lines.append("<b>💡 OPPORTUNITY BUY</b>  catalyst-driven · exit when catalyst &gt; 21d old")
         if opp_p:
@@ -585,14 +596,13 @@ def build_action_plan() -> str:
                 ("BUY_NOW_BALANCED",  "⚖️", "ALL-ROUNDER  84% win"),
                 ("BUY_NOW_COMMODITY", "⛏", "COMMODITY CYCLE  94% win"),
             ]:
-                lines_fb.append(f"<b>{_ic} {_lbl}</b>")
                 if not pl_fb.empty and _fc in pl_fb.columns:
                     _mask = pl_fb[_fc].astype(str).str.lower().isin(["true","1","1.0","yes"])
                     _syms = pl_fb[_mask]["NSE_SYMBOL"].dropna().str.strip().str.upper().tolist()[:3]
-                    lines_fb += ([f"  • <b>{s}</b>" for s in _syms] if _syms else ["  <i>(none)</i>"])
-                else:
-                    lines_fb.append("  <i>(no data)</i>")
-                lines_fb.append("")
+                    if _syms or _fc != "BUY_NOW_COMMODITY":
+                        lines_fb.append(f"<b>{_ic} {_lbl}</b>")
+                        lines_fb += ([f"  • <b>{s}</b>" for s in _syms] if _syms else ["  <i>(none)</i>"])
+                        lines_fb.append("")
             return hdr_fb + "\n".join(lines_fb)
         except Exception:
             return f"<b>🔔 ENGINE RUN COMPLETE</b>\n{now_ist().strftime('%a %d %b  %H:%M')}"
@@ -1298,7 +1308,7 @@ def send_bse_live_announcements(bse_raw: list, seen: dict) -> int:
                           "q1 result","q2 result","q3 result","q4 result")
 
         alerts_la = []
-        for item in bse_raw[:60]:
+        for item in bse_raw[:150]:
             scrip    = str(item.get("SCRIP_CD","") or "").strip()
             subj_raw = str(item.get("HEADLINE","") or "").strip()
             cat      = str(item.get("CATEGORYNAME","") or "").strip()
@@ -1308,7 +1318,8 @@ def send_bse_live_announcements(bse_raw: list, seen: dict) -> int:
             # Dedup on raw subject (stable hash regardless of HTML in feed)
             h = "LIVE_" + hex(abs(hash(f"{scrip}|{subj_raw[:60]}" )))[2:14]
             if h in seen: continue
-            seen[h] = now_ist().isoformat()
+            # NOTE: hash written AFTER all gates so a broken mapping / filter miss
+            # never permanently suppresses an alert via a consumed-but-unsent hash.
 
             # Strip HTML before filter + display (BSE subjects often contain <b>/<br/>)
             subj = _re_la.sub(r'<[^>]+>', '', subj_raw).strip()
@@ -1328,6 +1339,10 @@ def send_bse_live_announcements(bse_raw: list, seen: dict) -> int:
             if (any(kw in _subj_lo_la for kw in _RESULTS_KW_LA)
                     and _nse_la not in _ps_la):
                 continue
+
+            # All gates passed — mark as seen now (not before) so a filter miss
+            # on one run doesn't permanently block a retry on the next run.
+            seen[h] = now_ist().isoformat()
 
             # Display name resolution
             _id_name = _BSE_NSE_MAP.get(f"NAME_{scrip}", "")
@@ -2021,6 +2036,23 @@ def main():
 
     # ── TYPE 1: ACTION PLAN (push-triggered = engine just ran) ──
     if triggered_by_push:
+        # Freshness gate: only send if composite_scores.csv was scored within 8 hours.
+        # Prevents action plan firing when a non-engine push (e.g. infra fix) hits GitHub.
+        _engine_fresh = False
+        try:
+            _cs_chk = load("composite")
+            if not _cs_chk.empty and "SCORED_AT" in _cs_chk.columns:
+                from datetime import timedelta as _td
+                _scored = pd.to_datetime(_cs_chk["SCORED_AT"].max(), errors="coerce")
+                if pd.notna(_scored):
+                    _age_h = (now_ist().replace(tzinfo=None) - _scored.to_pydatetime().replace(tzinfo=None)).total_seconds() / 3600
+                    _engine_fresh = _age_h <= 8
+        except Exception as _fe:
+            print(f"  [freshness] check error: {_fe}")
+            _engine_fresh = True   # fail-open: assume fresh if check errors
+        if not _engine_fresh:
+            print("  → Push trigger: engine data >8h old — skipping action plan (no engine run detected)")
+            return
         print("  → TYPE 1: Action Plan (push trigger — engine just ran)")
         msg = build_action_plan()
         
