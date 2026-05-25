@@ -85,26 +85,59 @@ HOURLY_FILE  = REPO / "hourly_news_sent.json"    # per-hour dedup
 # ── BSE CODE → NSE SYMBOL MAP ─────────────────────────────────
 # identity_canonical.csv is copied to this repo by git_sync.cmd after each engine run
 def _load_bse_nse_map() -> dict:
-    """Build {bse_code_str: nse_symbol} from identity_canonical.csv."""
+    """Build {bse_code_str: nse_symbol} from identity_canonical.csv.
+    Falls back to bse_symbol_master.csv + composite_scores.csv when identity has no valid BSE codes
+    (happens when build_identity_canonical.py serialised BSE Code NaN as the string 'nan').
+    """
     m = {}
     p = REPO / "identity_canonical.csv"
-    if not p.exists():
-        print("  [identity] identity_canonical.csv not found — name matching only")
-        return m
+    if p.exists():
+        try:
+            import csv as _csv_id
+            with open(p, encoding="utf-8", errors="replace") as _f_id:
+                for row in _csv_id.DictReader(_f_id):
+                    bsc  = str(row.get("BSE_CODE","") or "").strip().split(".")[0]
+                    nse  = str(row.get("NSE_SYMBOL","") or "").strip().upper()
+                    name = str(row.get("NAME","") or "").strip()
+                    if bsc and bsc.isdigit() and nse:
+                        m[bsc] = nse
+                        if name:
+                            m[f"NAME_{bsc}"] = name
+            if m:
+                print(f"  [identity] {len(m):,} BSE->NSE mappings loaded from identity_canonical")
+                return m
+            print("  [identity] identity_canonical has no valid BSE codes — using fallback")
+        except Exception as e:
+            print(f"  [identity] identity_canonical error: {e} — using fallback")
+    else:
+        print("  [identity] identity_canonical.csv not found — using fallback")
+    # Fallback: bse_symbol_master (BSE_CODE+ISIN) joined with composite_scores (ISIN+NSE_SYMBOL)
     try:
-        import csv as _csv_id
-        with open(p, encoding="utf-8", errors="replace") as _f_id:
-            for row in _csv_id.DictReader(_f_id):
-                bsc  = str(row.get("BSE_CODE","") or "").strip().split(".")[0]
-                nse  = str(row.get("NSE_SYMBOL","") or "").strip().upper()
-                name = str(row.get("NAME","") or "").strip()
-                if bsc and bsc.isdigit() and nse:
-                    m[bsc] = nse
-                    if name:
-                        m[f"NAME_{bsc}"] = name
-        print(f"  [identity] {len(m):,} BSE->NSE mappings loaded")
+        import csv as _csv_fb
+        isin_to_bsc: dict = {}
+        bsm_p = REPO / "bse_symbol_master.csv"
+        if bsm_p.exists():
+            with open(bsm_p, encoding="utf-8", errors="replace") as _f:
+                for row in _csv_fb.DictReader(_f):
+                    bsc  = str(row.get("BSE_CODE","") or "").strip().split(".")[0]
+                    isin = str(row.get("ISIN","") or "").strip().upper()
+                    name = str(row.get("NAME","") or "").strip()
+                    if bsc.isdigit() and isin:
+                        isin_to_bsc[isin] = (bsc, name)
+        cs_p = REPO / "composite_scores.csv"
+        if cs_p.exists():
+            with open(cs_p, encoding="utf-8", errors="replace") as _f:
+                for row in _csv_fb.DictReader(_f):
+                    isin = str(row.get("ISIN","") or "").strip().upper()
+                    nse  = str(row.get("NSE_SYMBOL","") or "").strip().upper()
+                    if isin and nse and isin in isin_to_bsc:
+                        bsc, name = isin_to_bsc[isin]
+                        m[bsc] = nse
+                        if name:
+                            m[f"NAME_{bsc}"] = name
+        print(f"  [identity] {len(m):,} BSE->NSE mappings loaded from fallback (bse_master+composite)")
     except Exception as e:
-        print(f"  [identity] {e}")
+        print(f"  [identity] fallback error: {e}")
     return m
 
 _BSE_NSE_MAP = _load_bse_nse_map()
@@ -281,107 +314,6 @@ def global_cues():
         except: continue
     return lines
 
-def _classify_catalyst(subject: str, category: str) -> tuple:
-    """Returns (direction, severity, catalyst_code). direction: BUY|SELL|INFO."""
-    sl = subject.lower()
-    if any(k in sl for k in ("pledge invok","pledge invoke","pledge invocation")):
-        return ("SELL","HIGH","PLEDGE_INV")
-    if any(k in sl for k in ("sebi order","sebi penalty")):
-        return ("SELL","HIGH","SEBI")
-    if any(k in sl for k in ("ed raid","enforcement directorate","income tax raid")):
-        return ("SELL","HIGH","RAID")
-    if any(k in sl for k in ("insolvency","nclt admission","nclt admit","going concern")):
-        return ("SELL","HIGH","DEFAULT")
-    if any(k in sl for k in ("payment default","npa declared")):
-        return ("SELL","HIGH","DEFAULT")
-    if any(k in sl for k in ("fraud","material weakness","auditor resign")):
-        return ("SELL","HIGH","AUDITOR")
-    if any(k in sl for k in ("ceo resign","md resign","cfo resign",
-                              "managing director resign","chief executive resign")):
-        return ("SELL","MED","KMP_EXIT")
-    if any(k in sl for k in ("plant fire","factory fire","force majeure","plant shutdown")):
-        return ("SELL","MED","FIRE")
-    if any(k in sl for k in ("rating downgrade","outlook downgrade")):
-        return ("SELL","MED","DOWNGRADE")
-    if any(k in sl for k in ("contract cancel","order cancel")):
-        return ("SELL","MED","CANCEL")
-    if any(k in sl for k in ("pledge creat","pledge creation")):
-        return ("SELL","MED","PLEDGE_CRE")
-    if any(k in sl for k in ("bulk deal","block deal")):
-        if any(k in sl for k in ("sold","sell","dispos","offload","transfer")):
-            return ("SELL","MED","BULK_SELL")
-        if any(k in sl for k in ("bought","buy","purchas","acqui")):
-            return ("BUY","HIGH","BULK_BUY")
-        return ("INFO","MED","BULK")
-    if "insider" in sl or "promoter" in sl:
-        if any(k in sl for k in ("sold","sell","dispos","transfer")):
-            return ("SELL","MED","INSIDER_SELL")
-        if any(k in sl for k in ("bought","buy","purchas","acqui","increas")):
-            return ("BUY","MED","INSIDER_BUY")
-        return ("INFO","MED","INSIDER")
-    if any(k in sl for k in ("new order","order win","secures order","bags order",
-                              "contract awarded","loa received","ppa signed","work order",
-                              "purchase order","export order")):
-        return ("BUY","HIGH","ORDER")
-    if any(k in sl for k in ("acquisition","merger","amalgam")):
-        return ("BUY","HIGH","MA")
-    if any(k in sl for k in ("drug approval","usfda","dcgi approval","patent granted")):
-        return ("BUY","HIGH","APPROVAL")
-    if any(k in sl for k in ("buyback","buy-back")):
-        return ("BUY","HIGH","BUYBACK")
-    if any(k in sl for k in ("rights issue","qip","preferential allot")):
-        return ("BUY","MED","CAPITAL_RAISE")
-    if any(k in sl for k in ("capacity expansion","new plant","commissioned")):
-        return ("BUY","MED","EXPANSION")
-    if any(k in sl for k in ("bonus share","stock split")):
-        return ("BUY","MED","CA_BONUS")
-    return ("INFO","","MATERIAL")
-
-def _build_todays_events_prefix() -> str:
-    """Return a brief header of today's BUY/SELL BSE events to prepend to Action Plan.
-    Shows up to 6 events (high-severity first) with 🟢/🔴 icons so user knows why plan fired."""
-    try:
-        import csv, os
-        from datetime import datetime, timezone, timedelta
-        IST = timezone(timedelta(hours=5, minutes=30))
-        today = datetime.now(IST).strftime("%Y-%m-%d")
-        re_path = os.path.join(os.path.dirname(__file__), "recent_events.csv")
-        if not os.path.exists(re_path):
-            return ""
-        rows = []
-        with open(re_path, encoding="utf-8", errors="replace") as f:
-            for r in csv.DictReader(f):
-                added = str(r.get("ADDED_AT",""))[:10]
-                if added != today:
-                    continue
-                subj = str(r.get("EVENT_SUBJECT","") or "").strip()
-                nse  = str(r.get("NSE_SYMBOL","") or "").strip()
-                co   = str(r.get("COMPANY","") or "").strip()
-                label = nse if nse and nse != "nan" else co[:18]
-                if not label or not subj:
-                    continue
-                _dir, _sev, _ = _classify_catalyst(subj, "")
-                if _dir == "INFO":
-                    continue
-                rows.append((_dir, _sev, label, subj))
-        if not rows:
-            return ""
-        # Sort: SELL HIGH first, then BUY HIGH, then others
-        def _rank(r):
-            d, s = r[0], r[1]
-            return (0 if d == "SELL" and s == "HIGH" else
-                    1 if d == "SELL" else
-                    2 if d == "BUY" and s == "HIGH" else 3)
-        rows.sort(key=_rank)
-        lines = ["⚡ <b>TODAY'S SIGNIFICANT EVENTS</b>"]
-        for _dir, _sev, label, subj in rows[:6]:
-            icon = "🔴⚠️" if (_dir == "SELL" and _sev == "HIGH") else "🔴" if _dir == "SELL" else "🟢"
-            short = subj[:80] + ("…" if len(subj) > 80 else "")
-            lines.append(f"{icon} <b>{label}</b>: {short}")
-        return "\n".join(lines)
-    except Exception:
-        return ""
-
 # ════════════════════════════════════════════════════════════════
 # TYPE 1 — ACTION PLAN (push-triggered, after every engine run)
 # ════════════════════════════════════════════════════════════════
@@ -489,6 +421,68 @@ def build_action_plan() -> str:
                 opp_p.append((sym, score, tier, atype, detail, days))
                 shown.add(sym)
 
+        # ── YOUR HOLDINGS block — local context only ──────────────
+        holdings_lines = []
+        ltcg_lines = []
+        try:
+            sys.path.insert(0, str(REPO))
+            import portfolio_manager as _pm
+            import csv as _csv_pm
+            _health = _pm.get_health_scores()
+
+            # Tier-drop diff: compare prev vs current composite_scores
+            prev_tier = {}
+            _prev_path = REPO / "data_internal" / "composite_scores_prev.csv"
+            if not _prev_path.exists():
+                _prev_path = REPO / "composite_scores_prev.csv"
+            if _prev_path.exists():
+                try:
+                    import csv as _csv_prev
+                    with open(_prev_path, encoding="utf-8", errors="replace") as _pf:
+                        for _pr in _csv_prev.DictReader(_pf):
+                            _sym = str(_pr.get("NSE_SYMBOL","")).strip().upper()
+                            _t   = str(_pr.get("TIER","")).strip().upper()
+                            if _sym: prev_tier[_sym] = _t
+                except Exception:
+                    pass
+
+            _TIER_RANK = {"PRIME":4,"STRONG":3,"WATCHLIST_CONFIRMED":2,"WATCHLIST_EXTERNAL":1,"MONITOR":0,"AVOID":-1,"LANDMINE":-2}
+
+            for h in _health:
+                sym  = str(h.get("nse_symbol","")).upper()
+                if not sym: continue
+                hs   = int(h.get("health_score", 5))
+                sig  = str(h.get("exit_signal","HOLD")).upper()
+                ltcg = h.get("ltcg_days_left")
+                pnl  = float(h.get("pnl_pct", 0))
+                tier = str(h.get("tier","")).upper()
+                rsn  = str(h.get("exit_reason","")).strip()
+                cur_price = float(h.get("current_price", 0))
+                ent_price = float(h.get("entry_price", 0))
+
+                # Tier drop vs prev run
+                prev_t = prev_tier.get(sym,"")
+                tier_dropped = (prev_t and tier and _TIER_RANK.get(tier,0) < _TIER_RANK.get(prev_t,0))
+
+                needs_attention = (hs <= 4 or sig in ("EXIT","PARTIAL_EXIT") or tier_dropped)
+                if needs_attention:
+                    pnl_str = f"{pnl:+.1f}%"
+                    drop_str = f" ⚠️ TIER DROP: {prev_t}→{tier}" if tier_dropped else ""
+                    sig_str  = f" | {sig}" + (f": {rsn[:30]}" if rsn and rsn != "nan" else "") if sig != "HOLD" else ""
+                    holdings_lines.append(
+                        f"  • <b>{sym}</b> ({ent_price:.0f}→{cur_price:.0f}, {pnl_str}) H={hs}{drop_str}{sig_str}"
+                    )
+
+                if ltcg is not None:
+                    try:
+                        ld = int(float(ltcg))
+                        if 0 < ld <= 30:
+                            ltcg_lines.append(f"  • <b>{sym}</b> — {ld}d to LTCG threshold (pnl {pnl:+.1f}%)")
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
         sell_p, trim_p = [], []
         if not pl.empty and "EXIT_SIGNAL" in pl.columns and "NSE_SYMBOL" in pl.columns:
             sort_c = next((c for c in ("COMPOSITE","COMPOSITE_BALANCED") if c in pl.columns), None)
@@ -523,6 +517,15 @@ def build_action_plan() -> str:
 
         def _fmt(picks):
             return [f"  • <b>{sym}</b> ({sc},{tr}) — <i>{rsn}</i>" for sym,sc,tr,rsn in picks]
+
+        if holdings_lines:
+            lines.append("<b>📍 YOUR HOLDINGS — NEEDS ATTENTION</b>")
+            lines += holdings_lines
+            lines.append("")
+        if ltcg_lines:
+            lines.append("<b>📅 LTCG WATCH</b>")
+            lines += ltcg_lines
+            lines.append("")
 
         lines.append("<b>🛡 SAFE COMPOUNDER</b>  88% win · zero leverage")
         lines += _fmt(safe_p) if safe_p else ["  <i>(no picks today)</i>"]
@@ -1113,6 +1116,7 @@ _CATALYST_HIGH_PRI = [
     "contract won","loa received","ppa signed","mou signed","project award",
     "letter of award","purchase order","work order","epc contract","repeat order",
     "export order","government contract","bags order",
+    "receipt of order","receipt of work order","orders worth","receives order",
     # Earnings & financial events
     "financial result","quarterly result","annual result",
     "q1 result","q2 result","q3 result","q4 result","half year result",
@@ -1284,7 +1288,7 @@ def send_bse_live_announcements(bse_raw: list, seen: dict) -> int:
             for _, _ur in cs_la.iterrows():
                 _us = str(_ur.get("NSE_SYMBOL","")).strip().upper()
                 _ut = str(_ur.get("TIER","")).strip()
-                if _us and _ut in ("PRIME","STRONG","WL_CONFIRMED","WL_EXTERNAL"):
+                if _us and _ut in ("PRIME","STRONG","WATCHLIST_CONFIRMED","WATCHLIST_EXTERNAL"):
                     _universe_tier_la[_us] = _ut
         _ps_la = {s for s,t in _universe_tier_la.items() if t in ("PRIME","STRONG")}
 
@@ -2016,10 +2020,8 @@ def main():
     # ── TYPE 1: ACTION PLAN (push-triggered = engine just ran) ──
     if triggered_by_push:
         print("  → TYPE 1: Action Plan (push trigger — engine just ran)")
-        _events_prefix = _build_todays_events_prefix()
         msg = build_action_plan()
-        if _events_prefix and msg:
-            msg = _events_prefix + "\n\n" + msg
+        
 
         if not msg:
             # Build minimal market summary even with 0 actionable stocks
