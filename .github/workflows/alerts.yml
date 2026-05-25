@@ -59,12 +59,12 @@ jobs:
             python cloud_alert_engine.py
           fi
 
-      - name: Save seen_hashes (dedup across runs)
+      - name: Save dedup state (seen_hashes + morning_brief + hourly_news)
         if: always()
         run: |
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
           git pull --rebase --autostash 2>/dev/null || true
-          git add seen_hashes.json
-          git diff --staged --quiet || git commit -m "ci: update seen_hashes [skip ci]"
+          git add seen_hashes.json morning_brief_sent.json hourly_news_sent.json 2>/dev/null || git add seen_hashes.json
+          git diff --staged --quiet || git commit -m "ci: update dedup state [skip ci]"
           git push 2>/dev/null || true

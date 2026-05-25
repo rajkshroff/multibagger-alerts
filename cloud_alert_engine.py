@@ -1934,9 +1934,11 @@ def main():
     import sys as _sys
     catalyst_only_mode = "--catalyst-only" in _sys.argv
     audit_mode         = "--audit" in _sys.argv
+    news_only_mode     = "--news" in _sys.argv     # skip morning brief even if in window
+    morning_only_mode  = "--morning" in _sys.argv  # morning brief only, no news
 
     print(f"[{now_str}] cloud_alert_engine v3.0")
-    print(f"  IST: {h:02d}:{m:02d} | push={triggered_by_push} | test={TEST_MODE} | catalyst_only={catalyst_only_mode} | audit={audit_mode}")
+    print(f"  IST: {h:02d}:{m:02d} | push={triggered_by_push} | test={TEST_MODE} | catalyst_only={catalyst_only_mode} | audit={audit_mode} | news_only={news_only_mode} | morning_only={morning_only_mode}")
 
     # ── AUDIT MODE (s90) — 5:45am IST daily engine health report ──
     if audit_mode:
@@ -2049,9 +2051,11 @@ def main():
         return   # push trigger = action plan only, don't run news scan
 
     # ── TYPE 2: MORNING BRIEF (7:30am) ───────────────────────
-    # Session 34: widened from 1hr to 2hr window
-    # (7:30am–9:30am IST) so a missed cron doesn't lose the day
-    in_brief_window = (h == 7 and m >= 30) or (h == 8) or (h == 9 and m < 30)
+    # Window 7:30–9:30 IST as fallback for missed cron.
+    # --news mode skips this to prevent duplicate when 9:00 --news cron fires
+    # inside the window. morning_brief_sent.json is now persisted to GitHub
+    # so same-day dedup works across runner instances.
+    in_brief_window = ((h == 7 and m >= 30) or (h == 8) or (h == 9 and m < 30)) and not news_only_mode
     if in_brief_window and not morning_sent_today():
         print("  → TYPE 2: Morning Brief")
         msg = build_morning_brief()
