@@ -2015,10 +2015,10 @@ def main():
             pass  # any other error -- TYPE 1 unaffected
         # ── end TYPE 4 ────────────────────────────────────────────
 
-            print('  → MSG5: Catalyst Alerts (universe stocks only)')
-            check_and_score_catalysts(bse_raw=_bse_data, seen=_shared_seen)
-        else:
-            print('  [catalyst-only] BSE returned 0 items')
+        print('  → MSG5: Catalyst Alerts (universe stocks only)')
+        check_and_score_catalysts(bse_raw=_bse_data, seen=_shared_seen)
+    else:
+        print('  [catalyst-only] BSE returned 0 items')
         save_seen(_shared_seen)
         return
 
