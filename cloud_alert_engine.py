@@ -149,38 +149,7 @@ def now_ist(): return datetime.now(IST)
 def h_m(): n = now_ist(); return n.hour, n.minute
 
 # ── TELEGRAM SEND ─────────────────────────────────────────────
-MAX = 4000
-def send(text: str) -> bool:
-    """Send to all recipients in CHAT_IDS. Retries 3× on transient failures."""
-    import time as _time
-    if not text.strip(): return False
-    url    = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    chunks = [text[i:i+MAX] for i in range(0, len(text), MAX)]
-    ok = True
-    for chat in CHAT_IDS:
-        for i, chunk in enumerate(chunks):
-            suffix = f"\n<i>Part {i+1}/{len(chunks)}</i>" if len(chunks) > 1 else ""
-            sent = False
-            for attempt in range(3):
-                try:
-                    r = requests.post(url, json={
-                        "chat_id": chat, "text": chunk+suffix, "parse_mode": "HTML"
-                    }, timeout=15)
-                    if r.ok:
-                        print(f"  [send→..{chat[-4:]}] ✅ {len(chunk)} chars")
-                        sent = True; break
-                    elif r.status_code == 429:
-                        retry_after = r.json().get("parameters",{}).get("retry_after", 5)
-                        print(f"  [send→..{chat[-4:]}] 429 rate-limit — retry in {retry_after}s")
-                        _time.sleep(retry_after)
-                    else:
-                        print(f"  [send→..{chat[-4:]}] HTTP {r.status_code}: {r.text[:100]}")
-                        break
-                except Exception as e:
-                    print(f"  [send→..{chat[-4:]}] Error (attempt {attempt+1}): {e}")
-                    if attempt < 2: _time.sleep(2)
-            if not sent: ok = False
-    return ok
+from telegram_gateway import send
 
 # ── CSV LOADER ────────────────────────────────────────────────
 def load(key):
@@ -392,8 +361,11 @@ def build_action_plan() -> str:
                 sym = _str(r.get("NSE_SYMBOL","")).upper()
                 if not sym or sym in shown or sym in exclude: continue
                 if _str(r.get("EXIT_SIGNAL","")).upper() == "EXIT": continue
-                score = _si(r.get("COMPOSITE", r.get("COMPOSITE_BALANCED", r.get("COMPOSITE_SCORE",0))))
                 tier  = _str(r.get("TIER","")).upper()
+                if tier in ("AVOID","LANDMINE","MONITOR"): continue
+                _fw = _str(cs_map.get(sym, {}).get("FORENSIC_WARNING",""))
+                if _fw and _fw.lower() not in ("nan","","none"): continue
+                score = _si(r.get("COMPOSITE", r.get("COMPOSITE_BALANCED", r.get("COMPOSITE_SCORE",0))))
                 picks.append((sym, score, tier, _reason(sym)))
                 shown.add(sym)
             return picks
@@ -421,6 +393,8 @@ def build_action_plan() -> str:
                 if _str(cr.get("SECTOR_PHASE","")).upper() in ("CORRECTION","TOPPING"): continue
                 plr = pl_map.get(sym,{})
                 if plr and _str(plr.get("EXIT_SIGNAL","")).upper() == "EXIT": continue
+                _fw = _str(cs_map.get(sym, {}).get("FORENSIC_WARNING",""))
+                if _fw and _fw.lower() not in ("nan","","none"): continue
                 if plr:
                     ab50 = _str(plr.get("ABOVE_50DMA","")).lower() in ("true","1","1.0","yes")
                     if not ab50: continue
@@ -509,27 +483,60 @@ def build_action_plan() -> str:
                 if   sig == "EXIT"         and len(sell_p) < 5: sell_p.append((sym, tier, rsn))
                 elif sig == "PARTIAL_EXIT" and len(trim_p) < 5: trim_p.append((sym, tier))
 
-        now_str  = now_ist().strftime("%a %d %b  %H:%M")
+        SEP = "━━━━━━━━━━━━━━━━━━━━━━━━"
+        now_str  = now_ist().strftime("%d %b %Y  %H:%M")
         mkt_icon = {"BULL":"🟢","BEAR":"🔴","CAUTION":"🟡","RECOVERY":"🔵","PANIC":"⚫"}.get(mstate,"⚪")
         fg_str = b200 = ""
         if not mi.empty:
             fg_s = mi.iloc[0].get("FEAR_GREED_SCORE")
             fg_l = _str(mi.iloc[0].get("FEAR_GREED_LABEL",""))
-            if fg_s is not None: fg_str = f" | F&G: {fg_l} ({int(fg_s)})"
+            if fg_s is not None: fg_str = f" · F&G {fg_l} ({int(fg_s)})"
             bw   = mi.iloc[0].get("BREADTH_ABOVE_200DMA")
-            if bw is not None: b200 = f" | Above 200DMA: {bw:.1f}%"
+            if bw is not None: b200 = f" · 200DMA {bw:.1f}%"
+
+        # TOP CALL: best safe pick → all-rounder → commodity
+        _top_call = ""
+        for _tc_list in (safe_p, ar_p, com_p):
+            if _tc_list:
+                _ts, _tsc, _ttr, _ = _tc_list[0]
+                _tent = _str(cs_map.get(_ts, {}).get("ENTRY_ZONE",""))
+                _top_call = f"<b>TOP CALL:</b> ✅ BUY <code>{_ts}</code>"
+                if _tent and _tent not in ("nan","—",""): _top_call += f" · Entry {_tent}"
+                break
+
+        tc_str = ""
+        if not cs.empty and "TIER" in cs.columns:
+            tc = cs["TIER"].value_counts()
+            tc_str = (f"P:<b>{tc.get('PRIME',0)}</b> "
+                      f"S:<b>{tc.get('STRONG',0)}</b> "
+                      f"WLC:<b>{tc.get('WATCHLIST_CONFIRMED',0)}</b> "
+                      f"Mine:<b>{tc.get('LANDMINE',0)}</b>")
+
+        def _fmt_stock(sym, score, tier, reason):
+            pg    = cs_map.get(sym, {})
+            entry = _str(pg.get("ENTRY_ZONE",""))
+            sl    = _str(pg.get("STOP_LOSS",""))
+            exp   = _str(pg.get("EXPECTED_RETURN",""))
+            pparts = []
+            if entry and entry not in ("nan","—",""): pparts.append(f"Entry {entry}")
+            if sl    and sl    not in ("nan","—",""): pparts.append(f"SL {sl}")
+            if exp   and exp   not in ("nan","—",""): pparts.append(f"Ret {exp}")
+            line = f"  <code>{sym:<10}</code><b>{score}</b> [{tier[:5]}]"
+            if reason: line += f"  <i>{reason}</i>"
+            if pparts: line += f"\n  {' · '.join(pparts)}"
+            return line
 
         lines = [
-            "<b>🔔 ACTION PLAN — ENGINE RUN COMPLETE</b>",
-            f"<b>{now_str}</b>  {mkt_icon} <b>{mstate}</b>{fg_str}{b200}",
-            "",
+            "<b>ALPHALENS — ACTION PLAN</b>",
+            f"{now_str}  {mkt_icon} <b>{mstate}</b>{fg_str}{b200}",
         ]
-
-        def _fmt(picks):
-            return [f"  • <b>{sym}</b> ({sc},{tr}) — <i>{rsn}</i>" for sym,sc,tr,rsn in picks]
+        if _top_call: lines.append(_top_call)
+        if tc_str:    lines.append(tc_str)
+        lines.append(SEP)
+        lines.append("")
 
         if holdings_lines:
-            lines.append("<b>📍 YOUR HOLDINGS — NEEDS ATTENTION</b>")
+            lines.append("<b>📍 HOLDINGS — ATTENTION NEEDED</b>")
             lines += holdings_lines
             lines.append("")
         if ltcg_lines:
@@ -537,45 +544,44 @@ def build_action_plan() -> str:
             lines += ltcg_lines
             lines.append("")
 
-        lines.append("<b>🛡 SAFE COMPOUNDER</b>  88% win · zero leverage")
-        lines += _fmt(safe_p) if safe_p else ["  <i>(no picks today)</i>"]
-        lines.append("")
-        lines.append("<b>⚖️ ALL-ROUNDER</b>  84% win · incremental picks")
-        lines += _fmt(ar_p) if ar_p else ["  <i>(none beyond SAFE today)</i>"]
-        lines.append("")
-        if com_p:
-            lines.append("<b>⛏ COMMODITY CYCLE</b>  94% win · sector momentum")
-            lines += _fmt(com_p)
-            lines.append("")
-
-        lines.append("<b>💡 OPPORTUNITY BUY</b>  catalyst-driven · exit when catalyst &gt; 21d old")
-        if opp_p:
-            for sym,sc,tr,atype,detail,days in opp_p:
-                lines.append(f"  • <b>{sym}</b> ({sc},{tr}) — {atype}: {detail} ({days}d ago)")
-        else:
-            lines.append("  <i>(no fresh catalysts today)</i>")
-        lines.append("")
-
         if sell_p:
-            lines.append("<b>🔴 SELL TODAY</b>")
-            for sym,tier,rsn in sell_p:
-                lines.append(f"  • <b>{sym}</b> ({tier})" + (f" — {rsn}" if rsn else ""))
+            lines.append(f"<b>🔴 SELL TODAY  ({len(sell_p)})</b>")
+            for sym, tier, rsn in sell_p:
+                lines.append(f"  <code>{sym}</code> [{tier}]" + (f" — {rsn}" if rsn else ""))
             lines.append("")
         if trim_p:
-            lines.append("<b>🟡 TRIM</b>")
-            lines.append("  " + " · ".join(f"<b>{s}</b>({t})" for s,t in trim_p))
+            lines.append(f"<b>🟡 TRIM  ({len(trim_p)})</b>")
+            lines.append("  " + " · ".join(f"<code>{s}</code>[{t}]" for s, t in trim_p))
             lines.append("")
 
-        if not cs.empty and "TIER" in cs.columns:
-            tc = cs["TIER"].value_counts()
-            _TG = {("PRIME","BULL"):(25,42),("PRIME","CAUTION"):(15,30),("PRIME","BEAR"):(18,40),
-                   ("STRONG","BULL"):(15,28),("STRONG","CAUTION"):(10,22),("STRONG","BEAR"):(12,30)}
-            pe = _TG.get(("PRIME",mstate),(15,30)); se = _TG.get(("STRONG",mstate),(10,22))
-            lines.append(
-                f"📊 PRIME <b>{tc.get('PRIME',0)}</b> (+{pe[0]}–{pe[1]}%/yr) | "
-                f"STRONG <b>{tc.get('STRONG',0)}</b> (+{se[0]}–{se[1]}%/yr) | "
-                f"WLC <b>{tc.get('WATCHLIST_CONFIRMED',0)}</b> | "
-                f"MINE <b>{tc.get('LANDMINE',0)}</b>")
+        lines.append(f"<b>🛡 SAFE COMPOUNDER</b>  ({len(safe_p)})  88% win · zero leverage")
+        if safe_p:
+            for sym, sc, tr, rsn in safe_p: lines.append(_fmt_stock(sym, sc, tr, rsn))
+        else:
+            lines.append("  <i>(no picks today)</i>")
+        lines.append("")
+
+        lines.append(f"<b>⚖️ ALL-ROUNDER</b>  ({len(ar_p)})  84% win · incremental picks")
+        if ar_p:
+            for sym, sc, tr, rsn in ar_p: lines.append(_fmt_stock(sym, sc, tr, rsn))
+        else:
+            lines.append("  <i>(none beyond SAFE today)</i>")
+        lines.append("")
+
+        if com_p:
+            lines.append(f"<b>⛏ COMMODITY CYCLE</b>  ({len(com_p)})  94% win · sector momentum")
+            for sym, sc, tr, rsn in com_p: lines.append(_fmt_stock(sym, sc, tr, rsn))
+            lines.append("")
+
+        lines.append(f"<b>💡 OPPORTUNITY BUY</b>  ({len(opp_p)})  catalyst-driven · exit after 21d")
+        if opp_p:
+            for sym, sc, tr, atype, detail, days in opp_p:
+                pg    = cs_map.get(sym, {})
+                entry = _str(pg.get("ENTRY_ZONE",""))
+                lines.append(f"  <code>{sym:<10}</code><b>{sc}</b> [{tr[:5]}]  <i>{atype}: {detail} ({days}d ago)</i>")
+                if entry and entry not in ("nan","—",""): lines.append(f"  Entry {entry}")
+        else:
+            lines.append("  <i>(no fresh catalysts today)</i>")
 
         return "\n".join(lines)
 
@@ -584,13 +590,22 @@ def build_action_plan() -> str:
         print(f"[build_action_plan] EXCEPTION: {_e}\n{_tb.format_exc()}")
         try:
             pl_fb = load("portfolio_layer")
+            cs_fb = load("composite")
             _, ms_fb = market_summary()
-            now_str_fb = now_ist().strftime("%a %d %b  %H:%M")
+            now_str_fb = now_ist().strftime("%d %b %Y  %H:%M")
             mkt_icon_fb = {"BULL":"🟢","BEAR":"🔴","CAUTION":"🟡","RECOVERY":"🔵","PANIC":"⚫"}.get(
                 (ms_fb or "").upper(), "⚪")
-            hdr_fb = (f"<b>🔔 ACTION PLAN — ENGINE RUN COMPLETE</b>\n"
-                      f"<b>{now_str_fb}</b>  {mkt_icon_fb} <b>{ms_fb or ''}</b>\n\n")
-            lines_fb = []
+            SEP_FB = "━━━━━━━━━━━━━━━━━━━━━━━━"
+            tc_fb = cs_fb["TIER"].value_counts() if not cs_fb.empty and "TIER" in cs_fb.columns else {}
+            tc_str_fb = (f"P:<b>{tc_fb.get('PRIME',0)}</b> "
+                         f"S:<b>{tc_fb.get('STRONG',0)}</b> "
+                         f"WLC:<b>{tc_fb.get('WATCHLIST_CONFIRMED',0)}</b> "
+                         f"Mine:<b>{tc_fb.get('LANDMINE',0)}</b>")
+            lines_fb = [
+                "<b>ALPHALENS — ACTION PLAN</b>",
+                f"{now_str_fb}  {mkt_icon_fb} <b>{ms_fb or ''}</b>",
+                tc_str_fb, SEP_FB, "",
+            ]
             for _fc, _ic, _lbl in [
                 ("BUY_NOW_SAFE",      "🛡", "SAFE COMPOUNDER  88% win"),
                 ("BUY_NOW_BALANCED",  "⚖️", "ALL-ROUNDER  84% win"),
@@ -601,11 +616,13 @@ def build_action_plan() -> str:
                     _syms = pl_fb[_mask]["NSE_SYMBOL"].dropna().str.strip().str.upper().tolist()[:3]
                     if _syms or _fc != "BUY_NOW_COMMODITY":
                         lines_fb.append(f"<b>{_ic} {_lbl}</b>")
-                        lines_fb += ([f"  • <b>{s}</b>" for s in _syms] if _syms else ["  <i>(none)</i>"])
+                        lines_fb += ([f"  <code>{s}</code>" for s in _syms] if _syms else ["  <i>(none)</i>"])
                         lines_fb.append("")
-            return hdr_fb + "\n".join(lines_fb)
+            return "\n".join(lines_fb)
         except Exception:
-            return f"<b>🔔 ENGINE RUN COMPLETE</b>\n{now_ist().strftime('%a %d %b  %H:%M')}"
+            return (f"<b>ALPHALENS — ACTION PLAN</b>\n"
+                    f"{now_ist().strftime('%d %b %Y  %H:%M')}\n"
+                    f"Engine run complete — data loading error")
 
 
 # ════════════════════════════════════════════════════════════════
@@ -1978,7 +1995,7 @@ def main():
                 ok = send(msg)
                 print(f"  Audit Telegram sent: {ok}")
             else:
-                send(f"<b>Audit ERROR</b> — engine_validator.py not found")
+                print("  [audit] engine_validator.py not found — skipping audit check")
         except Exception as _ae:
             send(f"<b>Audit ERROR</b> — {_ae}")
         return
@@ -2034,6 +2051,35 @@ def main():
 
     sent = 0
 
+    # ── EXIT DISCIPLINE (holding-level stop/trail/profit alerts) ──
+    # Runs every hour during market hours (9:15–15:30 IST, weekdays).
+    # Completely independent of push trigger and message type modes.
+    _market_open = (9 * 60 + 15) <= (h * 60 + m) <= (15 * 60 + 30)
+    _weekday     = now_ist().weekday() < 5
+    _pm_path     = Path(__file__).resolve().parent.parent / "USER_WORKSPACE" / "portfolio.json"
+    if (_market_open or TEST_MODE) and _weekday and _pm_path.exists():
+        try:
+            import importlib.util as _ilu
+            _ede_path = Path(__file__).resolve().parent / "exit_discipline_engine.py"
+            _ead_path = Path(__file__).resolve().parent / "exit_alert_dispatcher.py"
+            if _ede_path.exists() and _ead_path.exists():
+                _ede_spec = _ilu.spec_from_file_location("exit_discipline_engine", _ede_path)
+                _ede_mod  = _ilu.module_from_spec(_ede_spec)
+                _ede_spec.loader.exec_module(_ede_mod)
+                _ead_spec = _ilu.spec_from_file_location("exit_alert_dispatcher", _ead_path)
+                _ead_mod  = _ilu.module_from_spec(_ead_spec)
+                _ead_spec.loader.exec_module(_ead_mod)
+
+                print("  → EXIT DISCIPLINE: checking holdings...")
+                _exit_sigs = _ede_mod.run_exit_check(use_live_prices=True, dry_run=TEST_MODE)
+                _triggered = [s for s in _exit_sigs if s.get("primary_exit_code")]
+                print(f"     {len(_exit_sigs)} positions checked | {len(_triggered)} triggered")
+                _exit_sent = _ead_mod.send_exit_alerts(_exit_sigs, dry_run=TEST_MODE)
+                if _exit_sent:
+                    print(f"     {_exit_sent} exit alert(s) sent")
+        except Exception as _ede_err:
+            print(f"  [exit_discipline] WARNING: {_ede_err}")
+
     # ── TYPE 1: ACTION PLAN (push-triggered = engine just ran) ──
     if triggered_by_push:
         # Freshness gate: only send if composite_scores.csv was scored within 8 hours.
@@ -2058,25 +2104,19 @@ def main():
         
 
         if not msg:
-            # Build minimal market summary even with 0 actionable stocks
-            # BEAR market with all AVOID actions is still informative
-            from datetime import datetime
-            mstate2, mkt2 = market_summary()
-            mkt_icon2 = {"BULL":"🟢","BEAR":"🔴","CAUTION":"🟡"}.get(mstate2,"⚪")
-            cs2 = load("composite")
-            tc2 = cs2["TIER"].value_counts() if not cs2.empty and "TIER" in cs2.columns else {}
-            msg = (f"<b>🔔 ACTION PLAN — ENGINE RUN COMPLETE</b>\n"
-                   f"<b>{datetime.now().strftime('%d %b %Y  %H:%M')}</b>  "
-                   f"{mkt_icon2} <b>{mstate2}</b>\n\n"
-                   f"{mkt2.split(chr(10))[0]}\n\n"
-                   f"📊 PRIME <b>{tc2.get('PRIME',0)}</b>  "
-                   f"STRONG <b>{tc2.get('STRONG',0)}</b>  "
-                   f"WLC <b>{tc2.get('WATCHLIST_CONFIRMED',0)}</b>  "
-                   f"LANDMINE <b>{tc2.get('LANDMINE',0)}</b>\n\n"
-                   f"  No BUY signals — deep BEAR market.\n"
-                   f"  Engine watchlist: {tc2.get('WATCHLIST_CONFIRMED',0) + tc2.get('WATCHLIST_EXTERNAL',0)} stocks ready for sector recovery.\n"
-                   f"  Check Recovery Watch in Excel for beaten-down quality stocks.\n"
-                   f"<i>🤖 Engine run complete</i>")
+            from datetime import datetime as _dt_ap
+            _ms2, _ = market_summary()
+            _ic2 = {"BULL":"🟢","BEAR":"🔴","CAUTION":"🟡","RECOVERY":"🔵","PANIC":"⚫"}.get((_ms2 or "").upper(),"⚪")
+            _cs2 = load("composite")
+            _tc2 = _cs2["TIER"].value_counts() if not _cs2.empty and "TIER" in _cs2.columns else {}
+            msg = ("<b>ALPHALENS — ACTION PLAN</b>\n"
+                   f"{_dt_ap.now().strftime('%d %b %Y  %H:%M')}  {_ic2} <b>{_ms2 or ''}</b>\n"
+                   f"P:<b>{_tc2.get('PRIME',0)}</b> S:<b>{_tc2.get('STRONG',0)}</b> "
+                   f"WLC:<b>{_tc2.get('WATCHLIST_CONFIRMED',0)}</b> Mine:<b>{_tc2.get('LANDMINE',0)}</b>\n"
+                   "━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                   "<b>🛡 SAFE COMPOUNDER</b>  <i>(no picks today)</i>\n"
+                   "<b>⚖️ ALL-ROUNDER</b>  <i>(none today)</i>\n"
+                   "<b>💡 OPPORTUNITY BUY</b>  <i>(no fresh catalysts)</i>")
         ok = send(msg)
         print(f"  Action Plan sent: {ok}")
         if ok: sent += 1

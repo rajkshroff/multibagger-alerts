@@ -8,9 +8,11 @@
 # Sends: 1 consolidated Telegram message, all 5 models
 # ============================================================
 
-import os, sys, requests, pandas as pd, re
+import os, sys, pandas as pd, re
 from pathlib import Path
 from datetime import datetime
+
+from telegram_gateway import send
 
 if hasattr(sys.stdout, "reconfigure"):
     try: sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -21,10 +23,6 @@ EXT     = THIS / "external_lane" / "data_external"
 INT     = THIS / "data_internal"
 ROOT    = THIS.parent
 RESULTS = ROOT / "USER_WORKSPACE" / "YOUR_RESULTS"
-
-BOT_TOKEN = (os.environ.get("TELEGRAM_BOT_TOKEN","") or os.environ.get("TELEGRAM_TOKEN",""))
-CHAT_ID   = os.environ.get("TELEGRAM_CHAT_ID","")
-MAX_CHUNK = 4000
 
 BUY_ACTIONS = {
     "BUY","STRONG_BUY","FRESH_BUY","ACCUMULATE","ADD",
@@ -40,29 +38,6 @@ PROFILE_LABELS = {
     "DIVIDEND_INCOME":   "Dividend Income",
     "SECTOR_SPECIALIST": "Sector Specialist",
 }
-
-def send(text: str) -> bool:
-    if not BOT_TOKEN or not CHAT_ID:
-        print("  ⚠ Token/ChatID missing")
-        return False
-    chat_ids = [x.strip() for x in CHAT_ID.split(",") if x.strip()]
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    ok  = True
-    for cid in chat_ids:
-        for chunk in [text[i:i+MAX_CHUNK] for i in range(0, len(text), MAX_CHUNK)]:
-            try:
-                r = requests.post(url, json={"chat_id": cid, "text": chunk,
-                                             "parse_mode": "HTML"}, timeout=15)
-                if r.ok:
-                    print(f"  [send→..{cid[-4:]}] ✅ {len(chunk)} chars", flush=True)
-                else:
-                    print(f"  [send→..{cid[-4:]}] HTTP {r.status_code}: {r.text[:100]}",
-                          flush=True)
-                    ok = False
-            except Exception as e:
-                print(f"  ⚠ send error: {e}")
-                ok = False
-    return ok
 
 def _s(v, default=""):
     if v is None: return default
@@ -221,29 +196,41 @@ if not comp.empty:
         tier_counts = _d[tc].value_counts().to_dict()
 
 # ── BUILD MESSAGE ─────────────────────────────────────────────
+SEP = "━━━━━━━━━━━━━━━━━━━━━━━━"
+
 now_str  = datetime.now().strftime("%d %b %Y  %H:%M")
 mkt_icon = {"BULL":"🟢","BEAR":"🔴","CAUTION":"🟡"}.get(mkt_state,"⚪")
-fg_str   = f" | F&G: {fg_label} ({int(fg_score)})" if fg_score is not None else ""
+fg_str   = f" · F&G {int(fg_score)} {fg_label}" if fg_score is not None else ""
 
-lines = [
-    f"<b>🔔 MULTIBAGGER ENGINE — ACTION PLAN</b>",
-    f"<b>📅 {now_str}</b>  |  {mkt_icon} Market: <b>{_he(mkt_state)}</b>{fg_str}",
-    "",
-]
+# ── PRICE HELPERS ─────────────────────────────────────────────
+def _cp_str(sym_upper):
+    cp = price_map.get(sym_upper, 0.0)
+    return (f"₹{cp:,.0f}", cp) if (cp and cp > 0) else ("—", 0.0)
 
-if tier_counts:
-    prime  = tier_counts.get("PRIME",0)
-    strong = tier_counts.get("STRONG",0)
-    wlc    = tier_counts.get("WL_CONFIRMED",tier_counts.get("WATCHLIST_CONFIRMED",0))
-    land   = tier_counts.get("LANDMINE",0)
-    lines.append(
-        f"📊 PRIME <b>{prime}</b>  STRONG <b>{strong}</b>  "
-        f"WLC <b>{wlc}</b>  MINE <b>{land}</b>"
-    )
-    lines.append("")
+def _entry_str(pg):
+    raw = pg.get("entry","")
+    if "₹" in raw:
+        nums = re.findall(r"₹([\d,]+)", raw)
+        return f"₹{nums[0]}–{nums[1]}" if len(nums)>=2 else (f"₹{nums[0]}" if nums else "—")
+    return "—"
 
-# ── LANDMINE SECTION — EXIT IMMEDIATELY ─────────────────────
-# Separate from actionable buckets; listed individually so user knows which to exit
+def _sl_str(pg):
+    m = re.search(r"₹([\d,]+(?:\.\d+)?)", pg.get("sl",""))
+    return f"SL ₹{m.group(1)}" if m else "—"
+
+def _tgt_str(pg, cp):
+    exp = pg.get("exp_ret","")
+    nums = re.findall(r"\d+", exp)
+    if len(nums) >= 2 and cp > 0:
+        mid = (float(nums[0]) + float(nums[1])) / 2 / 100
+        return f"T ₹{cp*(1+mid):,.0f}"
+    return ""
+
+def _rr_str(pg):
+    m = re.search(r"(\d+\.?\d*:\d+)", pg.get("rr",""))
+    return f"R {m.group(1)}" if m else ""
+
+# ── LANDMINE SECTION ──────────────────────────────────────────
 _lm_rows = []
 if not comp.empty:
     _tc_col = next((c for c in comp.columns if c.upper() == "TIER"), None)
@@ -254,96 +241,101 @@ if not comp.empty:
         for _, _lr in _lm_df.iterrows():
             _lm_rows.append({
                 "sym":  str(_lr.get(_sym_col_c,"")),
-                "name": str(_lr.get(_nm_col_c,""))[:20] if _nm_col_c else "",
+                "name": str(_lr.get(_nm_col_c,""))[:18] if _nm_col_c else "",
             })
-
-if _lm_rows:
-    lines.append(f"<b>☠ LANDMINE — EXIT ALL POSITIONS NOW</b>  ({len(_lm_rows)})")
-    lines.append("<i>Promoter pledging critical. Engine forced exit. No waiting.</i>")
-    for _lx in _lm_rows:
-        lines.append(f"  ☠ <code>{_lx['sym']:<12}</code> {_lx['name']}  → <b>EXIT IMMEDIATELY</b>")
-    lines.append("")
 
 BUCKET_ORDER = ["PROFIT_BOOK","STRONG_BUY","BUY","EARLY_SIGNAL","ACCUMULATE","BEAR_ACCUM","RECOVERY"]
 BUCKET_LABEL = {
-    "PROFIT_BOOK":   "📈 BOOK PROFIT",
-    "STRONG_BUY":    "🟢 STRONG BUY",
-    "BUY":           "✅ ENGINE PICK",
-    "EARLY_SIGNAL":  "🚀 EARLY SIGNAL",
-    "ACCUMULATE":    "🔵 ACCUMULATE",
-    "BEAR_ACCUM":    "💜 BEAR ACCUM / STAGED (3x Potential)",
-    "RECOVERY":      "🌱 RECOVERY WATCH",
+    "PROFIT_BOOK":  "BOOK PROFIT",
+    "STRONG_BUY":   "STRONG BUY",
+    "BUY":          "ENGINE PICK",
+    "EARLY_SIGNAL": "EARLY SIGNAL",
+    "ACCUMULATE":   "ACCUMULATE",
+    "BEAR_ACCUM":   "BEAR ACCUM (3× potential)",
+    "RECOVERY":     "RECOVERY WATCH",
+}
+BUCKET_ICON = {
+    "PROFIT_BOOK":"📈","STRONG_BUY":"🟢","BUY":"✅",
+    "EARLY_SIGNAL":"🚀","ACCUMULATE":"🔵","BEAR_ACCUM":"💜","RECOVERY":"🌱",
 }
 
 total_actionable = 0
+_bucket_groups = {}
 for bucket in BUCKET_ORDER:
     grp = actionable[actionable["_BUCKET"] == bucket].copy()
     if grp.empty: continue
     if score_col and score_col in grp.columns:
         grp = grp.drop_duplicates(subset=[sym_col], keep="first")
-
+    _bucket_groups[bucket] = grp
     total_actionable += len(grp)
-    lines.append(f"<b>{BUCKET_LABEL[bucket]}</b>  ({len(grp)})")
 
+# TOP CALL: first BUY-class row or first EXIT
+_top_call = ""
+for _bk in ["STRONG_BUY","BUY","EARLY_SIGNAL","ACCUMULATE"]:
+    if _bk in _bucket_groups and not _bucket_groups[_bk].empty:
+        _tr  = _bucket_groups[_bk].iloc[0]
+        _ts  = str(_tr.get(sym_col,"")).strip().upper()
+        _tcp, _tcpv = _cp_str(_ts)
+        _tpg = pg_map.get(_ts, {})
+        _tel = _entry_str(_tpg)
+        _trr = _rr_str(_tpg)
+        _top_call = f"<b>TOP CALL:</b> {BUCKET_LABEL[_bk]} <code>{_ts}</code> @ {_tcp}"
+        if _tel != "—": _top_call += f" · Buy {_tel}"
+        if _trr: _top_call += f" · {_trr}"
+        break
+if not _top_call and _lm_rows:
+    _top_call = f"<b>TOP CALL:</b> ☠ EXIT <code>{_lm_rows[0]['sym']}</code> — LANDMINE"
+
+# Universe counts
+prime  = tier_counts.get("PRIME",0)
+strong = tier_counts.get("STRONG",0)
+wlc    = tier_counts.get("WL_CONFIRMED",tier_counts.get("WATCHLIST_CONFIRMED",0))
+land   = tier_counts.get("LANDMINE",0)
+
+lines = [
+    f"<b>ALPHALENS — ACTION PLAN</b>",
+    f"{now_str}  {mkt_icon} {_he(mkt_state)}{fg_str}",
+]
+if _top_call:
+    lines.append(_top_call)
+lines.append(f"P:<b>{prime}</b> S:<b>{strong}</b> WLC:<b>{wlc}</b> Mine:<b>{land}</b>")
+lines.append(SEP)
+lines.append("")
+
+# Landmine section
+if _lm_rows:
+    lines.append(f"<b>☠ EXIT NOW ({len(_lm_rows)})</b>  <i>Promoter pledging critical</i>")
+    for _lx in _lm_rows:
+        lines.append(f"  <code>{_lx['sym']:<12}</code>{_lx['name']}")
+    lines.append("")
+
+# Actionable buckets
+for bucket in BUCKET_ORDER:
+    grp = _bucket_groups.get(bucket)
+    if grp is None or grp.empty: continue
+    lines.append(f"<b>{BUCKET_ICON[bucket]} {BUCKET_LABEL[bucket]}</b>  ({len(grp)})")
     for _, row in grp.head(10).iterrows():
-        sym      = _he(row.get(sym_col,""))
-        nm       = _he(row.get(name_col,""))[:18] if name_col else ""
-        tier     = _he(row.get(tier_col,""))[:8] if tier_col else ""
-        sc       = _si(row.get(score_col,0)) if score_col else 0
+        sym_v     = _he(row.get(sym_col,""))
+        nm        = _he(row.get(name_col,""))[:16] if name_col else ""
+        sc        = _si(row.get(score_col,0)) if score_col else 0
         sym_upper = str(row.get(sym_col,"")).strip().upper()
-        q_sc = _si(row.get("Q_SCORE",0))
-        g_sc = _si(row.get("G_SCORE",0))
-        s_sc = _si(row.get("S_SCORE",0))
-        c_sc = _si(row.get("C_SCORE",0))
-
-        # Price guidance
-        cp  = price_map.get(sym_upper, 0.0)
-        pg  = pg_map.get(sym_upper, {})
-
-        cp_str = f"₹{cp:,.0f}" if cp and cp > 0 else "—"
-
-        # Entry zone — extract ₹ range
-        entry_raw = pg.get("entry","")
-        if "₹" in entry_raw:
-            nums = re.findall(r"₹([\d,]+)", entry_raw)
-            entry_str = f"₹{nums[0]}–{nums[1]}" if len(nums)>=2 else f"₹{nums[0]}" if nums else "—"
-        else:
-            entry_str = "—"
-
-        # Stop loss — extract ₹
-        sl_raw = pg.get("sl","")
-        sl_m = re.search(r"₹([\d,]+(?:\.\d+)?)", sl_raw)
-        sl_str = f"SL₹{sl_m.group(1)}" if sl_m else "—"
-
-        # Target — midpoint of expected return
-        exp = pg.get("exp_ret","")
-        exp_nums = re.findall(r"\d+", exp)
-        if len(exp_nums) >= 2 and cp > 0:
-            mid = (float(exp_nums[0]) + float(exp_nums[1])) / 2 / 100
-            tgt_str = f"T₹{cp*(1+mid):,.0f}"
-        else:
-            tgt_str = "—"
-
-        # R:R
-        rr_raw = pg.get("rr","")
-        rr_m   = re.search(r"(\d+\.?\d*:\d+)", rr_raw)
-        rr_str = rr_m.group(1) if rr_m else ""
-
-        price_line = f"{cp_str} | {entry_str} | {sl_str}"
-        if tgt_str != "—": price_line += f" | {tgt_str}"
-        if rr_str:         price_line += f" | R{rr_str}"
-
-        qgsc = f"Q:{q_sc} G:{g_sc} S:{s_sc} C:{c_sc}"
-        # Get sector phase from composite_scores (pg_map has it)
-        sp = pg_map.get(sym_upper, {}).get("sp", "")  
-        sp_str = f" [{sp}]" if sp and sp not in ("—","") else ""
+        tier      = _he(row.get(tier_col,""))[:6] if tier_col else ""
+        sp        = pg_map.get(sym_upper, {}).get("sp","")
+        sp_str    = f" {sp}" if sp and sp not in ("—","") else ""
+        pg        = pg_map.get(sym_upper, {})
+        _cpstr, _cpv = _cp_str(sym_upper)
+        _ent  = _entry_str(pg)
+        _sl   = _sl_str(pg)
+        _tgt  = _tgt_str(pg, _cpv)
+        _rr   = _rr_str(pg)
+        price_parts = [x for x in [_ent, _sl, _tgt, _rr] if x and x != "—"]
+        price_line  = " · ".join(price_parts) if price_parts else "—"
         lines.append(
-            f"  • <code>{sym:<10}</code> {nm:<16} <b>{sc}</b> [{tier}]{sp_str} {qgsc}\n"
-            f"       {price_line}"
+            f"  <code>{sym_v:<10}</code>{nm:<15} <b>{sc}</b> [{tier}]{sp_str}\n"
+            f"  CMP {_cpstr} | {price_line}"
         )
-
     if len(grp) > 10:
-        lines.append(f"  ... +{len(grp)-10} more")
+        lines.append(f"  … +{len(grp)-10} more")
     lines.append("")
 
 if total_actionable == 0:
@@ -398,8 +390,8 @@ try:
                 _fund_extra = _fund_extra.rename(columns={_fe_sym: "NSE_SYMBOL"})
             except Exception: pass
 
-        lines.append("")
-        lines.append("<b>── PRIME &amp; STRONG BY MODEL ──</b>")
+        lines.append(SEP)
+        lines.append("<b>BY MODEL</b>")
 
         for prof, wts in PROFILE_WEIGHTS.items():
             # Re-score using this profile's weights
@@ -468,16 +460,16 @@ try:
                 _psl_m   = re.search(r"₹([\d,]+(?:\.\d+)?)", _psl_raw)
                 _psl_str = f"SL₹{_psl_m.group(1)}" if _psl_m else "—"
                 lines.append(
-                    f"  • <code>{_psym:<10}</code>{_pname:<16} "
-                    f"<b>{_psc}</b> [{_ptier}] "
+                    f"  <code>{_psym:<10}</code>{_pname:<16} <b>{_psc}</b> [{_ptier}] "
                     f"Q:{_pq} G:{_pg2} S:{_ps2} C:{_pc}\n"
-                    f"       {_pe_str} | {_psl_str}"
+                    f"  {_pe_str} · {_psl_str}"
                 )
         lines.append("")
 except Exception as _pme:
     lines.append(f"<i>[model breakdown unavailable: {_pme}]</i>")
 
-lines.append(f"<i>🤖 Multibagger Engine v2.2 — {total_actionable} actionable | All 5 Models</i>")
+lines.append(SEP)
+lines.append(f"<i>AlphaLens Engine · {total_actionable} actionable · 5 models</i>")
 
 msg = "\n".join(lines)
 ok  = send(msg)
