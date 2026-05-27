@@ -545,7 +545,7 @@ def build_action_plan() -> str:
             lines.append("")
 
         if sell_p:
-            lines.append(f"<b>🔴 SELL TODAY  ({len(sell_p)})</b>")
+            lines.append(f"<b>🔴 BOOK PROFIT  ({len(sell_p)})</b>")
             for sym, tier, rsn in sell_p:
                 lines.append(f"  <code>{sym}</code> [{tier}]" + (f" — {rsn}" if rsn else ""))
             lines.append("")
