@@ -761,7 +761,7 @@ INE258G01013,SUMICHEM,542920.0,Sumitomo Chemi.,Fertilizers & Agrochemicals,Pesti
 INE0Q3R01026,SUNCLAY,544066.0,Sundaram Clayton,Auto Components,Auto Components & Equipments
 INE108E01023,SUNDARAM,533166.0,Sundaram Multi.,Household Products,Stationary
 INE387A01021,SUNDRMFAST,500403.0,Sundram Fasten.,Auto Components,Auto Components & Equipments
-INE559N01010,SRGHFL,534680,SRG Housing,Finance,Housing Finance Company
+INE559N01010,SRGHFL,534680.0,SRG Housing,Finance,Housing Finance Company
 INE209A01019,SUNDROP,500215.0,Sundrop Brands,Agricultural Food & other Products,Edible Oil
 INE947A01014,SUNFLAG,500404.0,Sunflag Iron,Industrial Products,Iron & Steel Products
 INE044A01036,SUNPHARMA,524715.0,Sun Pharma.Inds.,Pharmaceuticals & Biotechnology,Pharmaceuticals
@@ -1582,7 +1582,7 @@ INE250K01012,DLINKINDIA,533146.0,D-Link India,IT - Hardware,Computers Hardware &
 INE192R01011,DMART,540376.0,Avenue Super.,Retailing,Diversified Retail
 INE505A01010,DMCC,506405.0,DMCC Speciality,Chemicals & Petrochemicals,Specialty Chemicals
 INE268L01046,SHEKHAWATI,533301.0,Shekhawati Inds,Textiles & Apparels,Other Textile Products
-INE970D01010,LOYALTEX,514036,Loyal Textile,Textiles & Apparels,Other Textile Products
+INE970D01010,LOYALTEX,514036.0,Loyal Textile,Textiles & Apparels,Other Textile Products
 INE927C01020,DIGISPICE,517214.0,DigiSpice Tech.,IT - Services,IT Enabled Services
 INE704P01025,COCHINSHIP,540678.0,Cochin Shipyard,Industrial Manufacturing,Ship Building & Allied Services
 INE021O01019,DODLA,543306.0,Dodla Dairy,Food Products,Dairy Products
@@ -2245,7 +2245,7 @@ INE0JZA01018,SONUINFRA,,Sonu Infratech,Construction,Civil Construction
 INE0O5T01011,REMUS,,Remus Pharma.,Pharmaceuticals & Biotechnology,Pharmaceuticals
 INE0O7401018,IBLFL,,IBL Finance,Finance,Non Banking Financial Company (NBFC)
 INE0O7R01011,SYSTANGO,,Systango Tech,IT - Software,Computers - Software & Consulting
-INE03V001013,UNIVPHOTO,542933,Universus Photo,Consumer Durables,Consumer Electronics
+INE03V001013,UNIVPHOTO,542933.0,Universus Photo,Consumer Durables,Consumer Electronics
 INE0SRI01019,VERITAAS,,Veritaas Adver.,Media,Advertising & Media Agencies
 INE0T7B01010,SPCL,,Shivalic Power,Electrical Equipment,Other Electrical Equipment
 INE0Q9601016,WOMANCART,,Womancart,Retailing,E-Retail/ E-Commerce
@@ -2286,7 +2286,7 @@ INE0O3O01017,SEL,,Sungarner Energ.,Electrical Equipment,Other Electrical Equipme
 INE0JWV01011,DENEERS,,De Neers Tools,Industrial Products,Iron & Steel Products
 INE0PSC01024,DIGIDRIVE,544079.0,Digidrive Dist.,Retailing,E-Retail/ E-Commerce
 INE0US801024,MFML,544233.0,Mahalaxmi Fab.,Textiles & Apparels,Other Textile Products
-INE794W01014,MODTHREAD,500282,Modern Threads,Textiles & Apparels,Other Textile Products
+INE794W01014,MODTHREAD,500282.0,Modern Threads,Textiles & Apparels,Other Textile Products
 INE0L0L01012,MODIS,543539.0,Modi's Navnirman,Realty,"Residential, Commercial Projects"
 INE0LZO01015,DUCOL,,Ducol Organics,Chemicals & Petrochemicals,Dyes And Pigments
 INE360C01024,DPSCLTD,,India Power Corp,Power,Integrated Power Utilities
@@ -2440,7 +2440,7 @@ INE1SPP01016,KSR,544615.0,KSR Footwear,Commercial Services & Supplies,Trading & 
 INE336H01023,GAYAPROJ,532767.0,Gayatri Projects,Construction,Civil Construction
 INE02CV01017,DRSDILIP,,DRS Dilip Road,Transport Services,Logistics Solution Provider
 INE782L01012,SANCO,,Sanco Industries,Industrial Products,Plastic Products - Industrial
-INE540A01017,GLFL,500174,Guj. Lease Fin.,Finance,Other Financial Services
+INE540A01017,GLFL,500174.0,Guj. Lease Fin.,Finance,Other Financial Services
 INE989C01038,DIACABS,522163.0,Diamond Power,Electrical Equipment,Other Electrical Equipment
 INE00WS01056,GSTL,,Globesecure Tech,IT - Services,IT Enabled Services
 INE0PRF01011,UNIHEALTH,,Unihealth Hosp,Healthcare Services,Hospital
@@ -2822,7 +2822,7 @@ INE25E901019,OMPOWER,544750.0,,,
 INE314H01012,TECHNVISN,501421.0,,,
 INE746D01014,PIONRINV,507864.0,,,
 INE077P01034,THACKER,509945.0,,,
-INE605D01012,NEAGI,508670,,,
+INE605D01012,NEAGI,508670.0,,,
 INE403F01017,THAKDEV,526654.0,,,
 INE910A01012,NIRLON,500307.0,,,
 INE445D01013,NILE,530129.0,,,
@@ -2836,7 +2836,7 @@ INE620D01011,INDPRUD,501298.0,,,
 INE232E01013,VELJAN,505232.0,,,
 INE586E01020,IWP,540954.0,,,
 INE325G01010,AVAILFC,531310.0,,,
-INE997I01012,SHRIKRISH,531080,,,
+INE997I01012,SHRIKRISH,531080.0,,,
 INE155E01016,INVPRECQ,504786.0,,,
 INE704G01024,BAJAJST,507944.0,,,
 INE177C01022,BATLIBOI,522004.0,,,
