@@ -10,8 +10,8 @@
 #     When: after every engine run (3x daily from scheduler)
 #
 #   TYPE 2 — MORNING BRIEF
-#     Trigger: 7:30am IST daily (schedule)
-#     Content: Market state, global cues, top picks, sector cycle
+#     Trigger: 8:00am IST daily (schedule) — fires AFTER engine push completes
+#     Content: Tier transitions, sector rotation, velocity leaders, breadth flow
 #
 #   TYPE 3 — HOURLY NEWS
 #     Trigger: every hour 9am-6pm IST (schedule)
@@ -79,7 +79,6 @@ CSV  = {
 }
 PORTFOLIO_FILE = REPO / "user_portfolio.csv"
 SEEN_FILE    = REPO / "seen_hashes.json"
-MORNING_FILE = REPO / "morning_brief_sent.json"
 HOURLY_FILE  = REPO / "hourly_news_sent.json"    # per-hour dedup
 
 # ── BSE CODE → NSE SYMBOL MAP ─────────────────────────────────
@@ -219,20 +218,6 @@ def alert_hash(row) -> str:
 
 def news_hash(title: str) -> str:
     return hashlib.md5(title.strip().lower().encode()).hexdigest()[:12]
-
-# ── MORNING BRIEF DEDUP ───────────────────────────────────────
-def morning_sent_today() -> bool:
-    today = now_ist().strftime("%Y-%m-%d")
-    if not MORNING_FILE.exists(): return False
-    try: return json.loads(MORNING_FILE.read_text()).get("date") == today
-    except: return False
-
-def mark_morning_sent():
-    today = now_ist().strftime("%Y-%m-%d")
-    MORNING_FILE.write_text(json.dumps({"date": today}, indent=2))
-    print(f"  [brief] marked sent {today}")
-
-
 
 
 
@@ -625,151 +610,180 @@ def build_action_plan() -> str:
                     f"Engine run complete — data loading error")
 
 
-# ════════════════════════════════════════════════════════════════
-# TYPE 2 — MORNING BRIEF (7:30am daily)
-# ════════════════════════════════════════════════════════════════
+
+
 def build_morning_brief() -> str:
-    day = now_ist().strftime("%A, %d %b %Y")
-    mstate, mkt_text = market_summary()
+    # REMOVED s182: Morning Brief deleted — replaced by redesigned MORNING BRIEFING in launcher.py
+    return ""
 
-    # Load action language — primary source for actions + tier
-    al  = load("action")
-    # Load composite scores for expected return projections (best-effort)
-    cs  = load("composite")
-    _er_map = {}
-    if not cs.empty and "NSE_SYMBOL" in cs.columns:
-        _er_col = next((c for c in cs.columns if "EXPECTED_RETURN" in c.upper()), None)
-        if _er_col:
-            for _, _r in cs.iterrows():
-                _s = str(_r.get("NSE_SYMBOL","")).strip().upper()
-                if _s: _er_map[_s] = str(_r.get(_er_col,"") or "").strip()
 
-    # Channel counts + exit set
-    _exit_syms = set()
-    _ba_syms   = set()
-    _ch_line   = ""
-    ac = None
-    if not al.empty:
-        ac  = next((c for c in al.columns if "ACTION" in c.upper()), None)
-        sc2 = next((c for c in al.columns if "COMPOSITE" in c.upper()), None)
-        if ac:
-            _lm_df = al[al[ac].astype(str).str.contains("EXIT|LANDMINE",  case=False, na=False)]
-            _bp_df = al[al[ac].astype(str).str.contains("BOOK PROFIT",    case=False, na=False)]
-            _ba_df = al[al[ac].astype(str).str.contains("BEAR ACCUM",     case=False, na=False)]
-            _ep_df = al[al[ac].astype(str).str.contains("ENGINE PICK",    case=False, na=False)]
-            _lm = _lm_df.shape[0]; _bp = _bp_df.shape[0]
-            _ba = _ba_df.shape[0]; _ep = _ep_df.shape[0]
-            _ch_line = (f"☠ EXIT <b>{_lm}</b> | 📈 BOOK PROFIT <b>{_bp}</b> | "
-                        f"🐻 BEAR ACCUM <b>{_ba}</b> | ✅ ENGINE PICK <b>{_ep}</b>")
-            # Build sets for exclusion
-            for _, _r in _lm_df.iterrows():
-                _s = str(_r.get("NSE_SYMBOL","")).strip().upper()
-                if _s: _exit_syms.add(_s)
-            for _, _r in _bp_df.iterrows():
-                _s = str(_r.get("NSE_SYMBOL","")).strip().upper()
-                if _s: _exit_syms.add(_s)
-            for _, _r in _ba_df.iterrows():
-                _s = str(_r.get("NSE_SYMBOL","")).strip().upper()
-                if _s: _ba_syms.add(_s)
+# ════════════════════════════════════════════════════════════════
+# TYPE 1 v2 — PERSONALIZED DECISION CARDS (s195, CORE-7)
+# Each family member gets their own message mirroring the GUI TODAY card.
+# Source of truth: decision_cards.csv (written by decision_engine.py).
+# Routing: telegram_chat_id in family_mandates.json; falls back to
+#   TELEGRAM_CHAT_IDS env var position (0=Raj, 1=Wife, 2=Member3).
+# Wife (max_vol=LOW) gets simplified cards — no timing bars or kill switch.
+# ════════════════════════════════════════════════════════════════
 
-    # BEAR ACCUMULATE section with 1Y projections
-    bear_lines = []
-    if not al.empty and ac:
-        sc2 = next((c for c in al.columns if "COMPOSITE" in c.upper()), None)
-        ba_df = al[al[ac].astype(str).str.contains("BEAR ACCUM", case=False, na=False)].copy()
-        if sc2:
-            ba_df[sc2] = pd.to_numeric(ba_df[sc2], errors="coerce")
-            ba_df = ba_df.sort_values(sc2, ascending=False)
-        for _, r in ba_df.head(5).iterrows():
-            sym   = str(r.get("NSE_SYMBOL",""))
-            score = _si(r.get(sc2,0)) if sc2 else "—"
-            _er   = _er_map.get(sym.upper(),"")
-            _er_sfx = f" | {_er}" if _er and "%" in _er else ""
-            bear_lines.append(f"  🐻 <b>{sym}</b> S:{score}{_er_sfx}")
+def _load_family_mandates() -> list:
+    p = REPO / "family_mandates.json"
+    if not p.exists():
+        return []
+    try:
+        with open(p, encoding="utf-8") as f:
+            return json.load(f).get("members", [])
+    except Exception as e:
+        print(f"  [mandates] load error: {e}")
+        return []
 
-    # Early alerts
-    ea = load("early_alerts")
-    alerts = []
-    if not ea.empty:
-        for _, r in ea.head(4).iterrows():
-            sev  = str(r.get("SEVERITY",""))
-            sym  = str(r.get("NSE_SYMBOL",""))
-            atyp = str(r.get("ALERT_TYPE",""))
-            det  = str(r.get("ALERT_DETAIL",""))[:80]
-            icon = {"VERY_HIGH":"🔥","HIGH":"⚡","MEDIUM":"📌"}.get(sev,"📌")
-            alerts.append(f"  {icon} <b>{sym}</b> [{atyp}] {det}")
 
-    # Sector cycle
-    sc_df = load("sector_cycle")
-    cycles = []
-    if not sc_df.empty and "CYCLE_PHASE" in sc_df.columns:
-        for phase, icon in [("MID_CYCLE","🚀"),("EARLY_RECOVERY","🌱"),("BASING","⏸")]:
-            subs = sc_df[sc_df["CYCLE_PHASE"]==phase]
-            if not subs.empty:
-                ig_col = next((c for c in subs.columns if "INDUSTRY" in c.upper()), None)
-                if ig_col:
-                    names = ", ".join(subs[ig_col].tolist()[:3])
-                    cycles.append(f"  {icon} {phase}: {names}")
+def _member_chat_id(member: dict, env_ids: list, idx: int):
+    """Return Telegram chat_id for a member: JSON field first, env position fallback."""
+    cid = member.get("telegram_chat_id")
+    if cid and str(cid).strip() not in ("", "None", "null"):
+        return str(cid).strip()
+    return env_ids[idx] if idx < len(env_ids) else None
 
-    cues = global_cues()
 
-    msg = (f"🇮🇳 <b>MULTIBAGGER — MORNING BRIEF</b>\n"
-           f"<b>{day}</b>\n\n"
-           f"{mkt_text}\n")
-    if _ch_line:
-        msg += f"\n{_ch_line}\n"
-    if cues:
-        msg += "\n<b>🌍 Global Cues</b>\n" + "\n".join(cues) + "\n"
-    if bear_lines:
-        msg += "\n<b>🐻 Bear Accumulate (3× potential)</b>\n" + "\n".join(bear_lines) + "\n"
+def _timing_bar4(val) -> str:
+    """Convert 0-100 score to 4-block bar (▓░). NaN/empty → ——"""
+    if val is None:
+        return "——"
+    try:
+        v = float(val)
+        if v != v:   # NaN check
+            return "——"
+        filled = min(4, max(0, int(v / 25)))
+        return "▓" * filled + "░" * (4 - filled)
+    except Exception:
+        return "——"
 
-    # ── 3-MODEL BUY NOW ───────────────────────────────────────────
-    pl_data = load("portfolio_layer")
-    if not pl_data.empty:
-        safe_lines, ar_lines, comm_lines = [], [], []
-        _shown_mb = set()
 
-        def _mb_picks(flag_col, max_n, exclude=set()):
-            if flag_col not in pl_data.columns:
-                return []
-            mask = pl_data[flag_col].astype(str).str.lower().isin(["true","1","1.0"])
-            sub = pl_data[mask].copy()
-            if "CONVICTION_SCORE" in sub.columns:
-                sub["CONVICTION_SCORE"] = pd.to_numeric(sub["CONVICTION_SCORE"], errors="coerce")
-                sub = sub.sort_values("CONVICTION_SCORE", ascending=False)
-            result = []
-            for _, r in sub.iterrows():
-                if len(result) >= max_n: break
-                s = str(r.get("NSE_SYMBOL","")).strip().upper()
-                if not s or s in _shown_mb or s in exclude: continue
-                if str(r.get("EXIT_SIGNAL","")).upper() == "EXIT": continue
-                score = _si(r.get("CONVICTION_SCORE", r.get("Q_SCORE", 0)))
-                tier = str(r.get("TIER","")).strip()
-                tbadge = {"PRIME":"PRIME","STRONG":"STRONG"}.get(tier, "WLC")
-                result.append(f"  <b>{s}</b> {tbadge} S:{score}")
-                _shown_mb.add(s)
-            return result
+def build_member_brief(member: dict, cards_df, mkt_text: str) -> str:
+    """Build personalised Telegram HTML message for one member."""
+    mid       = member.get("id", "")
+    mname     = member.get("name", "?")
+    is_simple = member.get("max_vol", "MEDIUM") == "LOW"   # Wife = simple mode
 
-        safe_lines = _mb_picks("BUY_NOW_SAFE", 3)
-        ar_lines   = _mb_picks("BUY_NOW_BALANCED", 3, exclude=_shown_mb.copy())
-        comm_lines = _mb_picks("BUY_NOW_COMMODITY", 2, exclude=_shown_mb.copy())
+    m_cards = cards_df[cards_df["MEMBER_ID"] == mid].copy()
+    if m_cards.empty:
+        return ""
 
-        bn_block = ""
-        if safe_lines:
-            bn_block += "  🛡 <b>SAFE</b> (88% win)\n" + "\n".join(safe_lines) + "\n"
-        if ar_lines:
-            bn_block += "  ⚖️ <b>ALL-ROUNDER</b> (84% win)\n" + "\n".join(ar_lines) + "\n"
-        if comm_lines:
-            bn_block += "  ⛏ <b>COMMODITY</b> (94% win)\n" + "\n".join(comm_lines) + "\n"
-        if bn_block:
-            msg += "\n<b>🎯 BUY NOW — High Conviction</b>\n" + bn_block
+    ACT_ORDER = {"BUY": 0, "SELL": 1, "HOLD": 2, "WATCH": 3}
+    m_cards["_ao"] = m_cards["ACTION"].map(ACT_ORDER).fillna(9)
+    m_cards = m_cards.sort_values(["_ao", "CARD_RANK"])
 
-    if cycles:
-        msg += "\n<b>🔄 Sector Cycle</b>\n" + "\n".join(cycles) + "\n"
-    if alerts:
-        msg += "\n<b>⚡ Early Alerts</b>\n" + "\n".join(alerts) + "\n"
-    msg += "\n<i>Engine data from last run. Open Excel for full detail.</i>"
-    return msg
+    def _sv(v, d=""):
+        s = str(v or "").strip()
+        return d if s in ("nan", "None", "") else s
+
+    def _fv(v, d=0.0):
+        try:
+            return float(v) if _sv(str(v)) else d
+        except Exception:
+            return d
+
+    now_str = now_ist().strftime("%d %b %H:%M")
+    lines = [
+        f"<b>📊 ALPHALENS · {mname}</b>  {now_str}",
+        mkt_text,
+        "━━━━━━━━━━━━━━━━━━━━━━━━",
+    ]
+
+    ACT_ICON = {"BUY": "✅", "SELL": "🔴", "HOLD": "⏸", "WATCH": "👁"}
+
+    for _, r in m_cards.iterrows():
+        action     = _sv(r.get("ACTION", ""))
+        ticker     = _sv(r.get("ID", ""))
+        name       = _sv(r.get("NAME", ""))
+        core7      = _fv(r.get("CORE7_SCORE", 0))
+        timing     = _fv(r.get("TIMING", 0))
+        rupee      = _fv(r.get("RUPEE_AMOUNT", 0))
+        limit_px   = _fv(r.get("LIMIT_PRICE", 0))
+        kill       = _sv(r.get("KILL_SWITCH", ""))
+        universe   = _sv(r.get("UNIVERSE", ""))
+        rationale  = _sv(r.get("RATIONALE", ""))
+        is_primary = str(r.get("IS_PRIMARY_MEMBER", "True")).lower() not in ("false", "0")
+
+        act_icon  = ACT_ICON.get(action, "•")
+        name_disp = f" ({name})" if name and name != ticker else ""
+        glbl_tag  = "  [Global]" if universe == "GLOBAL" else ""
+        amt_str   = f" · ₹{int(rupee):,}" if rupee > 0 else ""
+        px_str    = f" · @₹{limit_px:,.2f}" if limit_px > 0 else ""
+
+        if is_simple:
+            card = (f"\n{act_icon} <b>{action}</b>  <b>{ticker}</b>{name_disp}"
+                    f"\nCORE7 <b>{core7:.0f}</b>{amt_str}{px_str}")
+        else:
+            t_bars = ""
+            if action != "SELL" and timing > 0:
+                t_bars = (f"\nT:{_timing_bar4(r.get('T_TREND'))} "
+                          f"Mo:{_timing_bar4(r.get('T_MOMENTUM'))} "
+                          f"Sc:{_timing_bar4(r.get('T_SECTOR_CYCLE'))} "
+                          f"Ca:{_timing_bar4(r.get('T_CATALYST'))} "
+                          f"Mk:{_timing_bar4(r.get('T_MACRO'))}")
+            card = (f"\n{act_icon} <b>{action}</b>  <b>{ticker}</b>{name_disp}{glbl_tag}"
+                    f"\nCORE7 <b>{core7:.0f}</b> · Timing {timing:.0f}{amt_str}{px_str}{t_bars}")
+            if action == "BUY" and kill:
+                card += f"\n⚠ {kill}"
+            if not is_primary:
+                card += f"\n<i>({rationale})</i>"
+
+        lines.append(card)
+
+    lines.append("")
+    lines.append(f"<i>CORE-7 · {now_ist().strftime('%d %b %Y %H:%M')}</i>")
+    return "\n".join(lines)
+
+
+def send_personalized_decision_cards() -> int:
+    """Send per-member CORE-7 decision card messages. Falls back to legacy action plan."""
+    dc_path = REPO / "decision_cards.csv"
+    if not dc_path.exists():
+        print("  [cards] decision_cards.csv not found — using legacy action plan")
+        msg = build_action_plan()
+        return 1 if (msg and send(msg)) else 0
+
+    try:
+        cards_df = pd.read_csv(dc_path, low_memory=False)
+        cards_df.columns = [c.strip() for c in cards_df.columns]
+    except Exception as e:
+        print(f"  [cards] read error: {e} — using legacy action plan")
+        msg = build_action_plan()
+        return 1 if (msg and send(msg)) else 0
+
+    if cards_df.empty or "MEMBER_ID" not in cards_df.columns:
+        print("  [cards] no MEMBER_ID column — using legacy action plan")
+        msg = build_action_plan()
+        return 1 if (msg and send(msg)) else 0
+
+    _, mkt_text = market_summary()
+    members = _load_family_mandates() or [
+        {"id": "mem_938715EB", "name": "Raj",     "max_vol": "HIGH"},
+        {"id": "mem_WIFE",     "name": "Wife",    "max_vol": "LOW"},
+        {"id": "mem_MEMBER3",  "name": "Member3", "max_vol": "MEDIUM"},
+    ]
+
+    n_sent = 0
+    for idx, member in enumerate(members):
+        cid = _member_chat_id(member, CHAT_IDS, idx)
+        if not cid:
+            print(f"  [cards] {member.get('name','?')}: no chat_id — skipped")
+            continue
+        msg = build_member_brief(member, cards_df, mkt_text)
+        if not msg:
+            print(f"  [cards] {member.get('name','?')}: no cards — skipped")
+            continue
+        ok = send(msg, chat_ids=[cid])
+        print(f"  [cards] {member.get('name','?')} → ..{cid[-4:]}: {ok}")
+        if ok:
+            n_sent += 1
+
+    return n_sent
+
+
+
 
 
 # ════════════════════════════════════════════════════════════════
@@ -2080,63 +2094,40 @@ def main():
         except Exception as _ede_err:
             print(f"  [exit_discipline] WARNING: {_ede_err}")
 
-    # ── TYPE 1: ACTION PLAN (push-triggered = engine just ran) ──
+    # ── TYPE 1: PERSONALIZED DECISION CARDS (push-triggered = engine just ran) ──
     if triggered_by_push:
-        # Freshness gate: only send if composite_scores.csv was scored within 8 hours.
-        # Prevents action plan firing when a non-engine push (e.g. infra fix) hits GitHub.
+        # Freshness gate: decision_cards.csv GENERATED_AT first, then composite SCORED_AT fallback.
+        # Prevents alerts firing when a non-engine push (e.g. infra fix) hits GitHub.
         _engine_fresh = False
         try:
-            _cs_chk = load("composite")
-            if not _cs_chk.empty and "SCORED_AT" in _cs_chk.columns:
-                from datetime import timedelta as _td
-                _scored = pd.to_datetime(_cs_chk["SCORED_AT"].max(), errors="coerce")
-                if pd.notna(_scored):
-                    _age_h = (now_ist().replace(tzinfo=None) - _scored.to_pydatetime().replace(tzinfo=None)).total_seconds() / 3600
-                    _engine_fresh = _age_h <= 4
+            _dc_chk_path = REPO / "decision_cards.csv"
+            if _dc_chk_path.exists():
+                _dc_chk = pd.read_csv(_dc_chk_path, low_memory=False)
+                _dc_chk.columns = [c.strip() for c in _dc_chk.columns]
+                if not _dc_chk.empty and "GENERATED_AT" in _dc_chk.columns:
+                    _gen = pd.to_datetime(_dc_chk["GENERATED_AT"].max(), errors="coerce")
+                    if pd.notna(_gen):
+                        _age_h = (now_ist().replace(tzinfo=None) - _gen.to_pydatetime().replace(tzinfo=None)).total_seconds() / 3600
+                        _engine_fresh = _age_h <= 4
+            if not _engine_fresh:
+                _cs_chk = load("composite")
+                if not _cs_chk.empty and "SCORED_AT" in _cs_chk.columns:
+                    _scored = pd.to_datetime(_cs_chk["SCORED_AT"].max(), errors="coerce")
+                    if pd.notna(_scored):
+                        _age_h = (now_ist().replace(tzinfo=None) - _scored.to_pydatetime().replace(tzinfo=None)).total_seconds() / 3600
+                        _engine_fresh = _age_h <= 4
         except Exception as _fe:
             print(f"  [freshness] check error: {_fe}")
             _engine_fresh = True   # fail-open: assume fresh if check errors
         if not _engine_fresh:
-            print("  → Push trigger: engine data >8h old — skipping action plan (no engine run detected)")
+            print("  → Push trigger: engine data >4h old — skipping alerts (no engine run detected)")
             return
-        print("  → TYPE 1: Action Plan (push trigger — engine just ran)")
-        msg = build_action_plan()
-        
-
-        if not msg:
-            from datetime import datetime as _dt_ap
-            _ms2, _ = market_summary()
-            _ic2 = {"BULL":"🟢","BEAR":"🔴","CAUTION":"🟡","RECOVERY":"🔵","PANIC":"⚫"}.get((_ms2 or "").upper(),"⚪")
-            _cs2 = load("composite")
-            _tc2 = _cs2["TIER"].value_counts() if not _cs2.empty and "TIER" in _cs2.columns else {}
-            msg = ("<b>ALPHALENS — ACTION PLAN</b>\n"
-                   f"{_dt_ap.now().strftime('%d %b %Y  %H:%M')}  {_ic2} <b>{_ms2 or ''}</b>\n"
-                   f"P:<b>{_tc2.get('PRIME',0)}</b> S:<b>{_tc2.get('STRONG',0)}</b> "
-                   f"WLC:<b>{_tc2.get('WATCHLIST_CONFIRMED',0)}</b> Mine:<b>{_tc2.get('LANDMINE',0)}</b>\n"
-                   "━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                   "<b>🛡 SAFE COMPOUNDER</b>  <i>(no picks today)</i>\n"
-                   "<b>⚖️ ALL-ROUNDER</b>  <i>(none today)</i>\n"
-                   "<b>💡 OPPORTUNITY BUY</b>  <i>(no fresh catalysts)</i>")
-        ok = send(msg)
-        print(f"  Action Plan sent: {ok}")
-        if ok: sent += 1
-        return   # push trigger = action plan only, don't run news scan
-
-    # ── TYPE 2: MORNING BRIEF (7:30am) ───────────────────────
-    # Window 7:30–9:30 IST as fallback for missed cron.
-    # --news mode skips this to prevent duplicate when 9:00 --news cron fires
-    # inside the window. morning_brief_sent.json is now persisted to GitHub
-    # so same-day dedup works across runner instances.
-    in_brief_window = ((h == 7 and m >= 30) or (h == 8) or (h == 9 and m < 30)) and not news_only_mode
-    if in_brief_window and not morning_sent_today():
-        print("  → TYPE 2: Morning Brief")
-        msg = build_morning_brief()
-        ok  = send(msg)
-        if ok: mark_morning_sent()
-        print(f"  Morning Brief sent: {ok}")
-        sent += 1
-        # After brief, also run news scan for the morning
-        # Fall through to TYPE 3
+        print("  → TYPE 1: Personalized Decision Cards (CORE-7, push trigger)")
+        n = send_personalized_decision_cards()
+        print(f"  {n} personalized alert(s) sent")
+        if n > 0:
+            sent += 1
+        return   # push trigger = decision cards only, don't run news scan
 
     # ── TYPE 3: HOURLY NEWS (9am-6pm) ────────────────────────
     # s55: 3 news slots per day (9-11, 12-14, 15-18)
@@ -2182,7 +2173,7 @@ def main():
             print("  MSG6: no portfolio drawdowns >15% or no portfolio file")
 
     # Outside all windows
-    if sent == 0 and not (9 <= h <= 18) and not in_brief_window:
+    if sent == 0 and not (9 <= h <= 18):
         print(f"  → Outside windows ({h:02d}:{m:02d}) — silent")
 
     print(f"  Total sent: {sent}")
