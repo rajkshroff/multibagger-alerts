@@ -14,7 +14,19 @@ import time
 import threading
 from typing import Iterable, Optional
 
+import ssl
 import requests
+from requests.adapters import HTTPAdapter
+
+class _SystemSSLAdapter(HTTPAdapter):
+    """Use the OS certificate store instead of certifi — fixes Windows SSL verify failures."""
+    def init_poolmanager(self, *args, **kwargs):
+        ctx = ssl.create_default_context()
+        kwargs['ssl_context'] = ctx
+        return super().init_poolmanager(*args, **kwargs)
+
+_tg_session = requests.Session()
+_tg_session.mount('https://api.telegram.org', _SystemSSLAdapter())
 
 _MAX_CHARS = 4000
 _RETRIES = 3
@@ -53,7 +65,7 @@ def _post_one(url: str, chat_id: str, text: str, parse_mode: str) -> bool:
     for attempt in range(_RETRIES):
         try:
             _throttle()
-            r = requests.post(url, json=payload, timeout=_DEFAULT_TIMEOUT)
+            r = _tg_session.post(url, json=payload, timeout=_DEFAULT_TIMEOUT)
             if r.ok:
                 print(f"  [tg→..{chat_id[-4:]}] ok {len(text)} chars", flush=True)
                 return True
