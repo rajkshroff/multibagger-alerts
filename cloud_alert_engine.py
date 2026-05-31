@@ -666,7 +666,7 @@ def build_member_brief(member: dict, cards_df, mkt_text: str) -> str:
     mname     = member.get("name", "?")
     is_simple = member.get("max_vol", "MEDIUM") == "LOW"   # Wife = simple mode
 
-    m_cards = cards_df[cards_df["MEMBER_ID"] == mid].copy()
+    m_cards = cards_df[cards_df["USER_ID"] == mid].copy()
     if m_cards.empty:
         return ""
 
@@ -704,7 +704,7 @@ def build_member_brief(member: dict, cards_df, mkt_text: str) -> str:
         kill       = _sv(r.get("KILL_SWITCH", ""))
         universe   = _sv(r.get("UNIVERSE", ""))
         rationale  = _sv(r.get("RATIONALE", ""))
-        is_primary = str(r.get("IS_PRIMARY_MEMBER", "True")).lower() not in ("false", "0")
+        is_primary = str(r.get("IS_PRIMARY_USER", "True")).lower() not in ("false", "0")
 
         act_icon  = ACT_ICON.get(action, "•")
         name_disp = f" ({name})" if name and name != ticker else ""
@@ -753,8 +753,8 @@ def send_personalized_decision_cards() -> int:
         msg = build_action_plan()
         return 1 if (msg and send(msg)) else 0
 
-    if cards_df.empty or "MEMBER_ID" not in cards_df.columns:
-        print("  [cards] no MEMBER_ID column — using legacy action plan")
+    if cards_df.empty or "USER_ID" not in cards_df.columns:
+        print("  [cards] no USER_ID column — using legacy action plan")
         msg = build_action_plan()
         return 1 if (msg and send(msg)) else 0
 
