@@ -28,6 +28,8 @@
 
 import os, sys, json, hashlib, argparse
 import requests, re
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 try:
@@ -918,7 +920,7 @@ def get_universe_symbols() -> set:
 def fetch_rss(url: str, timeout=8) -> list:
     """Fetch RSS and return list of {title, link, date}."""
     try:
-        r = requests.get(url, timeout=timeout, headers={
+        r = requests.get(url, timeout=timeout, verify=False, headers={
             "User-Agent": "Mozilla/5.0 (compatible; MultibaggerBot/1.0)"
         })
         if not r.ok: return []
@@ -1056,9 +1058,9 @@ def _nse_live_price(symbol: str) -> float:
         s.headers.update({"User-Agent":"Mozilla/5.0",
                           "Referer":"https://www.nseindia.com/",
                           "Accept":"application/json"})
-        s.get("https://www.nseindia.com", timeout=5)
+        s.get("https://www.nseindia.com", timeout=5, verify=False)
         r = s.get(f"https://www.nseindia.com/api/quote-equity?symbol={symbol}",
-                  timeout=8)
+                  timeout=8, verify=False)
         if r.ok:
             d = r.json()
             p = (d.get("priceInfo",{}).get("lastPrice") or
