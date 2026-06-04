@@ -116,3 +116,13 @@ def send(text: str, parse_mode: str = "HTML", chat_ids: Optional[Iterable[str]] 
             if not _post_one(url, cid, chunk + suffix, parse_mode):
                 ok = False
     return ok
+
+
+if __name__ == "__main__":
+    import sys
+    msg = " ".join(sys.argv[1:]).strip() if len(sys.argv) > 1 else ""
+    if not msg:
+        print("Usage: telegram_gateway.py <message>", file=sys.stderr)
+        sys.exit(1)
+    ok = send(msg, parse_mode="HTML")
+    sys.exit(0 if ok else 1)
