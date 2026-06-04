@@ -25,11 +25,11 @@ INE016A01026,DABUR,500096.0,Dabur India,Personal Products,Personal Care
 INE495A01022,DALMIASUG,500097.0,Dalmia Bharat,Agricultural Food & other Products,Sugar
 INE00R701025,DALBHARAT,542216.0,Dalmia BharatLtd,Cement & Cement Products,Cement & Cement Products
 INE284H01025,DAMCAPITAL,544316.0,Dam Capital Advi,Capital Markets,Stockbroking & Allied
+INE497D01022,DAMODARIND,521220.0,Damodar Indust.,Textiles & Apparels,Other Textile Products
 INE365B01017,DATAMATICS,532528.0,Datamatics Glob.,IT - Services,IT Enabled Services
 INE688Y01022,DANGEE,,Dangee Dums,Food Products,Packaged Foods
 INE0IX101010,DATAPATTNS,543428.0,Data Pattern,Aerospace & Defense,Aerospace & Defense
 INE179G01029,DAVANGERE,543267.0,Davangere Sugar,Diversified FMCG,Diversified FMCG
-INE950I01011,DBCORP,533151.0,D B Corp,Media,Print Media
 INE552D01024,CONFIPET,526829.0,Confidence Petro,Gas,LPG/CNG/PNG/LNG Supplier
 INE111A01025,CONCOR,531344.0,Container Corpn.,Transport Services,Logistics Solution Provider
 INE073V01015,COMSYN,539986.0,Commerl. Synbags,Industrial Products,Packaging
@@ -1025,7 +1025,7 @@ INE754X01016,AARVI,,Aarvi Encon,Commercial Services & Supplies,Diversified Comme
 INE09EO01013,AARTISURF,543210.0,Aarti Surfactant,Chemicals & Petrochemicals,Specialty Chemicals
 INE117A01022,ABB,500002.0,A B B,Electrical Equipment,Heavy Electrical Equipment
 INE760F01028,INDOAMIN,524648.0,Indo Amines,Chemicals & Petrochemicals,Specialty Chemicals
-INE497D01022,DAMODARIND,521220.0,Damodar Indust.,Textiles & Apparels,Other Textile Products
+INE950I01011,DBCORP,533151.0,D B Corp,Media,Print Media
 INE622H01018,INDOFARM,544328.0,Indo Farm Equip.,"Agricultural, Commercial & Construction Vehicles",Tractors
 INE0DK501011,PPLPHARMA,543635.0,Piramal Pharma,Pharmaceuticals & Biotechnology,Pharmaceuticals
 INE074A01025,PRAJIND,522205.0,Praj Industries,Industrial Manufacturing,Industrial Products
@@ -1447,12 +1447,12 @@ INE642C01025,RUBFILA,500367.0,Rubfila Intl.,Industrial Products,Rubber
 INE301D01026,RUBYMILLS,503169.0,Ruby Mills,Textiles & Apparels,Other Textile Products
 INE413B01023,RUCHINFRA,509020.0,Ruchi Infrastr.,Commercial Services & Supplies,Diversified Commercial Services
 INE573K01025,RUSHIL,533470.0,Rushil Decor,Consumer Durables,Plywood Boards/ Laminates
-INE803H01014,RUCHIRA,532785.0,Ruchira Papers,"Paper, Forest & Jute Products",Paper & Paper Products
+INE156A01020,INDORAMA,500207.0,Indo Rama Synth.,Textiles & Apparels,Other Textile Products
 INE895B01021,RUPA,533552.0,Rupa & Co,Textiles & Apparels,Garments & Apparels
 INE415G01027,RVNL,542649.0,Rail Vikas,Construction,Civil Construction
 INE263M01029,RUSTOMJEE,543669.0,Keystone Realtor,Realty,"Residential, Commercial Projects"
 INE09E501017,RVHL,543251.0,Ravinder Heights,Realty,"Residential, Commercial Projects"
-INE156A01020,INDORAMA,500207.0,Indo Rama Synth.,Textiles & Apparels,Other Textile Products
+INE0DAB01012,RVTH,544246.0,Revathi Equip,Industrial Manufacturing,Industrial Products
 INE13B501022,SAATVIKGL,544526.0,Saatvik Green,Electrical Equipment,Other Electrical Equipment
 INE423Y01016,SBFC,543959.0,SBFC Finance,Finance,Non Banking Financial Company (NBFC)
 INE513A01022,SCHAEFFLER,505790.0,Schaeffler India,Auto Components,Auto Components & Equipments
@@ -1516,7 +1516,7 @@ INE06ZD01017,SHANTIGOLD,544459.0,Shanti Gold,Consumer Durables,"Gems, Jewellery 
 INE597I01028,SHARDAMOTR,535602.0,Sharda Motor,Auto Components,Auto Components & Equipments
 INE932X01026,SHAREINDIA,540725.0,Share India Sec.,Capital Markets,Stockbroking & Allied
 INE295D01020,NACLIND,524709.0,NACL Industries,Fertilizers & Agrochemicals,Pesticides & Agrochemicals
-INE0DAB01012,RVTH,544246.0,Revathi Equip,Industrial Manufacturing,Industrial Products
+INE803H01014,RUCHIRA,532785.0,Ruchira Papers,"Paper, Forest & Jute Products",Paper & Paper Products
 INE046W01019,MUTHOOTMF,544055.0,Muthoot Microfin,Finance,Microfinance Institutions
 INE157H01023,KMSUGAR,532673.0,KM Sugar Mills,Agricultural Food & other Products,Sugar
 INE760A01029,KOKUYOCMLN,523207.0,Kokuyo Camlin,Household Products,Stationary
@@ -1734,129 +1734,126 @@ INE0OAF01028,JNKINDIA,544167.0,JNK,Industrial Manufacturing,Industrial Products
 INE389C01015,MALLCOM,539400.0,Mallcom (India),Industrial Products,Other Industrial Products
 INE768C01028,ZYDUSWELL,531335.0,Zydus Wellness,Food Products,Packaged Foods
 INE613C01026,MCLOUD,538891.0,Magellanic Cloud,IT - Software,Computers - Software & Consulting
-INE00VM01036,MANORAMA,541974.0,Manorama Indust.,Food Products,Other Food Products
 INE514Y01020,MOKSH,,Moksh Ornaments,Consumer Durables,"Gems, Jewellery And Watches"
-INE825V01034,MANYAVAR,543463.0,Vedant Fashions,Retailing,Speciality Retail
 INE0CT101020,MOL,543331.0,Meghmani Organi.,Fertilizers & Agrochemicals,Pesticides & Agrochemicals
-INE040D01038,MAYURUNIQ,522249.0,Mayur Uniquoters,Consumer Durables,Leather And Leather Products
+INE0CG601016,MAXIND,543223.0,Max India Ltd,Finance,Holding Company
 INE867A01022,MANUGRAPH,505324.0,Manugraph India,Industrial Manufacturing,Industrial Products
 INE835B01035,MOLDTECH,526263.0,Mold-Tek Technol,Construction,Civil Construction
+INE964W01021,MKPL,543919.0,M K Proteins,Agricultural Food & other Products,Edible Oil
 INE893J01029,MOLDTKPAC,533080.0,Mold-Tek Pack.,Industrial Products,Packaging
 INE903D01011,MONARCH,511551.0,Monarch Networth,Capital Markets,Stockbroking & Allied
-INE997Y01027,MITTAL,,Mittal Life Styl,Textiles & Apparels,Garments & Apparels
+INE040D01038,MAYURUNIQ,522249.0,Mayur Uniquoters,Consumer Durables,Leather And Leather Products
 INE296Q01012,MONEYBOXX,538446.0,Moneyboxx Fin.,Finance,Non Banking Financial Company (NBFC)
+INE00VM01036,MANORAMA,541974.0,Manorama Indust.,Food Products,Other Food Products
 INE950M01013,MONTECARLO,538836.0,Monte Carlo Fas.,Textiles & Apparels,Garments & Apparels
-INE964W01021,MKPL,543919.0,M K Proteins,Agricultural Food & other Products,Edible Oil
+INE997Y01027,MITTAL,,Mittal Life Styl,Textiles & Apparels,Garments & Apparels
+INE784W01015,MANOMAY,540396.0,Manomay Tex Indi,Textiles & Apparels,Other Textile Products
 INE249Z01020,MAZDOCK,543237.0,Mazagon Dock,Industrial Manufacturing,Ship Building & Allied Services
 INE828O01033,MITCON,,Mitcon Consult.,Commercial Services & Supplies,Consulting Services
-INE784W01015,MANOMAY,540396.0,Manomay Tex Indi,Textiles & Apparels,Other Textile Products
-INE842C01021,MINDACORP,538962.0,Minda Corp,Auto Components,Auto Components & Equipments
 INE083A01026,MOREPENLAB,500288.0,Morepen Labs.,Pharmaceuticals & Biotechnology,Pharmaceuticals
-INE348L01012,MASFIN,540749.0,MAS FINANC SER,Finance,Non Banking Financial Company (NBFC)
 INE646B01010,MEDICAMEQ,531146.0,Medicamen Biotec,Pharmaceuticals & Biotechnology,Pharmaceuticals
-INE110B01017,MINDTECK,517344.0,Mindteck (India),IT - Software,Computers - Software & Consulting
+INE842C01021,MINDACORP,538962.0,Minda Corp,Auto Components,Auto Components & Equipments
+INE456Z01021,MEDIASSIST,544088.0,Medi Assist Ser.,Insurance,Insurance Distributors
 INE949H01023,MANINFRA,533169.0,Man Infra,Construction,Civil Construction
 INE935B01025,MOSCHIP,532407.0,Moschip Tech.,IT - Hardware,Computers Hardware & Equipments
+INE825V01034,MANYAVAR,543463.0,Vedant Fashions,Retailing,Speciality Retail
 INE0BV301023,MAPMYINDIA,543425.0,C.E. Info System,IT - Software,Software Products
+INE110B01017,MINDTECK,517344.0,Mindteck (India),IT - Software,Computers - Software & Consulting
 INE954E01012,MOHITIND,531453.0,Mohit Industries,Textiles & Apparels,Other Textile Products
-INE775A01035,MOTHERSON,517334.0,Samvardh. Mothe.,Auto Components,Auto Components & Equipments
 INE804L01022,MEDPLUS,543427.0,Medplus Health,Retailing,Pharmacy Retail
-INE585B01010,MARUTI,532500.0,Maruti Suzuki,Automobiles,Passenger Cars & Utility Vehicles
-INE759A01021,MASTEK,523704.0,Mastek,IT - Software,Computers - Software & Consulting
-INE511Y01018,MMP,,MMP Industries,Non - Ferrous Metals,Aluminium
-INE630Y01024,MEDICO,540937.0,Medico Remedies,Pharmaceuticals & Biotechnology,Pharmaceuticals
+INE348L01012,MASFIN,540749.0,MAS FINANC SER,Finance,Non Banking Financial Company (NBFC)
 INE123F01029,MMTC,513377.0,MMTC,Commercial Services & Supplies,Trading & Distributors
 INE415B01044,MARSONS,517467.0,Marsons,Electrical Equipment,Other Electrical Equipment
+INE759A01021,MASTEK,523704.0,Mastek,IT - Software,Computers - Software & Consulting
 INE750C01026,MARKSANS,524404.0,Marksans Pharma,Pharmaceuticals & Biotechnology,Pharmaceuticals
-INE00EM01016,MEGASTAR,541352.0,Megastar Foods,Food Products,Other Food Products
+INE511Y01018,MMP,,MMP Industries,Non - Ferrous Metals,Aluminium
 INE677D01037,MASTERTR,511768.0,Master Trust,Capital Markets,Stockbroking & Allied
+INE630Y01024,MEDICO,540937.0,Medico Remedies,Pharmaceuticals & Biotechnology,Pharmaceuticals
 INE866R01028,MATRIMONY,540704.0,Matrimony.com,Retailing,Internet & Catalogue Retail
-INE03EI01018,MAXESTATES,544008.0,Max Estates,Realty,"Residential, Commercial Projects"
-INE182D01020,MARATHON,503101.0,Marathon Nextgen,Realty,"Residential, Commercial Projects"
-INE071D01033,MENONBE,523828.0,Menon Bearings,Auto Components,Auto Components & Equipments
+INE00EM01016,MEGASTAR,541352.0,Megastar Foods,Food Products,Other Food Products
 INE0HLU01028,MOBIKWIK,544305.0,One Mobikwik,Financial Technology (Fintech),Financial Technology (Fintech)
 INE0FW001016,MARKOLINES,543364.0,Markolines Pavem,Construction,Civil Construction
+INE03EI01018,MAXESTATES,544008.0,Max Estates,Realty,"Residential, Commercial Projects"
+INE832A01018,MODIRUBBER,500890.0,Modi Rubber,Auto Components,Tyres & Rubber Products
+INE071D01033,MENONBE,523828.0,Menon Bearings,Auto Components,Auto Components & Equipments
+INE196A01026,MARICO,531642.0,Marico,Agricultural Food & other Products,Edible Oil
 INE027H01010,MAXHEALTH,543220.0,Max Healthcare,Healthcare Services,Hospital
 INE227C01017,MMFL,522241.0,M M Forgings,Auto Components,Auto Components & Equipments
-INE832A01018,MODIRUBBER,500890.0,Modi Rubber,Auto Components,Tyres & Rubber Products
-INE196A01026,MARICO,531642.0,Marico,Agricultural Food & other Products,Edible Oil
-INE002S01010,MGL,539957.0,Mahanagar Gas,Gas,LPG/CNG/PNG/LNG Supplier
-INE0CG601016,MAXIND,543223.0,Max India Ltd,Finance,Holding Company
 INE01JE01028,MARINE,,Marine Electric.,Industrial Manufacturing,Industrial Products
-INE456Z01021,MEDIASSIST,544088.0,Medi Assist Ser.,Insurance,Insurance Distributors
+INE182D01020,MARATHON,503101.0,Marathon Nextgen,Realty,"Residential, Commercial Projects"
+INE775A01035,MOTHERSON,517334.0,Samvardh. Mothe.,Auto Components,Auto Components & Equipments
 INE634S01028,MANKIND,543904.0,Mankind Pharma,Pharmaceuticals & Biotechnology,Pharmaceuticals
-INE112L01020,METROPOLIS,542650.0,Metropolis Healt,Healthcare Services,Healthcare Service Provider
-INE304A01026,MUKANDLTD,500460.0,Mukand,Ferrous Metals,Iron & Steel
-INE0CG401037,MUKKA,544135.0,Mukka Proteins,Food Products,Animal Feed
-INE356A01018,MPHASIS,526299.0,Mphasis,IT - Software,Computers - Software & Consulting
-INE220Q01020,MUFTI,544058.0,Credo Brands,Retailing,Speciality Retail
-INE883A01011,MRF,500290.0,MRF,Auto Components,Tyres & Rubber Products
-INE015D01022,MANAKSIA,532932.0,Manaksia,Industrial Products,Iron & Steel Products
-INE998I01010,MHRIL,533088.0,Mahindra Holiday,Leisure Services,Hotels & Resorts
-INE939X01013,MANBA,544262.0,Manba Finance,Finance,Non Banking Financial Company (NBFC)
-INE943D01017,MPSLTD,532440.0,MPS,Other Consumer Services,E-Learning
-INE771A01026,MIRZAINT,526642.0,Mirza Internatio,Consumer Durables,Leather And Leather Products
-INE103A01014,MRPL,500109.0,M R P L,Petroleum Products,Refineries & Marketing
-INE201A01024,MANALIPETC,500268.0,Manali Petrochem,Chemicals & Petrochemicals,Petrochemicals
-INE08N601015,MBEL,544470.0,M & B Engineer.,Construction,Civil Construction
-INE900L01010,MBAPL,,M B Agro Prod.,Fertilizers & Agrochemicals,Fertilizers
+INE317I01021,METROBRAND,543426.0,Metro Brands,Consumer Durables,Footwear
 INE745G01043,MCX,534091.0,Multi Comm. Exc.,Capital Markets,Exchange and Data Platform
-INE08KJ01020,MUFIN,542774.0,Mufin Green,Finance,Non Banking Financial Company (NBFC)
+INE943D01017,MPSLTD,532440.0,MPS,Other Consumer Services,E-Learning
+INE103A01014,MRPL,500109.0,M R P L,Petroleum Products,Refineries & Marketing
+INE474Q01031,MEDANTA,543654.0,Global Health,Healthcare Services,Hospital
+INE998I01010,MHRIL,533088.0,Mahindra Holiday,Leisure Services,Hotels & Resorts
 INE752G01015,MSPL,532650.0,MSP Steel & Pow.,Industrial Products,Iron & Steel Products
 INE0FS801015,MSUMI,543498.0,Motherson Wiring,Auto Components,Auto Components & Equipments
 INE255X01014,MSTCLTD,542597.0,MSTC,Commercial Services & Supplies,Trading & Distributors
-INE112D01035,MHLXMIRU,514450.0,Mahalaxmi Rubtec,Textiles & Apparels,Other Textile Products
+INE08N601015,MBEL,544470.0,M & B Engineer.,Construction,Civil Construction
+INE900L01010,MBAPL,,M B Agro Prod.,Fertilizers & Agrochemicals,Fertilizers
 INE864I01014,MTARTECH,543270.0,MTAR Technologie,Aerospace & Defense,Aerospace & Defense
-INE813V01022,MCL,,Madhav Copper,Industrial Products,"Aluminium, Copper & Zinc Products"
+INE08KJ01020,MUFIN,542774.0,Mufin Green,Finance,Non Banking Financial Company (NBFC)
+INE015D01022,MANAKSIA,532932.0,Manaksia,Industrial Products,Iron & Steel Products
+INE220Q01020,MUFTI,544058.0,Credo Brands,Retailing,Speciality Retail
+INE0CG401037,MUKKA,544135.0,Mukka Proteins,Food Products,Animal Feed
+INE304A01026,MUKANDLTD,500460.0,Mukand,Ferrous Metals,Iron & Steel
 INE672B01032,MUNJALAU,520059.0,Munjal Auto Inds,Auto Components,Auto Components & Equipments
-INE338I01027,MOTILALOFS,532892.0,Motil.Oswal.Fin.,Capital Markets,Stockbroking & Allied
-INE0TO701015,MAMATA,544318.0,Mamata Machinery,Industrial Manufacturing,Industrial Products
-INE993A01026,MANINDS,513269.0,Man Industries,Industrial Products,Iron & Steel Products
-INE692B01014,MURUDCERA,515037.0,Murudesh.Ceramic,Consumer Durables,Ceramics
-INE347A01017,MANGLMCEM,502157.0,Mangalam Cement,Cement & Cement Products,Cement & Cement Products
-INE317I01021,METROBRAND,543426.0,Metro Brands,Consumer Durables,Footwear
-INE545L01039,MANCREDIT,505850.0,Mangal Credit,Finance,Non Banking Financial Company (NBFC)
-INE474Q01031,MEDANTA,543654.0,Global Health,Healthcare Services,Hospital
-INE099Z01011,MIDHANI,541195.0,Mishra Dhatu Nig,Aerospace & Defense,Aerospace & Defense
-INE0APB01032,MGEL,544273.0,Mangalam Global,Agricultural Food & other Products,Other Agricultural Products
-INE287C01037,MICEL,532850.0,MIC Electronics,Industrial Products,Other Industrial Products
-INE912H01013,MBLINFRA,533152.0,MBL Infrast,Construction,Civil Construction
 INE859Q01017,MANAKALUCO,539045.0,Manaksia Alumi.,Non - Ferrous Metals,Aluminium
+INE0APB01032,MGEL,544273.0,Mangalam Global,Agricultural Food & other Products,Other Agricultural Products
+INE112D01035,MHLXMIRU,514450.0,Mahalaxmi Rubtec,Textiles & Apparels,Other Textile Products
+INE692B01014,MURUDCERA,515037.0,Murudesh.Ceramic,Consumer Durables,Ceramics
+INE0TO701015,MAMATA,544318.0,Mamata Machinery,Industrial Manufacturing,Industrial Products
+INE813V01022,MCL,,Madhav Copper,Industrial Products,"Aluminium, Copper & Zinc Products"
+INE002S01010,MGL,539957.0,Mahanagar Gas,Gas,LPG/CNG/PNG/LNG Supplier
+INE939X01013,MANBA,544262.0,Manba Finance,Finance,Non Banking Financial Company (NBFC)
+INE201A01024,MANALIPETC,500268.0,Manali Petrochem,Chemicals & Petrochemicals,Petrochemicals
+INE585B01010,MARUTI,532500.0,Maruti Suzuki,Automobiles,Passenger Cars & Utility Vehicles
+INE338I01027,MOTILALOFS,532892.0,Motil.Oswal.Fin.,Capital Markets,Stockbroking & Allied
+INE099Z01011,MIDHANI,541195.0,Mishra Dhatu Nig,Aerospace & Defense,Aerospace & Defense
+INE771A01026,MIRZAINT,526642.0,Mirza Internatio,Consumer Durables,Leather And Leather Products
+INE347A01017,MANGLMCEM,502157.0,Mangalam Cement,Cement & Cement Products,Cement & Cement Products
+INE993A01026,MANINDS,513269.0,Man Industries,Industrial Products,Iron & Steel Products
+INE112L01020,METROPOLIS,542650.0,Metropolis Healt,Healthcare Services,Healthcare Service Provider
+INE287C01037,MICEL,532850.0,MIC Electronics,Industrial Products,Other Industrial Products
 INE0FRK01020,MOTISONS,544053.0,Motisons Jewel,Consumer Durables,"Gems, Jewellery And Watches"
-INE090Y01013,CADSYS,,Cadsys (India),Commercial Services & Supplies,Business Process Outsourcing (BPO)/ Knowledge Process Outsourcing (KPO)
-INE0KTW01013,VEEKAYEM,,Veekayem Fash.,Textiles & Apparels,Garments & Apparels
-INE0HS001028,COOLCAPS,,Cool Caps,Industrial Products,Packaging
-INE0LXA01019,HOLMARC,,Holmarc Opto,Industrial Products,Other Industrial Products
-INE338Y01016,OMFURN,,Omfurn India,Consumer Durables,"Furniture, Home Furnishing"
-INE0J6L01013,NIDAN,,Nidan Laborator.,Healthcare Services,Healthcare Service Provider
-INE0O1S01012,MAGSON,,Magson Retail,Food Products,Packaged Foods
+INE912H01013,MBLINFRA,533152.0,MBL Infrast,Construction,Civil Construction
+INE356A01018,MPHASIS,526299.0,Mphasis,IT - Software,Computers - Software & Consulting
+INE883A01011,MRF,500290.0,MRF,Auto Components,Tyres & Rubber Products
+INE545L01039,MANCREDIT,505850.0,Mangal Credit,Finance,Non Banking Financial Company (NBFC)
+INE0JHH01011,DOLLEX,,Dollex Agrotech,Agricultural Food & other Products,Sugar
+INE0R6C01012,PURVFLEXI,,Purv Flexi,Industrial Products,Plastic Products - Industrial
 INE0RJH01010,RBS,,Ramdevbaba Sol.,Agricultural Food & other Products,Edible Oil
-INE0QFE01017,GOYALSALT,,Goyal Salt,Food Products,Other Food Products
-INE0NNZ01013,INFOLLION,,Infollion Resea.,Commercial Services & Supplies,Diversified Commercial Services
-INE082101010,ARISTO,,Aristo Bio-Tech,Fertilizers & Agrochemicals,Pesticides & Agrochemicals
+INE0PS301014,INDIFRA,,Indifra Ltd,Gas,Gas Transmission/Marketing
+INE0PT101017,CHAVDA,,Chavda Infra Ltd,Construction,Civil Construction
+INE0OB201016,AATMAJ,,Aatmaj Health,Healthcare Services,Hospital
+INE0V9N01017,PRIZOR,,Prizor Viztech,Industrial Manufacturing,Industrial Products
+INE0N5801013,DENTALKART,,Vasa Denticity,Healthcare Equipment & Supplies,Medical Equipment & Supplies
+INE0PW501021,NEWJAISA,,Newjaisa Tech,IT - Hardware,Computers Hardware & Equipments
+INE0LXA01019,HOLMARC,,Holmarc Opto,Industrial Products,Other Industrial Products
+INE512B01022,FCSSOFT,532666.0,FCS Software,IT - Services,IT Enabled Services
+INE02OY01016,RILINFRA,,Rachana Infra.,Construction,Civil Construction
 INE0O7P01015,GREENCHEF,,Greenchef Appli.,Consumer Durables,Household Appliances
+INE0R8C01018,GGBL,,Ganesh Green,Electrical Equipment,Other Electrical Equipment
+INE338Y01016,OMFURN,,Omfurn India,Consumer Durables,"Furniture, Home Furnishing"
+INE0MRE01011,INFINIUM,,Infinium Pharma,Pharmaceuticals & Biotechnology,Pharmaceuticals
 INE0KFF01017,EFACTOR,,E Factor Experie,Other Consumer Services,Other Consumer Services
+INE0N5H01017,JIWANRAM,,Jiwanram Sheo,Industrial Products,Other Industrial Products
+INE0HS001028,COOLCAPS,,Cool Caps,Industrial Products,Packaging
+INE0PS501019,GLOBALPET,,Global Pet Indus,Industrial Manufacturing,Industrial Products
+INE0ONE01016,PROV,,Proventus Agro.,Food Products,Other Food Products
+INE0KTW01013,VEEKAYEM,,Veekayem Fash.,Textiles & Apparels,Garments & Apparels
+INE0RPM01017,SATIPOLY,,Sati Poly,Industrial Products,Packaging
+INE082101010,ARISTO,,Aristo Bio-Tech,Fertilizers & Agrochemicals,Pesticides & Agrochemicals
+INE0QFE01017,GOYALSALT,,Goyal Salt,Food Products,Other Food Products
+INE0J6801010,KORE,,Jay Jalaram Tech,Retailing,Diversified Retail
 NAN,CONTI,,,,
 INE0TNX01015,REFRACTORY,,Refractory Shap.,Industrial Products,Electrodes & Refractories
-INE0PS301014,INDIFRA,,Indifra Ltd,Gas,Gas Transmission/Marketing
-INE512B01022,FCSSOFT,532666.0,FCS Software,IT - Services,IT Enabled Services
-INE0JHH01011,DOLLEX,,Dollex Agrotech,Agricultural Food & other Products,Sugar
-INE0PT101017,CHAVDA,,Chavda Infra Ltd,Construction,Civil Construction
-INE0R8C01018,GGBL,,Ganesh Green,Electrical Equipment,Other Electrical Equipment
-INE02OY01016,RILINFRA,,Rachana Infra.,Construction,Civil Construction
-INE0J6801010,KORE,,Jay Jalaram Tech,Retailing,Diversified Retail
-INE0RPM01017,SATIPOLY,,Sati Poly,Industrial Products,Packaging
-INE0MRE01011,INFINIUM,,Infinium Pharma,Pharmaceuticals & Biotechnology,Pharmaceuticals
-INE0N5H01017,JIWANRAM,,Jiwanram Sheo,Industrial Products,Other Industrial Products
-INE0ONE01016,PROV,,Proventus Agro.,Food Products,Other Food Products
-INE0KN801013,PROPEQUITY,,P.E. Analytics,Realty,Real Estate related services
-INE0PS501019,GLOBALPET,,Global Pet Indus,Industrial Manufacturing,Industrial Products
-INE0N5801013,DENTALKART,,Vasa Denticity,Healthcare Equipment & Supplies,Medical Equipment & Supplies
 INE15B701018,PINELABS,544606.0,Pine Labs,Financial Technology (Fintech),Financial Technology (Fintech)
-INE0OB201016,AATMAJ,,Aatmaj Health,Healthcare Services,Hospital
-INE0P7201019,DRONE,,Drone Destinatio,Other Consumer Services,Education
+INE335X01014,PULZ,,Pulz Electronics,Consumer Durables,Consumer Electronics
 INE0OIP01012,MONOPHARMA,,Mono Pharmacare,Pharmaceuticals & Biotechnology,Pharmaceuticals
-INE0MGM01017,ANNAPURNA,,Annapurna Swadi.,Food Products,Packaged Foods
 INE217G01035,EQUIPPP,590057.0,Equippp Social,IT - Software,Computers - Software & Consulting
 INE0QW501012,BABAFP,,Baba Food,Food Products,Other Food Products
 INE0QJ901011,DIGIKORE,,Digikore Studios,Entertainment,Media & Entertainment
@@ -1866,7 +1863,6 @@ INE0N7F01017,HOMESFY,,Homesfy Realty,Realty,Real Estate related services
 INE0LF301013,AGNI,,Agni Green,Construction,Civil Construction
 INE0JW501011,SPRL,,SP Refractories,Industrial Products,Electrodes & Refractories
 INE0M7001010,TAPIFRUIT,,Tapi Fruit,Food Products,Packaged Foods
-INE0NA301016,RBMINFRA,,RBM Infracon,Commercial Services & Supplies,Diversified Commercial Services
 INE0IA701014,VIVO,,Vivo Collaborat.,Telecom - Services,Other Telecom Services
 INE0MM001019,SHERA,,Shera Energy,Industrial Products,"Aluminium, Copper & Zinc Products"
 INE0GOJ01027,QUADPRO,,Quadpro ITeS,IT - Services,IT Enabled Services
@@ -1879,14 +1875,14 @@ INE01IH01015,SYLVANPLY,,Sylvan Plyboard,Consumer Durables,Plywood Boards/ Lamina
 INE0ISZ01012,ZTECH,,Z-Tech (India),Other Utilities,Waste Management
 INE531R01010,MEGATHERM,,Megatherm Indu.,Industrial Products,Other Industrial Products
 INE0R9I01021,ENSER,,Enser,IT - Services,IT Enabled Services
-INE460Q01014,SCML,,Sharp Chucks and,Industrial Products,Castings & Forgings
-INE0OLS01010,VINYAS,,Vinyas Innovativ,Industrial Manufacturing,Industrial Products
-INE0R6C01012,PURVFLEXI,,Purv Flexi,Industrial Products,Plastic Products - Industrial
-INE0RRU01016,IEML,,Indian Emuls,Chemicals & Petrochemicals,Specialty Chemicals
-INE0V9N01017,PRIZOR,,Prizor Viztech,Industrial Manufacturing,Industrial Products
-INE0PW501021,NEWJAISA,,Newjaisa Tech,IT - Hardware,Computers Hardware & Equipments
-INE335X01014,PULZ,,Pulz Electronics,Consumer Durables,Consumer Electronics
+INE0JZA01018,SONUINFRA,,Sonu Infratech,Construction,Civil Construction
+INE0O5T01011,REMUS,,Remus Pharma.,Pharmaceuticals & Biotechnology,Pharmaceuticals
+INE0O7401018,IBLFL,,IBL Finance,Finance,Non Banking Financial Company (NBFC)
+INE0O7R01011,SYSTANGO,,Systango Tech,IT - Software,Computers - Software & Consulting
+INE0MGM01017,ANNAPURNA,,Annapurna Swadi.,Food Products,Packaged Foods
+INE0P7201019,DRONE,,Drone Destinatio,Other Consumer Services,Education
 INE0SMA01017,SLONE,,Slone Infosys.,IT - Hardware,Computers Hardware & Equipments
+INE460Q01014,SCML,,Sharp Chucks and,Industrial Products,Castings & Forgings
 INE0Q2V01012,KLL,,Kaushalya,Retailing,E-Retail/ E-Commerce
 INE0Q5D01013,ACCENTMIC,,Accent Microcell,Pharmaceuticals & Biotechnology,Pharmaceuticals
 INE0ECC01022,MAXPOSURE,,Maxposure,Entertainment,Media & Entertainment
@@ -1896,14 +1892,14 @@ INE0OCC01013,BASILIC,,Basilic Fly Stud,Entertainment,Media & Entertainment
 INE0MRA01019,RITEZONE,,Rite Zone,Chemicals & Petrochemicals,Specialty Chemicals
 INE0LEX01011,SAHANA,,Sahana Systems,IT - Services,IT Enabled Services
 INE0SK801018,DELAPLEX,,Delaplex,IT - Software,Computers - Software & Consulting
+INE0RRU01016,IEML,,Indian Emuls,Chemicals & Petrochemicals,Specialty Chemicals
 INE0AZY01017,VILAS,,Vilas Transcore,Industrial Products,Other Industrial Products
-INE0KZA01016,SKP,,SKP Bearing,Industrial Products,Abrasives & Bearings
+INE0SCO01019,DPEL,,Divine Power,Industrial Products,Cables - Electricals
 INE0I3Y01014,BMETRICS,,Bombay Metrics,Commercial Services & Supplies,Trading & Distributors
-INE0Q6H01012,SONAMAC,,Sona Machinery,Industrial Manufacturing,Industrial Products
+INE0KN801013,PROPEQUITY,,P.E. Analytics,Realty,Real Estate related services
 INE0RJM01010,NAMAN,,Naman Industries Proxima,Consumer Durables,"Furniture, Home Furnishing"
 INE0O7A01017,PRAMARA,,Pramara Promotio,Media,Advertising & Media Agencies
 INE0NCC01015,ARIHANTACA,,Arihant Academy,Other Consumer Services,Education
-INE994V01012,PROLIFE,,Prolife Indust.,Chemicals & Petrochemicals,Dyes And Pigments
 INE0R7R01018,ITALIANE,,Italian Edibles,Food Products,Packaged Foods
 INE0LCW01025,ISHAN,,Ishan Internat.,Industrial Manufacturing,Industrial Products
 INE405Y01021,GOLDSTAR,,Goldstar Power,Auto Components,Auto Components & Equipments
@@ -1911,12 +1907,12 @@ INE00D001018,REXPIPES,,Rex Pipes&Cables,Industrial Products,Plastic Products - I
 INE623Y01011,WTICAB,,Wise Travel,Transport Services,Road Transport
 INE0PC901019,BIRDYS,,Grill Splendour,Leisure Services,Restaurants
 INE0HPK01020,DUGLOBAL,,DU Digital,Leisure Services,"Tour, Travel Related Services"
-INE0SCO01019,DPEL,,Divine Power,Industrial Products,Cables - Electricals
-INE0SOY01013,TAC,,TAC Infosec,IT - Software,Computers - Software & Consulting
-INE0OJM01017,MASTER,,Master Component,Industrial Products,Plastic Products - Industrial
-INE0R3501012,HRHNEXT,,HRH Next,Commercial Services & Supplies,Business Process Outsourcing (BPO)/ Knowledge Process Outsourcing (KPO)
-INE0HQI01014,BEWLTD,,BEW Engg,Industrial Manufacturing,Industrial Products
-INE05DH01017,ATMASTCO,,Atmastco Ltd,Construction,Civil Construction
+INE0KZA01016,SKP,,SKP Bearing,Industrial Products,Abrasives & Bearings
+INE0OLS01010,VINYAS,,Vinyas Innovativ,Industrial Manufacturing,Industrial Products
+INE0NA301016,RBMINFRA,,RBM Infracon,Commercial Services & Supplies,Diversified Commercial Services
+INE0Q6H01012,SONAMAC,,Sona Machinery,Industrial Manufacturing,Industrial Products
+INE0O1M01015,QFIL,,Quality Foils,Industrial Products,Iron & Steel Products
+INE0NNZ01013,INFOLLION,,Infollion Resea.,Commercial Services & Supplies,Diversified Commercial Services
 INE0OVI01010,SANGANI,,Sangani Hospital,Healthcare Services,Hospital
 INE901X01013,FELIX,,Felix Industries,Other Utilities,Water Supply & Management
 INE113X01015,ACCORD,,Accord Synergy,Telecom - Services,Other Telecom Services
@@ -1928,6 +1924,7 @@ INE961Y01015,MAHICKRA,,Mahickra Chem.,Chemicals & Petrochemicals,Dyes And Pigmen
 INE0NPI01014,SRIVASAVI,,Srivasavi Adhes.,Industrial Products,Other Industrial Products
 INE635Y01015,AISL,,ANI Integrated,Commercial Services & Supplies,Diversified Commercial Services
 INE142A01012,OSWALAGRO,500317.0,Oswal Agro Mills,Commercial Services & Supplies,Trading & Distributors
+INE0HQI01014,BEWLTD,,BEW Engg,Industrial Manufacturing,Industrial Products
 INE0IGO01011,DESTINY,,Destiny Logistic,Transport Services,Logistics Solution Provider
 INE0PQK01013,FALCONTECH,,Falcon,Commercial Services & Supplies,Diversified Commercial Services
 INE06ZX01015,PARTYCRUS,,Party Cruisers,Other Consumer Services,Other Consumer Services
@@ -1936,9 +1933,11 @@ INE0P0001010,APS,,Australian Prem,Electrical Equipment,Heavy Electrical Equipmen
 INE0STM01017,ALUWIND,,Aluwind Infra,Industrial Products,"Aluminium, Copper & Zinc Products"
 INE0N7S01028,MOS,,MOS Utility,Financial Technology (Fintech),Financial Technology (Fintech)
 INE0O0001013,CELLPOINT,,Cell Point,Retailing,Speciality Retail
+INE0POU01017,GRAPHISAD,,Graphisads,Media,Advertising & Media Agencies
+INE0PTR01012,ROCKINGDCE,,Rockingdeals Cir,Commercial Services & Supplies,Trading & Distributors
+INE05DH01017,ATMASTCO,,Atmastco Ltd,Construction,Civil Construction
 INE332S01011,EMKAYTOOLS,,Emkay Taps & Cut,Industrial Manufacturing,Industrial Products
-INE0V3U01015,GLOBECIVIL,544424.0,Globe Civil,Construction,Civil Construction
-INE0MLA01012,AGARWALFT,,Agarwal Float,Industrial Products,Glass - Industrial
+INE575Z01010,MDL,,Marvel Decor,Consumer Durables,"Furniture, Home Furnishing"
 INE0O6N01012,AGUL,,A G Universal,Industrial Products,Iron & Steel Products
 INE0G1D01014,MEGAFLEX,,Mega Flex Plast.,Industrial Products,Packaging
 INE09FA01019,YUDIZ,,Yudiz Solutions,IT - Software,Computers - Software & Consulting
@@ -1948,10 +1947,11 @@ INE0DZ101013,SABAR,,Sabar Flex India,Industrial Products,Packaging
 INE0SAK01011,BLUEPEBBLE,,Blue Pebble,Other Consumer Services,Other Consumer Services
 INE0URU01010,GLOBALE,544234.0,Globale Tessile,Textiles & Apparels,Trading - Textile Products
 INE0RUV01018,AIMTRON,,Aimtron,Industrial Manufacturing,Industrial Products
-INE0DZ701010,DYNAMIC,,Dynamic Services,Commercial Services & Supplies,Diversified Commercial Services
 INE0OMO01025,CELLECOR,,Cellecor Gadgets,Consumer Durables,Consumer Electronics
+INE0V3U01015,GLOBECIVIL,544424.0,Globe Civil,Construction,Civil Construction
 INE0LVM01018,GRCL,,Gayatri Rubbers,Industrial Products,Rubber
 INE0U9101019,EFFWA,,Effwa Infra,Other Utilities,Waste Management
+INE0NZW01014,PATTECH,,Pattech Fitwell,Industrial Products,Castings & Forgings
 INE0OL001018,SPECTSTM,,Spectrum Talent,Commercial Services & Supplies,Diversified Commercial Services
 INE0K4D01020,QUICKTOUCH,,Quicktouch Tech,IT - Software,Computers - Software & Consulting
 INE0ON201012,SSFL,,Srivari Spices &,Food Products,Other Food Products
@@ -1959,38 +1959,36 @@ INE02KC01010,JAINAM,,Jainam Ferro,Ferrous Metals,Ferro & Silica Manganese
 INE0QQM01017,VR,,V R Infraspace,Realty,"Residential, Commercial Projects"
 INE0S7E01015,GPECO,,GP Eco Solutions,Electrical Equipment,Other Electrical Equipment
 INE04VX01019,SHEETAL,,Sheetal Univer.,Agricultural Food & other Products,Other Agricultural Products
-INE0POU01017,GRAPHISAD,,Graphisads,Media,Advertising & Media Agencies
-INE0PTR01012,ROCKINGDCE,,Rockingdeals Cir,Commercial Services & Supplies,Trading & Distributors
 INE546Y01022,PRAXIS,540901.0,Praxis Home,Retailing,Speciality Retail
-INE0QEI01011,KONSTELEC,,Konstelec Engg.,Construction,Civil Construction
-INE00U801010,PARIN,,Parin Enterpris.,Consumer Durables,"Furniture, Home Furnishing"
-INE0IJY01014,TIMESCAN,,Timescan Logist.,Transport Services,Logistics Solution Provider
-INE067901012,UMA,,Uma Converter,Industrial Products,Packaging
-INE0O1M01015,QFIL,,Quality Foils,Industrial Products,Iron & Steel Products
+INE1FF001016,JKIPL,544547.0,Jinkushal Indus.,"Agricultural, Commercial & Construction Vehicles","Dealers-Commercial Vehicles, Tractors, Construction Vehicles"
+INE0O1S01012,MAGSON,,Magson Retail,Food Products,Packaged Foods
+INE0OXV01027,TUNWAL,,Tunwal E-Motors,Automobiles,2/3 Wheelers
 INE0OPC01015,INM,,Interiors & More,Consumer Durables,"Furniture, Home Furnishing"
 INE0NVI01020,TRANSTEEL,,Transteel Seatin,Consumer Durables,"Furniture, Home Furnishing"
 INE0R7401011,CGRAPHICS,,Creative Graphic,Industrial Products,Other Industrial Products
 INE573R01012,SEYAIND,524324.0,Seya Industries,Chemicals & Petrochemicals,Specialty Chemicals
 INE0S3X01014,ENFUSE,,Enfuse Solutions,IT - Services,IT Enabled Services
 INE0KZ301010,KONTOR,,Kontor Space,Commercial Services & Supplies,Diversified Commercial Services
+INE0QEI01011,KONSTELEC,,Konstelec Engg.,Construction,Civil Construction
 INE0PZA01015,SAIFL,,Sameera Agro,Agricultural Food & other Products,Other Agricultural Products
-INE0K5H01010,SADHAV,,Sadhav Shipping,Transport Services,Shipping
 INE00UG01014,KHFM,,KHFM Hospitality,Commercial Services & Supplies,Diversified Commercial Services
 INE0PDJ01013,ROXHITECH,,ROX Hi-Tech,IT - Services,IT Enabled Services
-INE0OXV01027,TUNWAL,,Tunwal E-Motors,Automobiles,2/3 Wheelers
 INE0LWY01029,TRIDHYA,,Tridhya Tech,Commercial Services & Supplies,Diversified Commercial Services
+INE067901012,UMA,,Uma Converter,Industrial Products,Packaging
 INE0MLZ01019,PHANTOMFX,,Phantom Digital,Entertainment,Media & Entertainment
 INE0S8401018,DCG,,DCG Cables,Industrial Products,Cables - Electricals
 INE0H4B01011,LRRPL,,Lead Reclaim,Industrial Products,Rubber
 INE533D01032,RAJRILTD,530699.0,Raj Rayon Inds.,Textiles & Apparels,Other Textile Products
 INE0QWN01013,ZENITHDRUG,,Zenith Drugs,Pharmaceuticals & Biotechnology,Pharmaceuticals
 INE0PPS01018,ZEAL,,Zeal Global Serv,Transport Services,Logistics Solution Provider
-INE0O5T01011,REMUS,,Remus Pharma.,Pharmaceuticals & Biotechnology,Pharmaceuticals
-INE0S1L01013,EMMIL,,Energy-Mission,Industrial Manufacturing,Industrial Products
-INE575Z01010,MDL,,Marvel Decor,Consumer Durables,"Furniture, Home Furnishing"
-INE0TD401015,MARC,,Marc Technocrats,Commercial Services & Supplies,Consulting Services
-INE1FF001016,JKIPL,544547.0,Jinkushal Indus.,"Agricultural, Commercial & Construction Vehicles","Dealers-Commercial Vehicles, Tractors, Construction Vehicles"
+INE0R3501012,HRHNEXT,,HRH Next,Commercial Services & Supplies,Business Process Outsourcing (BPO)/ Knowledge Process Outsourcing (KPO)
+INE0OJM01017,MASTER,,Master Component,Industrial Products,Plastic Products - Industrial
+INE090Y01013,CADSYS,,Cadsys (India),Commercial Services & Supplies,Business Process Outsourcing (BPO)/ Knowledge Process Outsourcing (KPO)
+INE0J6L01013,NIDAN,,Nidan Laborator.,Healthcare Services,Healthcare Service Provider
+INE0SRI01019,VERITAAS,,Veritaas Adver.,Media,Advertising & Media Agencies
+INE0IJY01014,TIMESCAN,,Timescan Logist.,Transport Services,Logistics Solution Provider
 INE0BTR01012,SYNOPTICS,,Synoptics Techno,IT - Services,IT Enabled Services
+INE0J1E01027,KCK,,KCK Industries,Agricultural Food & other Products,Other Agricultural Products
 INE523B01011,AKSHOPTFBR,532351.0,Aksh Optifibre,Telecom -  Equipment & Accessories,Telecom -  Equipment & Accessories
 INE0S3D01016,WINSOL,,Winsol Engineers,Construction,Civil Construction
 INE0QA601016,PRATHAM,,Pratham EPC,Construction,Civil Construction
@@ -1998,24 +1996,25 @@ INE0PSK01027,SAAKSHI,,Saakshi Medtech,Electrical Equipment,Other Electrical Equi
 INE00ER01015,ONDOOR,,On Door Concepts,Retailing,Diversified Retail
 INE0R3T01013,MANDEEP,,Mandeep Auto,Auto Components,Auto Components & Equipments
 INE06PV01010,CMNL,,Chaman Metallics,Ferrous Metals,Sponge Iron
+INE0TD401015,MARC,,Marc Technocrats,Commercial Services & Supplies,Consulting Services
 INE0PLZ01012,SUNREST,,Sunrest Lifescie,Pharmaceuticals & Biotechnology,Pharmaceuticals
-INE0N2D01013,TBI,,TBI Corn,Agricultural Food & other Products,Other Agricultural Products
 INE0O4M01019,MCON,,MCON Rasayan,Other Construction Materials,Other Construction Materials
-INE0J1E01027,KCK,,KCK Industries,Agricultural Food & other Products,Other Agricultural Products
 INE0GXK01018,VMARCIND,,V-Marc India,Industrial Products,Cables - Electricals
+INE00U801010,PARIN,,Parin Enterpris.,Consumer Durables,"Furniture, Home Furnishing"
 INE0OUW01013,DURLAX,,Durlax Top,Consumer Durables,"Furniture, Home Furnishing"
 INE0OMF01015,SHRITECH,,Shri Techtex,Industrial Products,Plastic Products - Industrial
-INE06MH01016,GOLDKART,,Goldkart Jewels,Consumer Durables,"Gems, Jewellery And Watches"
 INE0CAJ01017,AILIMITED,,Abhishek Integr.,Construction,Civil Construction
 INE639X01027,BEACON,,Beacon Trust.,Capital Markets,"Depositories, Clearing Houses and Other Intermediaries"
 INE430U01019,RADIOWALLA,,Radiowalla,Entertainment,Media & Entertainment
 INE0OWX01025,KEL,,Kundan Edifice,Consumer Durables,Consumer Electronics
-INE0JZA01018,SONUINFRA,,Sonu Infratech,Construction,Civil Construction
-INE0HKW01018,PRECISION,,Precision Metal.,Auto Components,Auto Components & Equipments
-INE0O7401018,IBLFL,,IBL Finance,Finance,Non Banking Financial Company (NBFC)
-INE0P6P01016,CPEDU,544499.0,Career Point Edu,Other Consumer Services,Education
-INE412C01023,JMA,,Jullundur Motor,Auto Components,Trading - Auto components
-INE780C01023,JMFINANCIL,523405.0,JM Financial,Finance,Holding Company
+INE0N2D01013,TBI,,TBI Corn,Agricultural Food & other Products,Other Agricultural Products
+INE0S1L01013,EMMIL,,Energy-Mission,Industrial Manufacturing,Industrial Products
+INE0K5H01010,SADHAV,,Sadhav Shipping,Transport Services,Shipping
+INE0SOY01013,TAC,,TAC Infosec,IT - Software,Computers - Software & Consulting
+INE03V001013,UNIVPHOTO,542933.0,Universus Photo,Consumer Durables,Consumer Electronics
+INE385O01018,FROG,,Frog Innovations,Telecom -  Equipment & Accessories,Telecom -  Equipment & Accessories
+INE0T7B01010,SPCL,,Shivalic Power,Electrical Equipment,Other Electrical Equipment
+INE531F01023,NUVAMA,543988.0,Nuvama Wealth,Capital Markets,Stockbroking & Allied
 INE065J01024,TPHQ,533048.0,Teamo Production,Construction,Civil Construction
 INE0HMF01019,TRACXN,543638.0,Tracxn Technolo.,Commercial Services & Supplies,Data Processing Services
 INE017W01010,SMLT,540393.0,Sarthak Metals,Industrial Products,Iron & Steel Products
@@ -2035,13 +2034,12 @@ INE759V01019,HEADSUP,540210.0,Heads UP Venture,Textiles & Apparels,Trading - Tex
 INE01NE01012,SRD,542232.0,Shankar Lal Ram.,Chemicals & Petrochemicals,Trading - Chemicals
 INE149O01018,NIBE,535136.0,NIBE,Aerospace & Defense,Aerospace & Defense
 INE0AJG01018,HEMIPROP,543242.0,Hemisphere Prop,Commercial Services & Supplies,Diversified Commercial Services
-INE382T01030,GVPTECH,,GVP Infotech,IT - Software,Computers - Software & Consulting
-INE718I01012,JSWCEMENT,544480.0,JSW Cement,Cement & Cement Products,Cement & Cement Products
+INE037A01022,UNIENTER,500429.0,Uniphos Enter.,Chemicals & Petrochemicals,Trading - Chemicals
 INE0L0L01012,MODIS,543539.0,Modi's Navnirman,Realty,"Residential, Commercial Projects"
-INE995S01015,NIVABUPA,544286.0,Niva Bupa Health,Insurance,General Insurance
-INE0BTI01037,KAMOPAINTS,543747.0,Kamdhenu Venture,Consumer Durables,Paints
-INE531F01023,NUVAMA,543988.0,Nuvama Wealth,Capital Markets,Stockbroking & Allied
-INE0ONG01011,NTPCGREEN,544289.0,NTPC Green Ene.,Power,Power Generation
+INE780C01023,JMFINANCIL,523405.0,JM Financial,Finance,Holding Company
+INE412C01023,JMA,,Jullundur Motor,Auto Components,Trading - Auto components
+INE382T01030,GVPTECH,,GVP Infotech,IT - Software,Computers - Software & Consulting
+INE721A01047,SHRIRAMFIN,511218.0,Shriram Finance,Finance,Non Banking Financial Company (NBFC)
 INE0NNS01018,NSLNISP,543768.0,NMDC Steel,Ferrous Metals,Iron & Steel
 INE631A01022,SHANTIGEAR,522034.0,Shanthi Gears,Industrial Manufacturing,Industrial Products
 INE024F01011,SHILCTECH,531201.0,Shilchar Tech.,Electrical Equipment,Other Electrical Equipment
@@ -2051,8 +2049,8 @@ INE878K01010,BFINVEST,533303.0,BF Investment,Finance,Holding Company
 INE1B6101010,SHREEJISPG,544490.0,Shreeji Ship. Gl,Transport Services,Shipping
 INE243D01012,BFUTILITIE,532430.0,BF Utilities,Transport Infrastructure,"Road AssetsToll, Annuity, Hybrid-Annuity"
 INE19RI01016,TENNIND,544612.0,Tenneco Clean,Auto Components,Auto Components & Equipments
-INE721A01047,SHRIRAMFIN,511218.0,Shriram Finance,Finance,Non Banking Financial Company (NBFC)
 INE05XR01022,BHARATCOAL,544678.0,Bharat Coking,Consumable Fuels,Coal
+INE0P6P01016,CPEDU,544499.0,Career Point Edu,Other Consumer Services,Education
 INE230B01021,CREATIVEYE,532392.0,Creative Eye,Entertainment,Media & Entertainment
 INE003A01024,SIEMENS,500550.0,Siemens,Electrical Equipment,Heavy Electrical Equipment
 INE03CC01015,JUBLCPL,544355.0,Jubilant Agri,Chemicals & Petrochemicals,Specialty Chemicals
@@ -2060,11 +2058,12 @@ INE923A01015,SILINV,521194.0,SIL Investments,Finance,Investment Company
 INE01II01013,SILGO,,Silgo Retail,Consumer Durables,"Gems, Jewellery And Watches"
 INE388G01026,TICL,532738.0,Twamev Constr.,Construction,Civil Construction
 INE824G01012,JSWHL,532642.0,JSW Holdings,Finance,Investment Company
-INE037A01022,UNIENTER,500429.0,Uniphos Enter.,Chemicals & Petrochemicals,Trading - Chemicals
+INE995S01015,NIVABUPA,544286.0,Niva Bupa Health,Insurance,General Insurance
+INE718I01012,JSWCEMENT,544480.0,JSW Cement,Cement & Cement Products,Cement & Cement Products
 INE458F01011,UNITEDTEA,,United Nilgiri,Agricultural Food & other Products,Tea & Coffee
-INE0O7R01011,SYSTANGO,,Systango Tech,IT - Software,Computers - Software & Consulting
-INE477A01020,CANFINHOME,511196.0,Can Fin Homes,Finance,Housing Finance Company
-INE346A01027,ICICIAMC,544658.0,ICICI AMC,Capital Markets,Asset Management Company
+INE490G01020,MOIL,533286.0,MOIL,Minerals & Mining,Industrial Minerals
+INE16SF01016,BORANA,544404.0,Borana Weaves,Textiles & Apparels,Other Textile Products
+INE123C01018,TAINWALCHM,507785.0,Tainwala Chem.,Industrial Products,Plastic Products - Industrial
 INE495B01038,SUVEN,530239.0,Suven Life Scie.,Healthcare Services,"Healthcare Research, Analytics & Technology"
 INE0ILV01024,CAPILLARY,544614.0,Capillary Tech.,IT - Software,Software Products
 INE710A01016,VSTIND,509966.0,VST Industries,Cigarettes & Tobacco Products,Cigarettes & Tobacco Products
@@ -2074,8 +2073,8 @@ INE0E7301029,WAKEFIT,544642.0,Wakefit Innovati,Consumer Durables,"Furniture, Hom
 INE039A01010,IFCI,500106.0,IFCI,Finance,Financial Institution
 INE658T01017,WEALTH,544536.0,Wealth First Por,Finance,Other Financial Services
 INE05J901018,IGCL,544432.0,Indogulf Cropsci,Fertilizers & Agrochemicals,Pesticides & Agrochemicals
-INE123C01018,TAINWALCHM,507785.0,Tainwala Chem.,Industrial Products,Plastic Products - Industrial
 INE781A01025,INTENTECH,532326.0,Intense Tech.,IT - Services,IT Enabled Services
+INE370E01029,VIVIDHA,506146.0,Visagar Polytex,Textiles & Apparels,Garments & Apparels
 INE530B01024,IIFL,532636.0,IIFL Finance,Finance,Non Banking Financial Company (NBFC)
 INE747K01017,TARAPUR,533203.0,Tarapur Trans,Electrical Equipment,Heavy Electrical Equipment
 INE121A01024,CHOLAFIN,511243.0,Cholaman.Inv.&Fn,Finance,Non Banking Financial Company (NBFC)
@@ -2085,12 +2084,10 @@ INE577A01027,MUNJALSHOW,520043.0,Munjal Showa,Auto Components,Auto Components & 
 INE289C01025,TEAMGTY,511559.0,Team India Guar.,Finance,Non Banking Financial Company (NBFC)
 INE06ST01018,INDIQUBE,544454.0,Indiqube Spaces,Commercial Services & Supplies,Diversified Commercial Services
 INE414G01012,MUTHOOTFIN,533398.0,Muthoot Finance,Finance,Non Banking Financial Company (NBFC)
-INE370E01029,VIVIDHA,506146.0,Visagar Polytex,Textiles & Apparels,Garments & Apparels
-INE613B01010,ICDSLTD,511194.0,ICDS,Commercial Services & Supplies,Diversified Commercial Services
-INE490G01020,MOIL,533286.0,MOIL,Minerals & Mining,Industrial Minerals
-INE031A01017,HUDCO,540530.0,H U D C O,Finance,Financial Institution
-INE16SF01016,BORANA,544404.0,Borana Weaves,Textiles & Apparels,Other Textile Products
+INE346A01027,ICICIAMC,544658.0,ICICI AMC,Capital Markets,Asset Management Company
+INE477A01020,CANFINHOME,511196.0,Can Fin Homes,Finance,Housing Finance Company
 INE794W01014,MODTHREAD,500282.0,Modern Threads,Textiles & Apparels,Other Textile Products
+INE660A01013,SUNDARMFIN,590071.0,Sundaram Finance,Finance,Non Banking Financial Company (NBFC)
 INE124E01038,STEELCAS,513517.0,Steelcast,Industrial Products,Castings & Forgings
 INE577L01016,STEL,533316.0,STEL Holdings,Finance,Investment Company
 INE239A01024,NESTLEIND,500790.0,Nestle India,Food Products,Packaged Foods
@@ -2100,8 +2097,8 @@ INE0QPI01025,SUDEEPPHRM,544619.0,Sudeep Pharma,Pharmaceuticals & Biotechnology,P
 INE519C01017,SUMMITSEC,533306.0,Summit Securitie,Finance,Investment Company
 INE050B01023,IVC,511208.0,IL&FS Inv.Manag.,Capital Markets,Asset Management Company
 INE386A01023,VESUVIUS,520113.0,Vesuvius India,Industrial Products,Electrodes & Refractories
-INE660A01013,SUNDARMFIN,590071.0,Sundaram Finance,Finance,Non Banking Financial Company (NBFC)
 INE155G01029,NDTV,532529.0,NDTV,Entertainment,TV Broadcasting & Software Production
+INE613B01010,ICDSLTD,511194.0,ICDS,Commercial Services & Supplies,Diversified Commercial Services
 INE379A01028,ITCHOTELS,544325.0,ITC Hotels,Leisure Services,Hotels & Resorts
 INE701A01023,VHL,500439.0,Vardhman Hold.,Finance,Investment Company
 INE756C01015,NDGL,,Naga Dhunseri,Finance,Non Banking Financial Company (NBFC)
@@ -2110,20 +2107,17 @@ INE662A01027,SUPERSPIN,521180.0,Super Spinning,Textiles & Apparels,Other Textile
 INE410B01037,VINATIORGA,524200.0,Vinati Organics,Chemicals & Petrochemicals,Specialty Chemicals
 INE647U01026,CLEANMAX,544717.0,Clean Max Enviro,Power,Power Generation
 INE365I01020,NBIFIN,,NBI Indl. Fin.,Finance,Non Banking Financial Company (NBFC)
+INE031A01017,HUDCO,540530.0,H U D C O,Finance,Financial Institution
+INE0ONG01011,NTPCGREEN,544289.0,NTPC Green Ene.,Power,Power Generation
+INE0BTI01037,KAMOPAINTS,543747.0,Kamdhenu Venture,Consumer Durables,Paints
+INE0Q9601016,WOMANCART,,Womancart,Retailing,E-Retail/ E-Commerce
 INE12UN01015,SHADOWFAX,544685.0,Shadowfax Technologies,Transport Services,Logistics Solution Provider
-INE234I01028,KAUSHALYA,532925.0,Kaushalya Infra.,Leisure Services,Hotels & Resorts
-INE718F01018,CSLFINANCE,530067.0,CSL Finance,Finance,Non Banking Financial Company (NBFC)
-INE0Q1W01012,EFORCE,,Electro Force,Electrical Equipment,Other Electrical Equipment
-INE0S7801010,ASPIRE,,Aspire & Innovat,Consumer Durables,Household Appliances
-INE0NLB01018,VERTEXPLUS,,Vertexplus Tech.,IT - Services,IT Enabled Services
-INE0S9101013,WINNY,,Winny Immigratio,Leisure Services,"Tour, Travel Related Services"
 INE0R9401019,AVPINFRA,,AVP Infracon,Construction,Civil Construction
 INE0Q9Q01017,SHANTHALA,,Shanthala FMCG,Cigarettes & Tobacco Products,Cigarettes & Tobacco Products
 INE0OGG01015,DHTL,,Docmode Health,Other Consumer Services,E-Learning
 INE0LZO01015,DUCOL,,Ducol Organics,Chemicals & Petrochemicals,Dyes And Pigments
 INE0ITO01014,ESFL,,Essen Speciality,Consumer Durables,Plastic Products - Consumer
 INE0SGC01015,MVKAGRO,,M.V.K. Agro,Agricultural Food & other Products,Sugar
-INE0PCL01011,SAROJA,,Saroja Pharma In,Chemicals & Petrochemicals,Specialty Chemicals
 INE0P1Q01015,SERVICE,,Service Care Ltd,Commercial Services & Supplies,Diversified Commercial Services
 INE0GN101014,DKEGL,,D.K. Enterprises,Industrial Products,Packaging
 INE518X01015,CBAZAAR,,Net Avenue,Retailing,E-Retail/ E-Commerce
@@ -2132,16 +2126,17 @@ INE0O3O01017,SEL,,Sungarner Energ.,Electrical Equipment,Other Electrical Equipme
 INE0QG301017,CANARYS,,Canarys Automa.,IT - Software,Computers - Software & Consulting
 INE0PQ001012,VISHNUINFR,,Vishnusurya Pro.,Other Construction Materials,Other Construction Materials
 INE0JRD01019,DTL,,Diensten Tech,Commercial Services & Supplies,Diversified Commercial Services
-INE0OK701014,NIRMAN,,Nirman Agri,Agricultural Food & other Products,Other Agricultural Products
+INE0HKW01018,PRECISION,,Precision Metal.,Auto Components,Auto Components & Equipments
 INE0CFG01012,PRLIND,,Premier Roadline,Transport Services,Logistics Solution Provider
 INE0JR301013,MADHAVBAUG,,Vaidya Sane,Healthcare Equipment & Supplies,Medical Equipment & Supplies
-INE0FMW01018,QMSMEDI,,QMS Medical,Healthcare Equipment & Supplies,Medical Equipment & Supplies
-INE425B01027,BCG,532368.0,Brightcom Group,IT - Services,IT Enabled Services
-INE0ORS01017,PENTAGON,,Pentagon Rubber,Industrial Products,Rubber
-INE03V001013,UNIVPHOTO,542933.0,Universus Photo,Consumer Durables,Consumer Electronics
-INE0SRI01019,VERITAAS,,Veritaas Adver.,Media,Advertising & Media Agencies
-INE0T7B01010,SPCL,,Shivalic Power,Electrical Equipment,Other Electrical Equipment
-INE0Q9601016,WOMANCART,,Womancart,Retailing,E-Retail/ E-Commerce
+INE0QJL01014,TCL,,Thaai,Auto Components,Auto Components & Equipments
+INE0OK701014,NIRMAN,,Nirman Agri,Agricultural Food & other Products,Other Agricultural Products
+INE0OSJ01014,VINSYS,,Vinsys IT Serv.,Other Consumer Services,Education
+INE0QP001012,MARCO,,Marco Cables,Industrial Products,Cables - Electricals
+INE0S9101013,WINNY,,Winny Immigratio,Leisure Services,"Tour, Travel Related Services"
+INE0NLB01018,VERTEXPLUS,,Vertexplus Tech.,IT - Services,IT Enabled Services
+INE0S7801010,ASPIRE,,Aspire & Innovat,Consumer Durables,Household Appliances
+INE597Z01014,COMMITTED,,Committed Cargo,Transport Services,Logistics Solution Provider
 INE0N4G01012,PARAGON,,Paragon Fine,Chemicals & Petrochemicals,Dyes And Pigments
 INE0SH001010,MASON,,Mason Infratech,Realty,"Residential, Commercial Projects"
 INE0PZK01014,MICROPRO,,Micropro Softwar,IT - Software,Computers - Software & Consulting
@@ -2151,22 +2146,20 @@ INE0LQQ01019,FIDEL,,Fidel Softech,IT - Software,Computers - Software & Consultin
 INE998U01015,PCCL,,Petro Carbon,Minerals & Mining,Industrial Minerals
 INE586O01011,DEEM,,Deem Roll-Tech,Industrial Products,Iron & Steel Products
 INE0PE401018,MEDIORG,,Medicamen Organ.,Pharmaceuticals & Biotechnology,Pharmaceuticals
-INE597Z01014,COMMITTED,,Committed Cargo,Transport Services,Logistics Solution Provider
 INE0CBM01019,USASEEDS,,Upsurge Seeds,Agricultural Food & other Products,Other Agricultural Products
+INE0FMW01018,QMSMEDI,,QMS Medical,Healthcare Equipment & Supplies,Medical Equipment & Supplies
 INE00NH01017,CLSL,,Crop Life Scienc,Fertilizers & Agrochemicals,Pesticides & Agrochemicals
 INE0PXD01014,PLADAINFO,,Plada Infotech S,Commercial Services & Supplies,Business Process Outsourcing (BPO)/ Knowledge Process Outsourcing (KPO)
 INE0F3301020,SJLOGISTIC,,S J Logistics (I,Transport Services,Logistics Solution Provider
 INE0M2X01012,ALLETEC,,All E Tech,IT - Software,Computers - Software & Consulting
 INE0SWN01019,TRUST,,Trust Fintech,IT - Software,Software Products
 INE0S4Y01010,SHREEKARNI,,Shree Karni,Textiles & Apparels,Other Textile Products
-INE0QJL01014,TCL,,Thaai,Auto Components,Auto Components & Equipments
-INE385O01018,FROG,,Frog Innovations,Telecom -  Equipment & Accessories,Telecom -  Equipment & Accessories
-INE0OSJ01014,VINSYS,,Vinsys IT Serv.,Other Consumer Services,Education
-INE0QP001012,MARCO,,Marco Cables,Industrial Products,Cables - Electricals
-INE0QBU01012,CPS,,C P S Shapers,Textiles & Apparels,Garments & Apparels
-INE0SQY01018,GSMFOILS,,GSM Foils,Industrial Products,Packaging
-INE0Q4701019,FONEBOX,,Fonebox Retail,Retailing,Speciality Retail
-INE0A1E01018,SIDDHIKA,,Siddhika Coatins,Consumer Durables,Paints
+INE0ORS01017,PENTAGON,,Pentagon Rubber,Industrial Products,Rubber
+INE0Q1W01012,EFORCE,,Electro Force,Electrical Equipment,Other Electrical Equipment
+INE0JFJ01011,BAWEJA,,Baweja Studios L,Entertainment,"Film Production, Distribution & Exhibition"
+INE0SUN01013,NEPHROCARE,,Nephro Care,Healthcare Services,Hospital
+INE0KT901015,AMEYA,,Ameya Precision,Industrial Products,Other Industrial Products
+INE018E01016,SBICARD,543066.0,SBI Cards,Finance,Non Banking Financial Company (NBFC)
 INE0GMR01016,SWARAJ,,Swaraj Suiting,Textiles & Apparels,Other Textile Products
 INE0UH301010,OMNI,544720.0,Omnitech Engg.,Industrial Manufacturing,Industrial Products
 INE583B01015,SANDESH,526725.0,Sandesh,Media,Print Media
@@ -2176,98 +2169,123 @@ INE0US801024,MFML,544233.0,Mahalaxmi Fab.,Textiles & Apparels,Other Textile Prod
 INE170E01023,SATIA,539201.0,Satia Industries,"Paper, Forest & Jute Products",Paper & Paper Products
 INE626A01014,SAURASHCEM,502175.0,Saurashtra Cem.,Cement & Cement Products,Cement & Cement Products
 INE054301028,ODIGMA,544301.0,Odigma Consultan,IT - Services,IT Enabled Services
-INE018E01016,SBICARD,543066.0,SBI Cards,Finance,Non Banking Financial Company (NBFC)
 INE0PK601023,OCCLLTD,544278.0,OCCL,Chemicals & Petrochemicals,Commodity Chemicals
+INE0Q4701019,FONEBOX,,Fonebox Retail,Retailing,Speciality Retail
 INE180A01020,MFSL,500271.0,Max Financial,Insurance,Life Insurance
 INE055C01020,KEEPLEARN,526677.0,DSJ Keep Learn,Other Consumer Services,Education
 INE090501011,SCODATUBES,544411.0,Scoda Tubes,Industrial Products,Iron & Steel Products
 INE0BTM01013,SECMARK,543234.0,Secmark Consult.,IT - Software,Computers - Software & Consulting
 INE650K01021,SECURKLOUD,512161.0,SecureKloud Tech,IT - Services,IT Enabled Services
 INE00XB01019,SEDEMAC,544723.0,Sedemac Mechatro,Auto Components,Auto Components & Equipments
-INE02S501018,SHREEOSFM,,Shree OSFM,Transport Services,Road Transport
-INE0O0201019,URBAN,,Urban Enviro,Other Utilities,Waste Management
-INE02EE01019,IPSL,,Integrated Perso,Commercial Services & Supplies,Diversified Commercial Services
-INE0RCG01017,KCEIL,,Kay Cee,Construction,Civil Construction
-INE0JFJ01011,BAWEJA,,Baweja Studios L,Entertainment,"Film Production, Distribution & Exhibition"
-INE0SUN01013,NEPHROCARE,,Nephro Care,Healthcare Services,Hospital
-INE0KT901015,AMEYA,,Ameya Precision,Industrial Products,Other Industrial Products
+INE425B01027,BCG,532368.0,Brightcom Group,IT - Services,IT Enabled Services
+INE718F01018,CSLFINANCE,530067.0,CSL Finance,Finance,Non Banking Financial Company (NBFC)
+INE234I01028,KAUSHALYA,532925.0,Kaushalya Infra.,Leisure Services,Hotels & Resorts
+INE0A1E01018,SIDDHIKA,,Siddhika Coatins,Consumer Durables,Paints
+INE0SQY01018,GSMFOILS,,GSM Foils,Industrial Products,Packaging
 INE0NR701018,KRISHCA,,Krishca Strapp.,Industrial Products,Iron & Steel Products
+INE0S6S01017,HOACFOODS,,Hoac Foods,Food Products,Other Food Products
 INE802W01023,BOHRAIND,,Bohra Industries,Fertilizers & Agrochemicals,Fertilizers
 INE0PIC01017,HIGREEN,,Hi-Green Carbon,Other Utilities,Waste Management
 INE0STN01015,SILKFLEX,,Silkflex Polymer,Chemicals & Petrochemicals,Specialty Chemicals
 INE08NJ01024,ARABIAN,,Arabian Petrol.,Petroleum Products,Lubricants
 INE075Z01011,CMRSL,,Cyber Media Res.,Media,Advertising & Media Agencies
+INE0RCG01017,KCEIL,,Kay Cee,Construction,Civil Construction
 INE0RDE01010,SIGNORIA,,Signoria Creatio,Textiles & Apparels,Garments & Apparels
-INE0QHG01026,SUPREMEPWR,,Supreme Power,Electrical Equipment,Other Electrical Equipment
 INE844A01013,PEARLPOLY,523260.0,Pearl Polymers,Consumer Durables,Plastic Products - Consumer
 INE0OFK01019,CRAYONS,,Crayons Advertis,Media,Advertising & Media Agencies
-INE0S6S01017,HOACFOODS,,Hoac Foods,Food Products,Other Food Products
 INE0R1601012,PRESSTONIC,,Presstonic Engi.,Industrial Manufacturing,Industrial Products
+INE0QBU01012,CPS,,C P S Shapers,Textiles & Apparels,Garments & Apparels
 INE0LA901015,JFLLIFE,,JFL Life,Pharmaceuticals & Biotechnology,Pharmaceuticals
 INE0R7301013,RULKA,,Rulka,Construction,Civil Construction
 INE029Q01017,BAHETI,,Baheti Recycling,Industrial Products,"Aluminium, Copper & Zinc Products"
 INE0DEZ01013,K2INFRA,,K2 Infragen,Construction,Civil Construction
 INE0BZQ01011,RCDL,,Rajgor Castor,Agricultural Food & other Products,Edible Oil
+INE0QHG01026,SUPREMEPWR,,Supreme Power,Electrical Equipment,Other Electrical Equipment
+INE02EE01019,IPSL,,Integrated Perso,Commercial Services & Supplies,Diversified Commercial Services
+INE0O0201019,URBAN,,Urban Enviro,Other Utilities,Waste Management
+INE02S501018,SHREEOSFM,,Shree OSFM,Transport Services,Road Transport
 INE0TNW01017,QUESTLAB,,Quest Laborato.,Pharmaceuticals & Biotechnology,Pharmaceuticals
-INE0NZW01014,PATTECH,,Pattech Fitwell,Industrial Products,Castings & Forgings
+INE0DZ701010,DYNAMIC,,Dynamic Services,Commercial Services & Supplies,Diversified Commercial Services
 INE947N01017,AEQUS,544634.0,Aequs,Aerospace & Defense,Aerospace & Defense
-INE0LP301011,PWL,544609.0,Physicswallah,Other Consumer Services,E-Learning
-INE269B01029,LMW,500252.0,LMW,Industrial Manufacturing,Industrial Products
-INE449G01018,AGRITECH,537292.0,Agri-Tech India,Agricultural Food & other Products,Other Agricultural Products
-INE0LEZ01016,ATHERENERG,544397.0,Ather Energy,Automobiles,2/3 Wheelers
-INE0NN701020,ATL,543954.0,Allcargo Termi,Transport Infrastructure,Port & Port services
-INE1NPP01017,ENRIN,544390.0,Siemens Ener.Ind,Electrical Equipment,Heavy Electrical Equipment
+INE414A01015,MADRASFERT,590134.0,Madras Fertilize,Fertilizers & Agrochemicals,Fertilizers
+INE774D01024,M&MFIN,532720.0,M & M Fin. Serv.,Finance,Non Banking Financial Company (NBFC)
+INE0HF201011,FABTECH,544558.0,Fabtech Tech.,Healthcare Services,"Healthcare Research, Analytics & Technology"
+INE606A01024,AMJLAND,500343.0,AMJ Land Holdin.,Realty,"Residential, Commercial Projects"
+INE886D01026,EFCIL,512008.0,EFC (I),Commercial Services & Supplies,Diversified Commercial Services
+INE020B01018,RECLTD,532955.0,REC Ltd,Finance,Financial Institution
+INE0I0M01023,PRABHA,544379.0,Prabha Energy,Oil,Oil Exploration & Production
+INE532F01054,EDELWEISS,532922.0,Edelweiss.Fin.,Finance,Holding Company
+INE818A01017,ANTELOPUS,530075.0,Antelopus Selan,Oil,Oil Exploration & Production
+INE674K01013,ABCAPITAL,540691.0,Aditya Birla Cap,Finance,Investment Company
+INE0BYP01024,OSWALPUMPS,544418.0,Oswal Pumps,Industrial Products,"Compressors, Pumps & Diesel Engines"
+INE885E01042,MAZDA,523792.0,Mazda,Industrial Manufacturing,Industrial Products
+INE095I01015,PPAP,532934.0,PPAP Automotive,Auto Components,Auto Components & Equipments
+INE364Z01019,REPL,,Rudrabhish. Ent.,Construction,Civil Construction
+INE0D0U01013,AAATECH,543671.0,AAA Technologies,Commercial Services & Supplies,Consulting Services
+INE773I01017,ALKALI,533029.0,Alkali Metals,Chemicals & Petrochemicals,Specialty Chemicals
+INE838E01017,PONNIERODE,532460.0,Ponni Sug.Erode,Agricultural Food & other Products,Sugar
+INE03DD01011,RETAIL,544197.0,JHS Svend.Retail,Retailing,Diversified Retail
+INE105C01023,3PLAND,516092.0,3P Land Hold.,Finance,Investment Company
+INE253B01015,21STCENMGM,526921.0,21st Cent. Mgmt.,Capital Markets,Other Capital Market related Services
+INE0MEG01014,VIVIANA,,Viviana Power,Construction,Civil Construction
+INE771F01041,FISCHER,524743.0,Fischer Medical,Healthcare Equipment & Supplies,Medical Equipment & Supplies
+INE306L01010,QUICKHEAL,539678.0,Quick Heal Tech,IT - Software,Software Products
+INE046A01015,RIIL,523445.0,Rel. Indl. Infra,Transport Services,Logistics Solution Provider
+INE455I01029,KSCL,532899.0,Kaveri Seed Co.,Agricultural Food & other Products,Other Agricultural Products
+INE501X01029,AYE,544699.0,Aye Finance,Finance,Non Banking Financial Company (NBFC)
+INE060J01017,FLEXITUFF,533638.0,Flexituff Vent.,Textiles & Apparels,Other Textile Products
+INE593W01028,FOCUS,,Focus Lighting,Consumer Durables,Consumer Electronics
+INE843B01013,MAHAPEXLTD,523384.0,Maha Rashtra Apx,Finance,Other Financial Services
+INE134E01011,PFC,532810.0,Power Fin.Corpn.,Finance,Financial Institution
+INE142K01011,LYPSAGEMS,534532.0,Lypsa Gems,Consumer Durables,"Gems, Jewellery And Watches"
+INE606N01019,EXCELSOFT,544617.0,Excelsoft Tech.,IT - Services,IT Enabled Services
+INE540G01014,AMBIKCO,531978.0,Ambika Cotton,Textiles & Apparels,Other Textile Products
 INE119201023,PARKHOSPS,544645.0,Park Medi World,Healthcare Services,Hospital
-INE115A01026,LICHSGFIN,500253.0,LIC Housing Fin.,Finance,Housing Finance Company
+INE1NPP01017,ENRIN,544390.0,Siemens Ener.Ind,Electrical Equipment,Heavy Electrical Equipment
+INE0W2G01015,SAGILITY,544282.0,Sagility,IT - Services,IT Enabled Services
+INE0NN701020,ATL,543954.0,Allcargo Termi,Transport Infrastructure,Port & Port services
+INE0LEZ01016,ATHERENERG,544397.0,Ather Energy,Automobiles,2/3 Wheelers
 INE0INX01018,AEGISVOPAK,544407.0,Aegis Vopak Term,Oil,Oil Storage & Transportation
+INE449G01018,AGRITECH,537292.0,Agri-Tech India,Agricultural Food & other Products,Other Agricultural Products
 INE063P01018,EQUITASBNK,543243.0,Equitas Sma. Fin,Banks,Other Bank
+INE269B01029,LMW,500252.0,LMW,Industrial Manufacturing,Industrial Products
+INE1C6T01020,EMMVEE,544608.0,Emmvee Photovol.,Electrical Equipment,Other Electrical Equipment
+INE0LP301011,PWL,544609.0,Physicswallah,Other Consumer Services,E-Learning
+INE0R8B01010,PATELRMART,544487.0,Patel Retail,Retailing,Diversified Retail
+INE498L01015,LTF,533519.0,L&T Finance Ltd,Finance,Non Banking Financial Company (NBFC)
+INE197J01017,LPDC,533012.0,Landmark Prop.,Realty,Real Estate related services
+INE024D01016,PRUDMOULI,500342.0,Pruden. Sugar,Agricultural Food & other Products,Sugar
+INE0BX301013,PROSTARM,544410.0,Prostarm Info,Electrical Equipment,Other Electrical Equipment
+INE0PSC01024,DIGIDRIVE,544079.0,Digidrive Dist.,Retailing,E-Retail/ E-Commerce
+INE974Z01015,PRITI,,Priti Internati.,Consumer Durables,"Furniture, Home Furnishing"
+INE150B01039,ALKYLAMINE,506767.0,Alkyl Amines,Chemicals & Petrochemicals,Specialty Chemicals
+INE418H01029,ALLCARGO,532749.0,Allcargo Logist.,Transport Services,Logistics Solution Provider
 INE850E01012,LFIC,,Lak. Fin. & Indl,Finance,Investment Company
 INE04LG01015,PAR,,Par Drugs & Che.,Pharmaceuticals & Biotechnology,Pharmaceuticals
 INE666E01020,ACL,532141.0,Andhra Cements,Cement & Cement Products,Cement & Cement Products
 INE244A01016,DENORA,590031.0,DE Nora India,Industrial Products,Electrodes & Refractories
-INE606N01019,EXCELSOFT,544617.0,Excelsoft Tech.,IT - Services,IT Enabled Services
-INE0HF201011,FABTECH,544558.0,Fabtech Tech.,Healthcare Services,"Healthcare Research, Analytics & Technology"
-INE020B01018,RECLTD,532955.0,REC Ltd,Finance,Financial Institution
-INE674K01013,ABCAPITAL,540691.0,Aditya Birla Cap,Finance,Investment Company
-INE0BYP01024,OSWALPUMPS,544418.0,Oswal Pumps,Industrial Products,"Compressors, Pumps & Diesel Engines"
-INE885E01042,MAZDA,523792.0,Mazda,Industrial Manufacturing,Industrial Products
-INE1C6T01020,EMMVEE,544608.0,Emmvee Photovol.,Electrical Equipment,Other Electrical Equipment
-INE0R8B01010,PATELRMART,544487.0,Patel Retail,Retailing,Diversified Retail
-INE0D0U01013,AAATECH,543671.0,AAA Technologies,Commercial Services & Supplies,Consulting Services
-INE498L01015,LTF,533519.0,L&T Finance Ltd,Finance,Non Banking Financial Company (NBFC)
-INE818A01017,ANTELOPUS,530075.0,Antelopus Selan,Oil,Oil Exploration & Production
-INE532F01054,EDELWEISS,532922.0,Edelweiss.Fin.,Finance,Holding Company
-INE0I0M01023,PRABHA,544379.0,Prabha Energy,Oil,Oil Exploration & Production
-INE886D01026,EFCIL,512008.0,EFC (I),Commercial Services & Supplies,Diversified Commercial Services
-INE606A01024,AMJLAND,500343.0,AMJ Land Holdin.,Realty,"Residential, Commercial Projects"
-INE774D01024,M&MFIN,532720.0,M & M Fin. Serv.,Finance,Non Banking Financial Company (NBFC)
-INE134E01011,PFC,532810.0,Power Fin.Corpn.,Finance,Financial Institution
-INE142K01011,LYPSAGEMS,534532.0,Lypsa Gems,Consumer Durables,"Gems, Jewellery And Watches"
-INE540G01014,AMBIKCO,531978.0,Ambika Cotton,Textiles & Apparels,Other Textile Products
-INE137C01018,ALPHAGEO,526397.0,Alphageo (India),Oil,Offshore Support Solution Drilling
-INE121R01077,AMAGI,544679.0,Amagi Media Labs,IT - Services,IT Enabled Services
 INE385I01010,ALPA,532878.0,Alpa Laboratorie,Pharmaceuticals & Biotechnology,Pharmaceuticals
-INE418H01029,ALLCARGO,532749.0,Allcargo Logist.,Transport Services,Logistics Solution Provider
-INE150B01039,ALKYLAMINE,506767.0,Alkyl Amines,Chemicals & Petrochemicals,Specialty Chemicals
-INE974Z01015,PRITI,,Priti Internati.,Consumer Durables,"Furniture, Home Furnishing"
-INE0PSC01024,DIGIDRIVE,544079.0,Digidrive Dist.,Retailing,E-Retail/ E-Commerce
-INE0BX301013,PROSTARM,544410.0,Prostarm Info,Electrical Equipment,Other Electrical Equipment
-INE024D01016,PRUDMOULI,500342.0,Pruden. Sugar,Agricultural Food & other Products,Sugar
-INE197J01017,LPDC,533012.0,Landmark Prop.,Realty,Real Estate related services
-INE364Z01019,REPL,,Rudrabhish. Ent.,Construction,Civil Construction
-INE03DD01011,RETAIL,544197.0,JHS Svend.Retail,Retailing,Diversified Retail
-INE414A01015,MADRASFERT,590134.0,Madras Fertilize,Fertilizers & Agrochemicals,Fertilizers
+INE121R01077,AMAGI,544679.0,Amagi Media Labs,IT - Services,IT Enabled Services
+INE137C01018,ALPHAGEO,526397.0,Alphageo (India),Oil,Offshore Support Solution Drilling
+INE522D01027,MANAPPURAM,531213.0,Manappuram Fin.,Finance,Non Banking Financial Company (NBFC)
+INE933B01012,SIGMAADV,532408.0,Sigma Advanced System,Aerospace & Defense,Aerospace & Defense
+INE389K01018,WELINV,533252.0,Welspun Investme,Finance,Investment Company
+INE0Q7P01013,KODYTECH,,Kody Technolab,IT - Software,Computers - Software & Consulting
 INE296A01032,BAJFINANCE,500034.0,Bajaj Finance,Finance,Non Banking Financial Company (NBFC)
-INE0KQN01018,BAJEL,544042.0,Bajel Projects,Electrical Equipment,Heavy Electrical Equipment
+INE335W01016,GANGESSECU,540647.0,Ganges Securitie,Agricultural Food & other Products,Tea & Coffee
 INE224E01028,GATECH,531723.0,GACM Tech,Finance,Other Financial Services
-INE224E01036,GATECHDVR,570005.0,GACM Tech-DVR,Finance,Other Financial Services
-INE0VDM01015,MEESHO,544632.0,Meesho,Retailing,E-Retail/ E-Commerce
 INE376C01038,CLCIND,521082.0,CLC Industries,Textiles & Apparels,Other Textile Products
 INE036A01016,RELINFRA,500390.0,Reliance Infra.,Power,Integrated Power Utilities
-INE916G01016,GEECEE,532764.0,GeeCee Vent.,Realty,"Residential, Commercial Projects"
+INE224E01036,GATECHDVR,570005.0,GACM Tech-DVR,Finance,Other Financial Services
+INE852O01025,APTUS,543335.0,Aptus Value Hou.,Finance,Housing Finance Company
 INE0BHK01012,VISAMAN,,Visaman Global,Industrial Products,Iron & Steel Products
-INE0Q7P01013,KODYTECH,,Kody Technolab,IT - Software,Computers - Software & Consulting
+INE546C01010,PICCADIL,530305.0,Piccadily Agro,Beverages,Breweries & Distilleries
+INE610C01014,ARENTERP,526662.0,Rajdarshan Inds,Metals & Minerals Trading,Trading - Minerals
+INE288A01013,MAHSCOOTER,500266.0,Mah. Scooters,Finance,Investment Company
 INE01ZJ01015,SURANI,,Surani Steel Tub,Industrial Products,Iron & Steel Products
+INE0O9T01021,BAJAJINDEF,544364.0,Indef Manufactur,Industrial Manufacturing,Industrial Products
+INE572E01012,PNBHOUSING,540173.0,PNB Housing,Finance,Housing Finance Company
+INE916G01016,GEECEE,532764.0,GeeCee Vent.,Realty,"Residential, Commercial Projects"
 INE148I01020,SAMMAANCAP,535789.0,Sammaan Capital,Finance,Housing Finance Company
 INE12NJ01018,SAMBHV,544430.0,Sambhv Steel,Industrial Products,Iron & Steel Products
 INE013P01021,ONESOURCE,544292.0,OneSource Speci.,Pharmaceuticals & Biotechnology,Pharmaceuticals
@@ -2276,314 +2294,294 @@ INE011E01029,BALUFORGE,531112.0,Balu Forge,Industrial Products,Castings & Forgin
 INE0PA801013,GHCLTEXTIL,543918.0,GHCL Textiles,Textiles & Apparels,Other Textile Products
 INE538A01037,GFLLIMITED,500173.0,GFL,Finance,Holding Company
 INE0TGX01019,CHEMBONDCH,544450.0,Chembond Chemic.,Chemicals & Petrochemicals,Specialty Chemicals
-INE335W01016,GANGESSECU,540647.0,Ganges Securitie,Agricultural Food & other Products,Tea & Coffee
-INE360C01024,DPSCLTD,,India Power Corp,Power,Integrated Power Utilities
-INE105C01023,3PLAND,516092.0,3P Land Hold.,Finance,Investment Company
-INE0O9T01021,BAJAJINDEF,544364.0,Indef Manufactur,Industrial Manufacturing,Industrial Products
-INE253B01015,21STCENMGM,526921.0,21st Cent. Mgmt.,Capital Markets,Other Capital Market related Services
-INE0MEG01014,VIVIANA,,Viviana Power,Construction,Civil Construction
-INE933B01012,SIGMAADV,532408.0,Sigma Advanced System,Aerospace & Defense,Aerospace & Defense
-INE771F01041,FISCHER,524743.0,Fischer Medical,Healthcare Equipment & Supplies,Medical Equipment & Supplies
-INE306L01010,QUICKHEAL,539678.0,Quick Heal Tech,IT - Software,Software Products
-INE046A01015,RIIL,523445.0,Rel. Indl. Infra,Transport Services,Logistics Solution Provider
-INE455I01029,KSCL,532899.0,Kaveri Seed Co.,Agricultural Food & other Products,Other Agricultural Products
-INE501X01029,AYE,544699.0,Aye Finance,Finance,Non Banking Financial Company (NBFC)
-INE060J01017,FLEXITUFF,533638.0,Flexituff Vent.,Textiles & Apparels,Other Textile Products
-INE593W01028,FOCUS,,Focus Lighting,Consumer Durables,Consumer Electronics
-INE773I01017,ALKALI,533029.0,Alkali Metals,Chemicals & Petrochemicals,Specialty Chemicals
-INE389K01018,WELINV,533252.0,Welspun Investme,Finance,Investment Company
-INE451A01017,FORCEMOT,500033.0,Force Motors,Automobiles,Passenger Cars & Utility Vehicles
-INE212S01015,FRACTAL,544700.0,Fractal Analyt.,IT - Software,Computers - Software & Consulting
-INE0TQE01026,GLOTTIS,544557.0,Glottis,Transport Services,Logistics Solution Provider
-INE0OJW01016,ROSSTECH,544294.0,Rossell Techsys,Aerospace & Defense,Aerospace & Defense
-INE918I01026,BAJAJFINSV,532978.0,Bajaj Finserv,Finance,Holding Company
-INE105J01010,RPGLIFE,532983.0,RPG LifeScience.,Pharmaceuticals & Biotechnology,Pharmaceuticals
-INE118A01012,BAJAJHLDNG,500490.0,Bajaj Holdings,Finance,Holding Company
-INE095I01015,PPAP,532934.0,PPAP Automotive,Auto Components,Auto Components & Equipments
-INE0W2G01015,SAGILITY,544282.0,Sagility,IT - Services,IT Enabled Services
-INE288A01013,MAHSCOOTER,500266.0,Mah. Scooters,Finance,Investment Company
-INE838E01017,PONNIERODE,532460.0,Ponni Sug.Erode,Agricultural Food & other Products,Sugar
-INE572E01012,PNBHOUSING,540173.0,PNB Housing,Finance,Housing Finance Company
-INE371C01013,PODDARMENT,524570.0,Poddar Pigments,Chemicals & Petrochemicals,Dyes And Pigments
-INE522D01027,MANAPPURAM,531213.0,Manappuram Fin.,Finance,Non Banking Financial Company (NBFC)
-INE1RDG01013,PNGSREVA,544718.0,PNGS Reva Diamo.,Consumer Durables,"Gems, Jewellery And Watches"
-INE843B01013,MAHAPEXLTD,523384.0,Maha Rashtra Apx,Finance,Other Financial Services
-INE852O01025,APTUS,543335.0,Aptus Value Hou.,Finance,Housing Finance Company
-INE546C01010,PICCADIL,530305.0,Piccadily Agro,Beverages,Breweries & Distilleries
-INE610C01014,ARENTERP,526662.0,Rajdarshan Inds,Metals & Minerals Trading,Trading - Minerals
 INE920A01037,DOLPHIN,522261.0,Dolphin Offshore,Oil,Offshore Support Solution Drilling
-INE266D01021,GRAUWEIL,505710.0,Grauer & Weil,Chemicals & Petrochemicals,Commodity Chemicals
-INE02NC01014,FINOPB,543386.0,Fino Payments,Banks,Other Bank
+INE0VDM01015,MEESHO,544632.0,Meesho,Retailing,E-Retail/ E-Commerce
+INE360C01024,DPSCLTD,,India Power Corp,Power,Integrated Power Utilities
+INE0KQN01018,BAJEL,544042.0,Bajel Projects,Electrical Equipment,Heavy Electrical Equipment
+INE115A01026,LICHSGFIN,500253.0,LIC Housing Fin.,Finance,Housing Finance Company
+INE918I01026,BAJAJFINSV,532978.0,Bajaj Finserv,Finance,Holding Company
+INE0TQE01026,GLOTTIS,544557.0,Glottis,Transport Services,Logistics Solution Provider
+INE212S01015,FRACTAL,544700.0,Fractal Analyt.,IT - Software,Computers - Software & Consulting
+INE105J01010,RPGLIFE,532983.0,RPG LifeScience.,Pharmaceuticals & Biotechnology,Pharmaceuticals
+INE0OJW01016,ROSSTECH,544294.0,Rossell Techsys,Aerospace & Defense,Aerospace & Defense
+INE118A01012,BAJAJHLDNG,500490.0,Bajaj Holdings,Finance,Holding Company
+INE1RDG01013,PNGSREVA,544718.0,PNGS Reva Diamo.,Consumer Durables,"Gems, Jewellery And Watches"
+INE451A01017,FORCEMOT,500033.0,Force Motors,Automobiles,Passenger Cars & Utility Vehicles
+INE371C01013,PODDARMENT,524570.0,Poddar Pigments,Chemicals & Petrochemicals,Dyes And Pigments
+INE818W01011,ESAFSFB,544020.0,ESAF Small Fin,Banks,Other Bank
+INE680A01011,DHANBANK,532180.0,Dhanlaxmi Bank,Banks,Private Sector Bank
+INE717A01029,KENNAMET,505890.0,Kennametal India,Industrial Manufacturing,Industrial Products
+INE062A01020,SBIN,500112.0,SBI,Banks,Public Sector Bank
+INE0N7W01012,BLAL,543898.0,BEML Land Assets,Finance,Investment Company
+INE278B01020,RAMANEWS,500356.0,Shree Rama News.,"Paper, Forest & Jute Products",Paper & Paper Products
+INE533A01012,GOODYEAR,500168.0,Goodyear India,Auto Components,Tyres & Rubber Products
+INE863T01013,JITFINFRA,540311.0,JITF Infra Logis,Other Utilities,Water Supply & Management
+INE683A01023,SOUTHBANK,532218.0,South Ind.Bank,Banks,Private Sector Bank
+INE294G01026,ROML,533093.0,Raj Oil Mills,Agricultural Food & other Products,Edible Oil
+INE481Y01014,GICRE,540755.0,General Insuranc,Insurance,General Insurance
+INE691A01018,UCOBANK,532505.0,UCO Bank,Banks,Public Sector Bank
+INE047O01014,NIBL,535458.0,NRB Indl Bearing,Industrial Products,Abrasives & Bearings
+INE020801028,SPENCERS,542337.0,Spencer's Retail,Retailing,Diversified Retail
+INE491A01021,CUB,532210.0,City Union Bank,Banks,Private Sector Bank
+INE040A01034,HDFCBANK,500180.0,HDFC Bank,Banks,Private Sector Bank
+INE036D01028,KARURVYSYA,590003.0,Karur Vysya Bank,Banks,Private Sector Bank
+INE795G01014,HDFCLIFE,540777.0,HDFC Life Insur.,Insurance,Life Insurance
+INE764L01010,SADBHIN,539346.0,Sadbhav Infra.,Construction,Civil Construction
+INE308E01029,SVPGLOB,505590.0,SVP Global,Textiles & Apparels,Other Textile Products
+INE551W01018,UJJIVANSFB,542904.0,Ujjivan Small,Banks,Other Bank
+INE587G01015,KAYA,539276.0,Kaya Ltd,Leisure Services,Wellness
+INE105I01020,SELMC,532886.0,SEL Mfg. Co,Textiles & Apparels,Other Textile Products
 INE679A01013,CSBBANK,542867.0,CSB Bank,Banks,Private Sector Bank
-INE614B01018,KTKBANK,532652.0,Karnataka Bank,Banks,Private Sector Bank
-INE238A01034,AXISBANK,532215.0,Axis Bank,Banks,Private Sector Bank
-INE234A01025,NOVARTIND,500672.0,Novartis India,Pharmaceuticals & Biotechnology,Pharmaceuticals
-INE087H01022,RENUKA,532670.0,Sh.Renuka Sugar,Agricultural Food & other Products,Sugar
+INE800H01010,OMAXE,532880.0,Omaxe,Realty,"Residential, Commercial Projects"
+INE949L01017,AUBANK,540611.0,AU Small Finance,Banks,Other Bank
+INE03JT01014,GODIGIT,544179.0,Go Digit General,Insurance,General Insurance
 INE542C01019,NKIND,519494.0,N K Industries,Agricultural Food & other Products,Edible Oil
 INE171A01029,FEDERALBNK,500469.0,Federal Bank,Banks,Private Sector Bank
-INE533A01012,GOODYEAR,500168.0,Goodyear India,Auto Components,Tyres & Rubber Products
-INE725E01024,ORISSAMINE,590086.0,Orissa Minerals,Minerals & Mining,Industrial Minerals
-INE483A01010,CENTRALBK,532885.0,Central Bank,Banks,Public Sector Bank
-INE378D01032,MADHUCON,531497.0,Madhucon Project,Construction,Civil Construction
-INE953L01027,JSFB,544118.0,Jana Small Finan,Banks,Other Bank
-INE491A01021,CUB,532210.0,City Union Bank,Banks,Private Sector Bank
-INE1TAE01010,TMCV,544569.0,Tata Motors,"Agricultural, Commercial & Construction Vehicles",Commercial Vehicles
-INE976G01028,RBLBANK,540065.0,RBL Bank,Banks,Private Sector Bank
-INE0O3901029,TREL,543955.0,TransIndia Real,Transport Services,Logistics Solution Provider
-INE949L01017,AUBANK,540611.0,AU Small Finance,Banks,Other Bank
-INE863T01013,JITFINFRA,540311.0,JITF Infra Logis,Other Utilities,Water Supply & Management
-INE278B01020,RAMANEWS,500356.0,Shree Rama News.,"Paper, Forest & Jute Products",Paper & Paper Products
-INE0N7W01012,BLAL,543898.0,BEML Land Assets,Finance,Investment Company
-INE818W01011,ESAFSFB,544020.0,ESAF Small Fin,Banks,Other Bank
-INE683A01023,SOUTHBANK,532218.0,South Ind.Bank,Banks,Private Sector Bank
-INE680A01011,DHANBANK,532180.0,Dhanlaxmi Bank,Banks,Private Sector Bank
-INE691A01018,UCOBANK,532505.0,UCO Bank,Banks,Public Sector Bank
-INE020801028,SPENCERS,542337.0,Spencer's Retail,Retailing,Diversified Retail
-INE668A01016,TMB,543596.0,T N Merc. Bank,Banks,Private Sector Bank
-INE105I01020,SELMC,532886.0,SEL Mfg. Co,Textiles & Apparels,Other Textile Products
-INE036D01028,KARURVYSYA,590003.0,Karur Vysya Bank,Banks,Private Sector Bank
-INE587G01015,KAYA,539276.0,Kaya Ltd,Leisure Services,Wellness
-INE308E01029,SVPGLOB,505590.0,SVP Global,Textiles & Apparels,Other Textile Products
-INE764L01010,SADBHIN,539346.0,Sadbhav Infra.,Construction,Civil Construction
-INE383H01017,MALUPAPER,532728.0,Malu Paper,"Paper, Forest & Jute Products",Paper & Paper Products
-INE481Y01014,GICRE,540755.0,General Insuranc,Insurance,General Insurance
-INE374B01019,MUKTAARTS,532357.0,Mukta Arts,Entertainment,"Film Production, Distribution & Exhibition"
-INE562A01011,INDIANB,532814.0,Indian Bank,Banks,Public Sector Bank
-INE095A01012,INDUSINDBK,532187.0,IndusInd Bank,Banks,Private Sector Bank
-INE528G01035,YESBANK,532648.0,Yes Bank,Banks,Private Sector Bank
-INE160A01022,PNB,532461.0,Punjab Natl.Bank,Banks,Public Sector Bank
-INE237A01036,KOTAKBANK,500247.0,Kotak Mah. Bank,Banks,Private Sector Bank
-INE287Z01012,GAYAHWS,541546.0,Gayatri Highways,Transport Infrastructure,"Road AssetsToll, Annuity, Hybrid-Annuity"
-INE278R01034,DHARAN,541161.0,Dharan Infra-EPC,Realty,"Residential, Commercial Projects"
-INE06H201014,GENSOL,542851.0,Gensol Engineer.,Electrical Equipment,Other Electrical Equipment
-INE177F01017,KOVAI,523323.0,Kovai Medical,Healthcare Services,Hospital
-INE545U01014,BANDHANBNK,541153.0,Bandhan Bank,Banks,Private Sector Bank
-INE0V0W01025,GKSL,544666.0,Gujarat Kidney,Healthcare Services,Hospital
-INE884B01025,KIRLFER,500245.0,Kirl. Ferrous,Ferrous Metals,Pig Iron
-INE028A01039,BANKBARODA,532134.0,Bank of Baroda,Banks,Public Sector Bank
 INE084A01016,BANKINDIA,532149.0,Bank of India,Banks,Public Sector Bank
-INE800H01010,OMAXE,532880.0,Omaxe,Realty,"Residential, Commercial Projects"
+INE028A01039,BANKBARODA,532134.0,Bank of Baroda,Banks,Public Sector Bank
+INE884B01025,KIRLFER,500245.0,Kirl. Ferrous,Ferrous Metals,Pig Iron
+INE0V0W01025,GKSL,544666.0,Gujarat Kidney,Healthcare Services,Hospital
+INE545U01014,BANDHANBNK,541153.0,Bandhan Bank,Banks,Private Sector Bank
+INE177F01017,KOVAI,523323.0,Kovai Medical,Healthcare Services,Hospital
+INE953L01027,JSFB,544118.0,Jana Small Finan,Banks,Other Bank
+INE668A01016,TMB,543596.0,T N Merc. Bank,Banks,Private Sector Bank
+INE1TAE01010,TMCV,544569.0,Tata Motors,"Agricultural, Commercial & Construction Vehicles",Commercial Vehicles
 INE268B01013,KREBSBIO,524518.0,Krebs Biochem,Pharmaceuticals & Biotechnology,Pharmaceuticals
-INE776C01039,GMRAIRPORT,532754.0,GMR Airports,Transport Infrastructure,Airport & Airport services
-INE672A01026,TATAINVEST,501301.0,Tata Inv.Corpn.,Finance,Investment Company
+INE234A01025,NOVARTIND,500672.0,Novartis India,Pharmaceuticals & Biotechnology,Pharmaceuticals
 INE503A01015,DCBBANK,532772.0,DCB Bank,Banks,Private Sector Bank
-INE062A01020,SBIN,500112.0,SBI,Banks,Public Sector Bank
-INE717A01029,KENNAMET,505890.0,Kennametal India,Industrial Manufacturing,Industrial Products
-INE294G01026,ROML,533093.0,Raj Oil Mills,Agricultural Food & other Products,Edible Oil
-INE551Q01028,VSCL,,Vadivarhe Speci.,Chemicals & Petrochemicals,Specialty Chemicals
-INE03JT01014,GODIGIT,544179.0,Go Digit General,Insurance,General Insurance
-INE040A01034,HDFCBANK,500180.0,HDFC Bank,Banks,Private Sector Bank
+INE976G01028,RBLBANK,540065.0,RBL Bank,Banks,Private Sector Bank
+INE238A01034,AXISBANK,532215.0,Axis Bank,Banks,Private Sector Bank
+INE06H201014,GENSOL,542851.0,Gensol Engineer.,Electrical Equipment,Other Electrical Equipment
+INE776C01039,GMRAIRPORT,532754.0,GMR Airports,Transport Infrastructure,Airport & Airport services
+INE278R01034,DHARAN,541161.0,Dharan Infra-EPC,Realty,"Residential, Commercial Projects"
+INE614B01018,KTKBANK,532652.0,Karnataka Bank,Banks,Private Sector Bank
+INE287Z01012,GAYAHWS,541546.0,Gayatri Highways,Transport Infrastructure,"Road AssetsToll, Annuity, Hybrid-Annuity"
+INE237A01036,KOTAKBANK,500247.0,Kotak Mah. Bank,Banks,Private Sector Bank
+INE725E01024,ORISSAMINE,590086.0,Orissa Minerals,Minerals & Mining,Industrial Minerals
+INE02NC01014,FINOPB,543386.0,Fino Payments,Banks,Other Bank
+INE266D01021,GRAUWEIL,505710.0,Grauer & Weil,Chemicals & Petrochemicals,Commodity Chemicals
+INE087H01022,RENUKA,532670.0,Sh.Renuka Sugar,Agricultural Food & other Products,Sugar
+INE0O3901029,TREL,543955.0,TransIndia Real,Transport Services,Logistics Solution Provider
 INE226H01026,SADBHAV,532710.0,Sadbhav Engg.,Construction,Civil Construction
-INE795G01014,HDFCLIFE,540777.0,HDFC Life Insur.,Insurance,Life Insurance
-INE016M01021,DNAMEDIA,540789.0,Diligent Media,Media,Electronic Media
-INE03HW01020,VLEGOV,543958.0,VL E-Governance,IT - Services,IT Enabled Services
-INE550H01011,SUPREMEINF,532904.0,Supreme Infra.,Construction,Civil Construction
-INE878E01021,SETCO,505075.0,Setco Automotive,Auto Components,Auto Components & Equipments
-INE835A01029,VARDMNPOLY,514175.0,Vardhman Polytex,Textiles & Apparels,Other Textile Products
-INE0PLQ01011,MAITREYA,,Maitreya Medica.,Healthcare Services,Hospital
-INE270A01029,ALOKINDS,521070.0,Alok Industries,Textiles & Apparels,Other Textile Products
-INE353A01023,NDLVENTURE,500189.0,NDL Ventures,Finance,Other Financial Services
-INE526G01021,VIVIMEDLAB,532660.0,Vivimed Labs.,Pharmaceuticals & Biotechnology,Pharmaceuticals
-INE874F01027,RADAAN,590070.0,Radaan Media.,Entertainment,Media & Entertainment
+INE278G01037,CYBERMEDIA,532640.0,Cyber Media Ind,Media,Electronic Media
 INE561H01026,PARSVNATH,532780.0,Parsvnath Devl.,Realty,"Residential, Commercial Projects"
-INE472M01018,MTEDUCARE,534312.0,MT Educare,Other Consumer Services,Education
+INE251H01024,GVKPIL,532708.0,GVK Power Infra.,Construction,Civil Construction
+INE270A01029,ALOKINDS,521070.0,Alok Industries,Textiles & Apparels,Other Textile Products
+INE550H01011,SUPREMEINF,532904.0,Supreme Infra.,Construction,Civil Construction
+INE0R8M01017,OWAIS,,Owais Metal,Ferrous Metals,Ferro & Silica Manganese
+INE835A01029,VARDMNPOLY,514175.0,Vardhman Polytex,Textiles & Apparels,Other Textile Products
+INE142I01023,TAKE,532890.0,Take Solutions,Healthcare Services,"Healthcare Research, Analytics & Technology"
+INE476A01022,CANBK,532483.0,Canara Bank,Banks,Public Sector Bank
+INE08S201019,YCCL,,Yasons Chemex,Chemicals & Petrochemicals,Dyes And Pigments
+INE428Q01011,SURYODAY,543279.0,Suryoday Small,Banks,Other Bank
+INE090A01021,ICICIBANK,532174.0,ICICI Bank,Banks,Private Sector Bank
+INE00C401011,MAL,,Mangalam Alloys,Industrial Products,Iron & Steel Products
+INE0OPS01011,OLIL,,OneClick Logisti,Transport Services,Logistics Solution Provider
+INE526G01021,VIVIMEDLAB,532660.0,Vivimed Labs.,Pharmaceuticals & Biotechnology,Pharmaceuticals
+INE0PLQ01011,MAITREYA,,Maitreya Medica.,Healthcare Services,Hospital
+INE0S2E01016,VISHWAS,,Vishwas Agri,Agricultural Food & other Products,Other Agricultural Products
+INE646H01017,CAPITALSFB,544120.0,Capital Small,Banks,Other Bank
+INE016M01021,DNAMEDIA,540789.0,Diligent Media,Media,Electronic Media
+INE008A01015,IDBI,500116.0,IDBI Bank,Banks,Private Sector Bank
+INE669E01016,IDEA,532822.0,Vodafone Idea,Telecom - Services,Telecom - Cellular & Fixed line services
+INE878E01021,SETCO,505075.0,Setco Automotive,Auto Components,Auto Components & Equipments
+INE092T01019,IDFCFIRSTB,539437.0,IDFC First Bank,Banks,Private Sector Bank
+INE483A01010,CENTRALBK,532885.0,Central Bank,Banks,Public Sector Bank
+INE565A01014,IOB,532388.0,I O B,Banks,Public Sector Bank
+INE01Z401013,SHUBHLAXMI,,Shubhlaxmi Jewel,Consumer Durables,"Gems, Jewellery And Watches"
+INE075B01020,SICALLOG,520086.0,Sical Logistics,Transport Services,Logistics Solution Provider
+INE353A01023,NDLVENTURE,500189.0,NDL Ventures,Finance,Other Financial Services
+INE562A01011,INDIANB,532814.0,Indian Bank,Banks,Public Sector Bank
+INE162C01024,PARASPETRO,521246.0,Paras Petrofils,Finance,Investment Company
+INE457A01014,MAHABANK,532525.0,Bank of Maha,Banks,Public Sector Bank
+INE383H01017,MALUPAPER,532728.0,Malu Paper,"Paper, Forest & Jute Products",Paper & Paper Products
+INE692A01016,UNIONBANK,532477.0,Union Bank (I),Banks,Public Sector Bank
+INE551Q01028,VSCL,,Vadivarhe Speci.,Chemicals & Petrochemicals,Specialty Chemicals
+INE874F01027,RADAAN,590070.0,Radaan Media.,Entertainment,Media & Entertainment
+INE070C01037,COMPINFO,532456.0,Compuage Info.,IT - Hardware,Computers Hardware & Equipments
 INE747B01016,NEXTMEDIA,532416.0,Next Mediaworks,Entertainment,Media & Entertainment
 INE575P01011,STARHEALTH,543412.0,Star Health Insu,Insurance,General Insurance
-INE822G01016,ELECTHERM,526608.0,Electrotherm(I),Industrial Products,Iron & Steel Products
-INE00C401011,MAL,,Mangalam Alloys,Industrial Products,Iron & Steel Products
-INE08S201019,YCCL,,Yasons Chemex,Chemicals & Petrochemicals,Dyes And Pigments
-INE0OPS01011,OLIL,,OneClick Logisti,Transport Services,Logistics Solution Provider
-INE168A01041,J&KBANK,532209.0,J & K Bank,Banks,Private Sector Bank
-INE01Z401013,SHUBHLAXMI,,Shubhlaxmi Jewel,Consumer Durables,"Gems, Jewellery And Watches"
-INE608A01012,PSB,533295.0,Pun. & Sind Bank,Banks,Public Sector Bank
+INE374B01019,MUKTAARTS,532357.0,Mukta Arts,Entertainment,"Film Production, Distribution & Exhibition"
 INE735W01017,UTKARSHBNK,543942.0,Utkarsh Small F.,Banks,Other Bank
-INE278G01037,CYBERMEDIA,532640.0,Cyber Media Ind,Media,Electronic Media
-INE075B01020,SICALLOG,520086.0,Sical Logistics,Transport Services,Logistics Solution Provider
-INE142I01023,TAKE,532890.0,Take Solutions,Healthcare Services,"Healthcare Research, Analytics & Technology"
-INE251H01024,GVKPIL,532708.0,GVK Power Infra.,Construction,Civil Construction
-INE0R8M01017,OWAIS,,Owais Metal,Ferrous Metals,Ferro & Silica Manganese
-INE778K01012,EMAMIREAL,533218.0,Emami Realty Ltd,Realty,"Residential, Commercial Projects"
-INE0S2E01016,VISHWAS,,Vishwas Agri,Agricultural Food & other Products,Other Agricultural Products
-INE669E01016,IDEA,532822.0,Vodafone Idea,Telecom - Services,Telecom - Cellular & Fixed line services
-INE632X01030,SHRENIK,,Shrenik,"Paper, Forest & Jute Products",Paper & Paper Products
-INE457A01014,MAHABANK,532525.0,Bank of Maha,Banks,Public Sector Bank
 INE0TO601017,YASHOPTICS,,Yash Optics,Consumer Durables,Diversified consumer products
-INE646H01017,CAPITALSFB,544120.0,Capital Small,Banks,Other Bank
-INE090A01021,ICICIBANK,532174.0,ICICI Bank,Banks,Private Sector Bank
-INE092T01019,IDFCFIRSTB,539437.0,IDFC First Bank,Banks,Private Sector Bank
-INE070C01037,COMPINFO,532456.0,Compuage Info.,IT - Hardware,Computers Hardware & Equipments
-INE047O01014,NIBL,535458.0,NRB Indl Bearing,Industrial Products,Abrasives & Bearings
-INE551W01018,UJJIVANSFB,542904.0,Ujjivan Small,Banks,Other Bank
-INE428Q01011,SURYODAY,543279.0,Suryoday Small,Banks,Other Bank
-INE162C01024,PARASPETRO,521246.0,Paras Petrofils,Finance,Investment Company
-INE565A01014,IOB,532388.0,I O B,Banks,Public Sector Bank
-INE476A01022,CANBK,532483.0,Canara Bank,Banks,Public Sector Bank
-INE008A01015,IDBI,500116.0,IDBI Bank,Banks,Private Sector Bank
-INE692A01016,UNIONBANK,532477.0,Union Bank (I),Banks,Public Sector Bank
-INE08KD01015,ASCOM,,Ascom Leasing &,Finance,Non Banking Financial Company (NBFC)
-INE661I01014,BGRENERGY,532930.0,BGR Energy Sys.,Construction,Civil Construction
-INE210A01017,WILLAMAGOR,519224.0,Williamson Magor,Finance,Investment Company
-INE318D01020,ZENITHSTL,531845.0,Zenith Steel,Industrial Products,Iron & Steel Products
-INE369I01014,IL&FSENGG,532907.0,IL&FS Engg.,Construction,Civil Construction
-INE927A01040,ROLLT,502448.0,Rollatainers,Industrial Products,Packaging
-INE975G01012,IL&FSTRANS,533177.0,IL&FS Transport,Construction,Civil Construction
-INE640C01011,SHAHALLOYS,513436.0,Shah Alloys,Industrial Products,Iron & Steel Products
-INE875R01011,BALKRISHNA,539251.0,Balkrishna Paper,"Paper, Forest & Jute Products",Paper & Paper Products
-INE911B01018,TCIFINANCE,501242.0,TCI Finance,Finance,Non Banking Financial Company (NBFC)
+INE378D01032,MADHUCON,531497.0,Madhucon Project,Construction,Civil Construction
+INE095A01012,INDUSINDBK,532187.0,IndusInd Bank,Banks,Private Sector Bank
+INE03HW01020,VLEGOV,543958.0,VL E-Governance,IT - Services,IT Enabled Services
+INE472M01018,MTEDUCARE,534312.0,MT Educare,Other Consumer Services,Education
+INE822G01016,ELECTHERM,526608.0,Electrotherm(I),Industrial Products,Iron & Steel Products
+INE672A01026,TATAINVEST,501301.0,Tata Inv.Corpn.,Finance,Investment Company
+INE168A01041,J&KBANK,532209.0,J & K Bank,Banks,Private Sector Bank
+INE608A01012,PSB,533295.0,Pun. & Sind Bank,Banks,Public Sector Bank
+INE778K01012,EMAMIREAL,533218.0,Emami Realty Ltd,Realty,"Residential, Commercial Projects"
+INE160A01022,PNB,532461.0,Punjab Natl.Bank,Banks,Public Sector Bank
+INE632X01030,SHRENIK,,Shrenik,"Paper, Forest & Jute Products",Paper & Paper Products
+INE528G01035,YESBANK,532648.0,Yes Bank,Banks,Private Sector Bank
+INE968D01022,ARSHIYA,506074.0,Arshiya,Transport Services,Logistics Solution Provider
+INE776I01010,MEP,539126.0,MEP Infrast.,Transport Infrastructure,"Road AssetsToll, Annuity, Hybrid-Annuity"
+INE540A01017,GLFL,500174.0,Guj. Lease Fin.,Finance,Other Financial Services
 INE781B01015,NOIDATOLL,532481.0,Noida Tollbridg.,Transport Infrastructure,"Road AssetsToll, Annuity, Hybrid-Annuity"
-INE614Z01017,GIRIRAJ,,Giriraj Civil,Construction,Civil Construction
-INE524L01026,KRIDHANINF,533482.0,Kridhan Infra,Construction,Civil Construction
-INE126M01010,IBULLSLTD,533520.0,Indiabulls,Commercial Services & Supplies,Diversified Commercial Services
-INE860T01019,SABEVENTS,540081.0,SAB Events,Media,Electronic Media
-INE023M01027,SETUINFRA,533605.0,Setubandhan Inf.,Construction,Civil Construction
-INE748T01016,SIMBHALS,539742.0,Simbhaoli Sugar,Agricultural Food & other Products,Sugar
-INE0PMR01017,AKIKO,,Akiko,Finance,Other Financial Services
-INE765G01017,ICICIGI,540716.0,ICICI Lombard,Insurance,General Insurance
-INE153A01019,MTNL,500108.0,M T N L,Telecom - Services,Telecom - Cellular & Fixed line services
-INE517M01028,POLYSIL,,Polysil Irrigati,Industrial Products,Plastic Products - Industrial
+INE1SPP01016,KSR,544615.0,KSR Footwear,Commercial Services & Supplies,Trading & Distributors
+INE0PRF01011,UNIHEALTH,,Unihealth Hosp,Healthcare Services,Hospital
+INE349X01015,JALAN,,Jalan Transol.,Transport Services,Logistics Solution Provider
+INE436A01026,ANSALAPI,500013.0,Ansal Properties,Realty,"Residential, Commercial Projects"
 INE123W01016,SBILIFE,540719.0,SBI Life Insuran,Insurance,Life Insurance
+INE875R01011,BALKRISHNA,539251.0,Balkrishna Paper,"Paper, Forest & Jute Products",Paper & Paper Products
+INE318D01020,ZENITHSTL,531845.0,Zenith Steel,Industrial Products,Iron & Steel Products
+INE911B01018,TCIFINANCE,501242.0,TCI Finance,Finance,Non Banking Financial Company (NBFC)
+INE927A01040,ROLLT,502448.0,Rollatainers,Industrial Products,Packaging
 INE080B01012,KOHINOOR,512559.0,Kohinoor Foods,Agricultural Food & other Products,Other Agricultural Products
+INE669A01022,INFOMEDIA,509069.0,Infomedia Press,Printing & Publication,Printing & Publication
+INE517M01028,POLYSIL,,Polysil Irrigati,Industrial Products,Plastic Products - Industrial
+INE153A01019,MTNL,500108.0,M T N L,Telecom - Services,Telecom - Cellular & Fixed line services
+INE748T01016,SIMBHALS,539742.0,Simbhaoli Sugar,Agricultural Food & other Products,Sugar
+INE023M01027,SETUINFRA,533605.0,Setubandhan Inf.,Construction,Civil Construction
+INE860T01019,SABEVENTS,540081.0,SAB Events,Media,Electronic Media
+INE0PMR01017,AKIKO,,Akiko,Finance,Other Financial Services
+INE416A01051,AQYLON,530943.0,Aqylon Nexus,Entertainment,TV Broadcasting & Software Production
 INE330H01018,RCOM,532712.0,Reliance Communi,Telecom - Services,Telecom - Cellular & Fixed line services
 INE104Y01012,MANAV,,Manav Infra,Construction,Civil Construction
-INE669A01022,INFOMEDIA,509069.0,Infomedia Press,Printing & Publication,Printing & Publication
-INE436A01026,ANSALAPI,500013.0,Ansal Properties,Realty,"Residential, Commercial Projects"
+INE126M01010,IBULLSLTD,533520.0,Indiabulls,Commercial Services & Supplies,Diversified Commercial Services
+INE614Z01017,GIRIRAJ,,Giriraj Civil,Construction,Civil Construction
+INE661I01014,BGRENERGY,532930.0,BGR Energy Sys.,Construction,Civil Construction
+INE08KD01015,ASCOM,,Ascom Leasing &,Finance,Non Banking Financial Company (NBFC)
+INE369I01014,IL&FSENGG,532907.0,IL&FS Engg.,Construction,Civil Construction
 INE836F01026,DISHTV,532839.0,Dish TV India,Entertainment,TV Broadcasting & Software Production
-INE262A01018,HMT,500191.0,HMT,Industrial Manufacturing,Industrial Products
-INE022C01012,EUROTEXIND,521014.0,Eurotex Industri,Textiles & Apparels,Other Textile Products
-INE221H01019,GTLINFRA,532775.0,GTL Infra.,Telecom - Services,Telecom - Infrastructure
-INE440L01017,TIJARIA,533629.0,Tijaria Polypipe,Industrial Products,Plastic Products - Industrial
-INE776I01010,MEP,539126.0,MEP Infrast.,Transport Infrastructure,"Road AssetsToll, Annuity, Hybrid-Annuity"
-INE694A01020,UNITECH,507878.0,Unitech,Realty,"Residential, Commercial Projects"
-INE540A01017,GLFL,500174.0,Guj. Lease Fin.,Finance,Other Financial Services
-INE02CV01017,DRSDILIP,,DRS Dilip Road,Transport Services,Logistics Solution Provider
-INE336H01023,GAYAPROJ,532767.0,Gayatri Projects,Construction,Civil Construction
+INE975G01012,IL&FSTRANS,533177.0,IL&FS Transport,Construction,Civil Construction
 INE784B01035,WINSOME,514348.0,Winsome Yarns,Textiles & Apparels,Other Textile Products
-INE965H01011,SITINET,532795.0,Siti Networks,Entertainment,TV Broadcasting & Software Production
-INE416A01051,AQYLON,530943.0,Aqylon Nexus,Entertainment,TV Broadcasting & Software Production
-INE968D01022,ARSHIYA,506074.0,Arshiya,Transport Services,Logistics Solution Provider
-INE470Y01017,NIACL,540769.0,New India Assura,Insurance,General Insurance
-INE122M01019,ESSARSHPNG,533704.0,Essar Shipping,Transport Services,Shipping
-INE657B01025,BLUECHIP,531936.0,Blue Chip India,Finance,Investment Company
-INE517B01013,TTML,532371.0,Tata Tele. Mah.,Telecom - Services,Telecom - Cellular & Fixed line services
+INE210A01017,WILLAMAGOR,519224.0,Williamson Magor,Finance,Investment Company
+INE262A01018,HMT,500191.0,HMT,Industrial Manufacturing,Industrial Products
+INE524L01026,KRIDHANINF,533482.0,Kridhan Infra,Construction,Civil Construction
+INE02CV01017,DRSDILIP,,DRS Dilip Road,Transport Services,Logistics Solution Provider
+INE782L01012,SANCO,,Sanco Industries,Industrial Products,Plastic Products - Industrial
+INE336H01023,GAYAPROJ,532767.0,Gayatri Projects,Construction,Civil Construction
 INE0J1Y01017,LICI,543526.0,Life Insurance,Insurance,Life Insurance
-INE28GN01010,ADVENTHTL,544446.0,Advent Hotels,Leisure Services,Hotels & Resorts
+INE640C01011,SHAHALLOYS,513436.0,Shah Alloys,Industrial Products,Iron & Steel Products
 INE236A01020,HCL-INSYS,500179.0,HCL Infosystems,IT - Hardware,Computers Hardware & Equipments
-INE232I01014,SPARC,532872.0,SPARC,Pharmaceuticals & Biotechnology,Pharmaceuticals
-INE871L01013,TVVISION,540083.0,TV Vision,Entertainment,TV Broadcasting & Software Production
-INE349X01015,JALAN,,Jalan Transol.,Transport Services,Logistics Solution Provider
+INE022C01012,EUROTEXIND,521014.0,Eurotex Industri,Textiles & Apparels,Other Textile Products
+INE765G01017,ICICIGI,540716.0,ICICI Lombard,Insurance,General Insurance
+INE122M01019,ESSARSHPNG,533704.0,Essar Shipping,Transport Services,Shipping
+INE517B01013,TTML,532371.0,Tata Tele. Mah.,Telecom - Services,Telecom - Cellular & Fixed line services
+INE221H01019,GTLINFRA,532775.0,GTL Infra.,Telecom - Services,Telecom - Infrastructure
 INE277C01012,REGENCERAM,515018.0,Regency Ceramics,Consumer Durables,Ceramics
-INE1SPP01016,KSR,544615.0,KSR Footwear,Commercial Services & Supplies,Trading & Distributors
 INE043A01012,GTL,500160.0,GTL,Telecom - Services,Other Telecom Services
 INE989C01038,DIACABS,522163.0,Diamond Power,Electrical Equipment,Other Electrical Equipment
-INE782L01012,SANCO,,Sanco Industries,Industrial Products,Plastic Products - Industrial
-INE0PRF01011,UNIHEALTH,,Unihealth Hosp,Healthcare Services,Hospital
+INE28GN01010,ADVENTHTL,544446.0,Advent Hotels,Leisure Services,Hotels & Resorts
+INE440L01017,TIJARIA,533629.0,Tijaria Polypipe,Industrial Products,Plastic Products - Industrial
+INE965H01011,SITINET,532795.0,Siti Networks,Entertainment,TV Broadcasting & Software Production
+INE871L01013,TVVISION,540083.0,TV Vision,Entertainment,TV Broadcasting & Software Production
+INE694A01020,UNITECH,507878.0,Unitech,Realty,"Residential, Commercial Projects"
+INE657B01025,BLUECHIP,531936.0,Blue Chip India,Finance,Investment Company
+INE470Y01017,NIACL,540769.0,New India Assura,Insurance,General Insurance
+INE232I01014,SPARC,532872.0,SPARC,Pharmaceuticals & Biotechnology,Pharmaceuticals
 INE956O01016,LENSKART,544600.0,Lenskart Solut.,Retailing,Speciality Retail
-INE141D01018,TNTELE,523419.0,T N Telecom.,Telecom -  Equipment & Accessories,Telecom -  Equipment & Accessories
-INE1SY401010,RAYMONDREL,544420.0,Raymond Realty,Realty,"Residential, Commercial Projects"
-INE0U4701011,DIGITIDE,544413.0,Digitide Solutio,IT - Services,IT Enabled Services
+IN9623B01058,FELDVR,570002.0,Future Ent. DVR,Retailing,Diversified Retail
+INE319Z01021,SUPREMEENG,,Supreme Engg.,Industrial Products,Iron & Steel Products
+INE472B01011,BLUECOAST,531495.0,Blu.Coast Hotel.,Leisure Services,Hotels & Resorts
 INE890C01046,SANWARIA,519260.0,Sanwaria Consum.,Food Products,Other Food Products
 INE071A01013,BILVYAPAR,500059.0,BIL Vyapar,Finance,Holding Company
-INE085001019,WEWORK,544570.0,Wework India,Commercial Services & Supplies,Diversified Commercial Services
-INE750R01016,AARNAV,539562.0,Aarnav Fashions,Textiles & Apparels,Trading - Textile Products
-INE976I01016,TATACAP,544574.0,Tata Capital,Finance,Non Banking Financial Company (NBFC)
-INE324D01010,LGEINDIA,544576.0,LG Electronics,Consumer Durables,Household Appliances
+INE635A01023,SHYAMTEL,517411.0,Shyam Telecom,Commercial Services & Supplies,Trading & Distributors
+INE342A01018,PREMIER,500540.0,Premier,Industrial Manufacturing,Industrial Products
+INE03KJ01013,SHIGAN,,Shigan Quantum,Auto Components,Auto Components & Equipments
 INE887D01016,TCC,512038.0,TCC Concept,Commercial Services & Supplies,Trading & Distributors
-INE655A01013,STCINDIA,512531.0,S T C,Commercial Services & Supplies,Trading & Distributors
-INE01TY01017,CANHLIFE,544583.0,Canara HSBC,Insurance,Life Insurance
-INE0XAD01024,MIDWESTLTD,544587.0,Midwest,Consumer Durables,Granites & Marbles
+INE0U4701011,DIGITIDE,544413.0,Digitide Solutio,IT - Services,IT Enabled Services
+INE324D01010,LGEINDIA,544576.0,LG Electronics,Consumer Durables,Household Appliances
+INE025R01021,ARTEMISMED,542919.0,Artemis Medicare,Healthcare Services,Hospital
 INE236E01022,ELLEN,544421.0,Ellen.Indl.Gas,Chemicals & Petrochemicals,Industrial Gases
 INE0PT501018,PLATIND,544134.0,Platinum Industr,Chemicals & Petrochemicals,Specialty Chemicals
+INE761Y01019,ZODIAC,543416.0,Zodiac Energy,Construction,Civil Construction
 INE00Q601028,STUDDS,544599.0,Studds Accessor.,Auto Components,Auto Components & Equipments
-INE0OFM01015,DSFCL,544703.0,DCM Shriram Fine Chemicals,Chemicals & Petrochemicals,Specialty Chemicals
-INE025R01021,ARTEMISMED,542919.0,Artemis Medicare,Healthcare Services,Hospital
-INE014B01011,TECILCHEM,506680.0,TECIL Chemical,Chemicals & Petrochemicals,Commodity Chemicals
-INE2J8701016,SKFINDUS,544572.0,SKF India Indus.,Industrial Products,Abrasives & Bearings
 INE0U4101014,BLUSPRING,544414.0,Bluspring Enter.,Commercial Services & Supplies,Diversified Commercial Services
-INE03KJ01013,SHIGAN,,Shigan Quantum,Auto Components,Auto Components & Equipments
-INE16NZ01023,ORKLAINDIA,544595.0,Orkla India,Food Products,Other Food Products
-INE1VXE01018,STLNETWORK,544395.0,STL Networks,Telecom - Services,Other Telecom Services
-INE14LE01019,ABLBL,544403.0,A B Lifestyle,Retailing,Speciality Retail
-INE623B01027,FEL,523574.0,Future Enterp.,Retailing,Diversified Retail
-INE342A01018,PREMIER,500540.0,Premier,Industrial Manufacturing,Industrial Products
-INE610B01024,GUJRAFFIA,523836.0,Guj. Raffia Inds,Industrial Products,Packaging
+INE655A01013,STCINDIA,512531.0,S T C,Commercial Services & Supplies,Trading & Distributors
+INE976I01016,TATACAP,544574.0,Tata Capital,Finance,Non Banking Financial Company (NBFC)
 INE891B01012,DCMFINSERV,511611.0,DCM Financial,Finance,Investment Company
+INE014B01011,TECILCHEM,506680.0,TECIL Chemical,Chemicals & Petrochemicals,Commodity Chemicals
+INE610B01024,GUJRAFFIA,523836.0,Guj. Raffia Inds,Industrial Products,Packaging
+INE0XAD01024,MIDWESTLTD,544587.0,Midwest,Consumer Durables,Granites & Marbles
+INE085001019,WEWORK,544570.0,Wework India,Commercial Services & Supplies,Diversified Commercial Services
+INE750R01016,AARNAV,539562.0,Aarnav Fashions,Textiles & Apparels,Trading - Textile Products
+INE16NZ01023,ORKLAINDIA,544595.0,Orkla India,Food Products,Other Food Products
 INE0HOQ01053,GROWW,544603.0,Billionbrains,Capital Markets,Stockbroking & Allied
 INE218I01013,CRAMC,544580.0,Canara Robeco,Capital Markets,Asset Management Company
-INE761Y01019,ZODIAC,543416.0,Zodiac Energy,Construction,Civil Construction
-INE319Z01021,SUPREMEENG,,Supreme Engg.,Industrial Products,Iron & Steel Products
-IN9623B01058,FELDVR,570002.0,Future Ent. DVR,Retailing,Diversified Retail
+INE1VXE01018,STLNETWORK,544395.0,STL Networks,Telecom - Services,Other Telecom Services
+INE623B01027,FEL,523574.0,Future Enterp.,Retailing,Diversified Retail
+INE14LE01019,ABLBL,544403.0,A B Lifestyle,Retailing,Speciality Retail
+INE141D01018,TNTELE,523419.0,T N Telecom.,Telecom -  Equipment & Accessories,Telecom -  Equipment & Accessories
+INE01TY01017,CANHLIFE,544583.0,Canara HSBC,Insurance,Life Insurance
+INE0OFM01015,DSFCL,544703.0,DCM Shriram Fine Chemicals,Chemicals & Petrochemicals,Specialty Chemicals
 INE506V01022,RUBICON,544578.0,Rubicon Research,Pharmaceuticals & Biotechnology,Pharmaceuticals
-INE635A01023,SHYAMTEL,517411.0,Shyam Telecom,Commercial Services & Supplies,Trading & Distributors
-INE472B01011,BLUECOAST,531495.0,Blu.Coast Hotel.,Leisure Services,Hotels & Resorts
-INE713R01022,GSPCROP,544733.0,,,
-INE921L01032,POWERICA,544744.0,,,
-INE019J01013,HEALTHX,533259.0,,,
-INE176J01011,SICAGEN,533014.0,,,
-INE05HV01027,CMPDI,544739.0,,,
+INE2J8701016,SKFINDUS,544572.0,SKF India Indus.,Industrial Products,Abrasives & Bearings
+INE1SY401010,RAYMONDREL,544420.0,Raymond Realty,Realty,"Residential, Commercial Projects"
 INE361K01017,GRADIENTE,,,,
-INE0ADB01012,INNOVISION,544732.0,,,
-INE2KCE01013,KWIL,544622.0,Kwality Wall's,Food Products,Dairy Products
 INE875B01015,NIMBSPROJ,511714.0,,,
-INE688J01023,LANDSMILL,533090.0,,,
-INE133A01011,JSWDULUX,500710.0,,,
-INE1TY801010,GJL,,Grover Jewells,Consumer Durables,"Gems, Jewellery And Watches"
-INE638A01035,SINGERIND,505729.0,,,
+INE019J01013,HEALTHX,533259.0,,,
+INE24OJ01011,BUILDPRO,544517.0,Shankara Buildpro,Retailing,Speciality Retail
+INE2KCE01013,KWIL,544622.0,Kwality Wall's,Food Products,Dairy Products
+INE921L01032,POWERICA,544744.0,,,
+INE0QTE01018,GAJANAND,,Gajanand Inter.,Textiles & Apparels,Other Textile Products
 INE05TO01019,AMIRCHAND,544743.0,,,
 INE313L01016,RSL,544731.0,,,
-INE00SW01015,BCPL,542057.0,,,
+INE176J01011,SICAGEN,533014.0,,,
 INE413D01011,ARIHANT,531381.0,,,
-INE24OJ01011,BUILDPRO,544517.0,Shankara Buildpro,Retailing,Speciality Retail
-INE11HG01018,CHAMUNDA,,Chamunda Ele.,Commercial Services & Supplies,Diversified Commercial Services
+INE713R01022,GSPCROP,544733.0,,,
+INE05HV01027,CMPDI,544739.0,,,
+INE688J01023,LANDSMILL,533090.0,,,
+INE133A01011,JSWDULUX,500710.0,,,
+INE638A01035,SINGERIND,505729.0,,,
+INE0ADB01012,INNOVISION,544732.0,,,
+INE00SW01015,BCPL,542057.0,,,
+INE0SQZ01015,FWSTC,,Flywings Simula.,Other Consumer Services,Education
 INE861D01011,SAHLIBHFI,511754.0,,,
-INE1DM601016,VIGOR,,Vigor Plast,Industrial Products,Plastic Products - Industrial
-INE0BSN01013,SATECH,,S A Tech Soft.,IT - Software,Computers - Software & Consulting
+INE0KLO01025,ACTIVEINFR,,Active Infra.,Realty,"Residential, Commercial Projects"
 INE0NB801022,SATKARTAR,,Sat Kartar,Pharmaceuticals & Biotechnology,Pharmaceuticals
 INE0RXB01022,JEYYAM,,Jeyyam Global,Food Products,Other Food Products
 INE11J101017,CEDAAR,,Cedaar Textile,Textiles & Apparels,Other Textile Products
 INE132901013,MGSL,,Matrix Geo Sol.,IT - Services,IT Enabled Services
 INE0U2501017,FORCAS,,Forcas Studio,Textiles & Apparels,Garments & Apparels
-INE0KLO01025,ACTIVEINFR,,Active Infra.,Realty,"Residential, Commercial Projects"
-INE0XJ501010,INVICTA,,Invicta Diagnos.,Healthcare Services,Healthcare Service Provider
+INE1DM601016,VIGOR,,Vigor Plast,Industrial Products,Plastic Products - Industrial
 INE0Q6001012,PSFL,,Paramount Specia,Industrial Products,Other Industrial Products
+INE0LS001014,USHAFIN,,Usha Financial,Finance,Non Banking Financial Company (NBFC)
 INE0UQ601012,CLASSICEIL,,Classic Electrod,Industrial Products,Other Industrial Products
 INE1ERK01013,MANILAM,,Manilam Industries,Consumer Durables,Plywood Boards/ Laminates
 INE0R9101015,ELGNZ,,Eleganz Interior,Commercial Services & Supplies,Diversified Commercial Services
 INE0QX401014,BARFLEX,,Barflex Polyfilm,Industrial Products,Packaging
 INE0QXL01015,VLINFRA,,V.L.Infraproject,Construction,Civil Construction
-INE0LS001014,USHAFIN,,Usha Financial,Finance,Non Banking Financial Company (NBFC)
-INE0SZ301012,BULKCORP,,Bulkcorp Inter.,Industrial Products,Packaging
+INE0YKW01013,FORGEAUTO,,Forge Auto,Auto Components,Auto Components & Equipments
+INE0BSN01013,SATECH,,S A Tech Soft.,IT - Software,Computers - Software & Consulting
+INE0XJ501010,INVICTA,,Invicta Diagnos.,Healthcare Services,Healthcare Service Provider
 INE0MVO01012,RAPPID,,Rappid Valves,Industrial Products,Other Industrial Products
-INE0YSH01017,INTEGRITY,,Integrity Infra.,Construction,Civil Construction
+INE0EDU01014,FINBUD,,Finbud Financial,Financial Technology (Fintech),Financial Technology (Fintech)
 INE0SGZ01016,SUNTECH,,Suntech Infra.,Construction,Civil Construction
 INE0EO401019,ROYALARC,,Royal Arc Ele.,Industrial Products,Electrodes & Refractories
 INE0RDH01021,ADDICTIVE,,Addictive Learn,Other Consumer Services,E-Learning
 INE0ZI101018,GANGABATH,,Ganga Bath Fitt.,Consumer Durables,Sanitary Ware
-INE0EDU01014,FINBUD,,Finbud Financial,Financial Technology (Fintech),Financial Technology (Fintech)
-INE0MYZ01012,INFLUX,,Influx Health.,Pharmaceuticals & Biotechnology,Pharmaceuticals
+INE0YSH01017,INTEGRITY,,Integrity Infra.,Construction,Civil Construction
 INE154801018,PUSHPA,,Pushpa Jewellers,Consumer Durables,"Gems, Jewellery And Watches"
+INE0SZ301012,BULKCORP,,Bulkcorp Inter.,Industrial Products,Packaging
 INE0SMR01011,UHTL,,United Heat,Industrial Products,Other Industrial Products
 INE0TG801013,PARAMOUNT,,Paramount Dye,Textiles & Apparels,Other Textile Products
 INE0PQ601019,BALAJIPHOS,,Balaji Phos.,Fertilizers & Agrochemicals,Fertilizers
 INE0Z7N01017,TANKUP,,Tankup Engi.,Industrial Products,Other Industrial Products
 INE0U4H01011,MPEL,,Manas Polymers,Industrial Products,Plastic Products - Industrial
-INE0YKW01013,FORGEAUTO,,Forge Auto,Auto Components,Auto Components & Equipments
+INE0MYZ01012,INFLUX,,Influx Health.,Pharmaceuticals & Biotechnology,Pharmaceuticals
 INE0TSF01011,AESTHETIK,,Aesthetik Engi.,Construction,Civil Construction
 INE0N1401016,NEELAM,,Neelam Linens,Textiles & Apparels,Other Textile Products
-INE0KZF01015,QVCEL,,QVC Exports,Ferrous Metals,Ferro & Silica Manganese
-INE0NON01025,SHKSIL,,Shri Hare-Krish.,Ferrous Metals,Sponge Iron
+INE0SVY01018,KATARIA,,Kataria Indust.,Industrial Manufacturing,Industrial Products
+INE0TD101011,IDENTICAL,,Identical Brains,Entertainment,Media & Entertainment
 INE0T4V01015,APEXECO,,Apex Ecotech,Other Utilities,Water Supply & Management
 INE06IJ01010,UTSSAV,,Utssav CZ Gold,Consumer Durables,"Gems, Jewellery And Watches"
 INE0XW001014,BIOPOL,,Biopol Chemicals,Chemicals & Petrochemicals,Specialty Chemicals
 INE0OO201011,WOL3D,,WOL 3D India,Industrial Products,Other Industrial Products
 INE1YNB01019,MOBILISE,,Mobilise App,IT - Software,Software Products
-INE0TD101011,IDENTICAL,,Identical Brains,Entertainment,Media & Entertainment
-INE0SVY01018,KATARIA,,Kataria Indust.,Industrial Manufacturing,Industrial Products
+INE0KZF01015,QVCEL,,QVC Exports,Ferrous Metals,Ferro & Silica Manganese
 INE0VHU01019,RAJPUTANA,,Rajputana Bio.,Chemicals & Petrochemicals,Petrochemicals
+INE1CCX01012,GURUNANAK,,Gurunanak Agri.,"Agricultural, Commercial & Construction Vehicles",Tractors
 INE241X01014,VOLERCAR,,Voler Car,Transport Services,Road Transport
 INE0U2M01015,VDEAL,,Vdeal System,Electrical Equipment,Other Electrical Equipment
 INE0WL801011,AERON,,Aeron Composites,Industrial Products,Other Industrial Products
 INE849L01019,ORTEL,539015.0,Ortel Commu.,Entertainment,TV Broadcasting & Software Production
 INE0RYR01018,SUBAHOTELS,,Suba Hotels,Leisure Services,Hotels & Resorts
+INE0VG001016,AMCL,,ANB Metal,Industrial Products,"Aluminium, Copper & Zinc Products"
+INE0NON01025,SHKSIL,,Shri Hare-Krish.,Ferrous Metals,Sponge Iron
 INE0B2801011,UNILEX,,Unilex Colour &C,Chemicals & Petrochemicals,Dyes And Pigments
 INE1M3T01017,JYOTIGLOBL,,Jyoti Global,Industrial Products,Packaging
 INE0P5R01014,PURPLEUTED,,Purple United,Textiles & Apparels,Garments & Apparels
@@ -2600,28 +2598,35 @@ INE1XWN01017,STRIDERS,,Striders Impex,Consumer Durables,Leisure Products
 INE0S7C01019,DECCANTRAN,,Deccan Transcon,Transport Services,Logistics Solution Provider
 INE21UM01018,NEOCHEM,,Neochem Bio,Chemicals & Petrochemicals,Specialty Chemicals
 INE1FL101016,SHETHJI,,Shreeji Global,Agricultural Food & other Products,Other Agricultural Products
-INE1CCX01012,GURUNANAK,,Gurunanak Agri.,"Agricultural, Commercial & Construction Vehicles",Tractors
 INE0YRN01025,DHARIWAL,,Dhariwalcorp,Chemicals & Petrochemicals,Trading - Chemicals
 INE0XUD01014,BRANDMAN,,Brandman Retail,Consumer Durables,Footwear
-INE0SHE01019,THESL,,Thinking Hats,Other Consumer Services,Other Consumer Services
+INE632Q01018,MRIL,,Mahendra Realtor,Construction,Civil Construction
 INE191I01012,HDIL,532873.0,H D I L,Realty,"Residential, Commercial Projects"
-INE0X7G01013,MARUSHIKA,,Marushika Tech.,IT - Hardware,Computers Hardware & Equipments
-INE01YQ01013,AUSL,,Aditya Ultra,Industrial Products,Iron & Steel Products
-INE448V01019,ALCODIS,,Alcokraft Dist.,Beverages,Breweries & Distilleries
-INE0QTE01018,GAJANAND,,Gajanand Inter.,Textiles & Apparels,Other Textile Products
-INE0SQZ01015,FWSTC,,Flywings Simula.,Other Consumer Services,Education
+INE0DM401012,SHRIAHIMSA,,Shri Ahimsa,Food Products,Other Food Products
+INE15B101011,OPTIVALUE,,Optivalue Tek,IT - Services,IT Enabled Services
+INE0SMY01017,JAYBEE,,Jay Bee Laminati,Industrial Products,Iron & Steel Products
+INE0T9I01011,IDEALTECHO,,Ideal Technopl.,Industrial Products,Packaging
+INE0XIL01012,JAINIK,,Jainik Power,Non - Ferrous Metals,Aluminium
 INE1CEJ01017,E2ERAIL,,E to E Transportation,Construction,Civil Construction
 INE0RMF01018,OSELDEVICE,,OSEL Devices,Healthcare Equipment & Supplies,Medical Equipment & Supplies
-INE749Y01014,PARAMPARA,,Parampara Dairy,Industrial Products,Packaging
+INE0R4Z01018,BRACEPORT,,Brace Port,Transport Services,Logistics Solution Provider
 INE104101014,NRVANDANA,,N R Vandana,Textiles & Apparels,Garments & Apparels
 INE11HF01010,EEPL,,Eppeltone Ene.,Electrical Equipment,Other Electrical Equipment
 INE0SBP01018,ESPRIT,,Esprit Stones,Consumer Durables,Granites & Marbles
 INE1GYP01013,AAKAAR,,Aakaar Medical,Personal Products,Personal Care
 INE0TR001017,VIESL,,Vision Infra,Commercial Services & Supplies,Diversified Commercial Services
 INE10A501018,MAXVOLT,,Maxvolt Energy,Auto Components,Auto Components & Equipments
-INE0F8901022,VICTORYEV,,Victory Ele.,Automobiles,2/3 Wheelers
-INE0U0201016,BALCO,,Solve Plastic,Industrial Products,Plastic Products - Industrial
+INE0YU901016,DANISH,,Danish Power,Electrical Equipment,Heavy Electrical Equipment
+INE0V0Q01019,ATCENERGY,,ATC Energies,Electrical Equipment,Other Electrical Equipment
 INE433T01015,ENCOMPAS,,Encompass Design,Commercial Services & Supplies,Trading & Distributors
+INE11HG01018,CHAMUNDA,,Chamunda Ele.,Commercial Services & Supplies,Diversified Commercial Services
+INE448V01019,ALCODIS,,Alcokraft Dist.,Beverages,Breweries & Distilleries
+INE01YQ01013,AUSL,,Aditya Ultra,Industrial Products,Iron & Steel Products
+INE0X7G01013,MARUSHIKA,,Marushika Tech.,IT - Hardware,Computers Hardware & Equipments
+INE0F8901022,VICTORYEV,,Victory Ele.,Automobiles,2/3 Wheelers
+INE749Y01014,PARAMPARA,,Parampara Dairy,Industrial Products,Packaging
+INE0U0201016,BALCO,,Solve Plastic,Industrial Products,Plastic Products - Industrial
+INE1TY801010,GJL,,Grover Jewells,Consumer Durables,"Gems, Jewellery And Watches"
 INE0U7V01015,C2C,,C2C Advanced,Aerospace & Defense,Aerospace & Defense
 INE0IJF01013,SELLOWRAP,,Sellowrap Indus.,Auto Components,Auto Components & Equipments
 INE1A6Q01010,ASHWINI,,Ashwini Contain.,Transport Services,Road Transport
@@ -2629,17 +2634,9 @@ INE0YJV01017,SHEEL,,Sheel Bio.,Commercial Services & Supplies,Diversified Commer
 INE1J6M01010,ACETEC,,Acetech E-Commerce,Retailing,E-Retail/ E-Commerce
 INE0WL201014,CUDML,,Cash UR Drive,Media,Advertising & Media Agencies
 INE0U6N01014,SFML,,Supreme Facility,Commercial Services & Supplies,Diversified Commercial Services
-INE0V0Q01019,ATCENERGY,,ATC Energies,Electrical Equipment,Other Electrical Equipment
-INE0XIL01012,JAINIK,,Jainik Power,Non - Ferrous Metals,Aluminium
-INE0R4Z01018,BRACEPORT,,Brace Port,Transport Services,Logistics Solution Provider
-INE0YU901016,DANISH,,Danish Power,Electrical Equipment,Heavy Electrical Equipment
-INE0DM401012,SHRIAHIMSA,,Shri Ahimsa,Food Products,Other Food Products
-INE15B101011,OPTIVALUE,,Optivalue Tek,IT - Services,IT Enabled Services
-INE0SMY01017,JAYBEE,,Jay Bee Laminati,Industrial Products,Iron & Steel Products
-INE0T9I01011,IDEALTECHO,,Ideal Technopl.,Industrial Products,Packaging
 INE0J1P01015,RICHA,,Richa Info,IT - Hardware,Computers Hardware & Equipments
 INE0XM301010,MMEL,,Moving Media,Commercial Services & Supplies,Diversified Commercial Services
-INE0S3H01017,POSITRON,,Positron Energy,Commercial Services & Supplies,Diversified Commercial Services
+INE1K8Y01018,MUNISH,,Munish Forge,Industrial Products,Castings & Forgings
 INE0EAS01014,CONNPLEX,,Connplex Cinemas,Entertainment,"Film Production, Distribution & Exhibition"
 INE0U1T01012,CHETANA,,Chetana Educa.,Printing & Publication,Printing & Publication
 INE1OIC01018,SNEHAA,,Snehaa Organics,Chemicals & Petrochemicals,Specialty Chemicals
@@ -2648,7 +2645,7 @@ INE0OU201013,DCMSIL,544702.0,DCM Shriram Intl,Textiles & Apparels,Other Textile 
 INE124401014,AARADHYA,,Aaradhya Dis.,"Paper, Forest & Jute Products",Paper & Paper Products
 INE08NZ01012,NAMOEWASTE,,Namo eWaste,Other Utilities,Waste Management
 INE0TFB01017,AVIANSH,,Avi Ansh,Textiles & Apparels,Other Textile Products
-INE0S1D01010,INNOMET,,Innomet Advanced,Diversified Metals,Diversified Metals
+INE0S3H01017,POSITRON,,Positron Energy,Commercial Services & Supplies,Diversified Commercial Services
 INE19QH01010,SPUNWEB,,Spunweb Nonwoven,Textiles & Apparels,Other Textile Products
 INE0SQH01013,BIKEWO,,Bikewo Green,Automobiles,Auto Dealer
 INE704V01015,DIRL,,Dhanuka Infra Realty,Realty,"Residential, Commercial Projects"
@@ -2670,23 +2667,17 @@ INE0TP801012,NMSTEEL,,Newmalayalam St.,Industrial Products,Iron & Steel Products
 INE124101010,SAMAY,,Samay Project,Construction,Civil Construction
 INE0XRN01019,DELTIC,,Delta Auto.,Automobiles,2/3 Wheelers
 INE17D601016,SAFEENTP,,Safe Enterprises,Consumer Durables,"Furniture, Home Furnishing"
-INE0UCN01017,SAVY,,Savy Infra,Construction,Civil Construction
 INE0VA601019,HPTL,,HP Telecom,Commercial Services & Supplies,Trading & Distributors
-INE0VG001016,AMCL,,ANB Metal,Industrial Products,"Aluminium, Copper & Zinc Products"
-INE1K8Y01018,MUNISH,,Munish Forge,Industrial Products,Castings & Forgings
-INE632Q01018,MRIL,,Mahendra Realtor,Construction,Civil Construction
-INE0P8X01016,AGARWALTUF,,Agarwal Toughene,Industrial Products,Glass - Industrial
-INE17VO01028,STUDIOLSD,,Studio LSD,Entertainment,Media & Entertainment
-INE14W901010,RTL,,Rama Telecom,Telecom - Services,Telecom - Infrastructure
-INE0JQS01019,TECHERA,,Techera Enginee.,Aerospace & Defense,Aerospace & Defense
-INE0PCU01012,RAJINDLTD,,Rajputana Indu.,Industrial Products,"Aluminium, Copper & Zinc Products"
-INE0SUH01015,ENVIRO,,Envirotech Sys.,Industrial Products,Other Industrial Products
-INE0X3M01010,BLUEWATER,,Blue Water,Transport Services,Logistics Solution Provider
-INE0FPO01018,PHOGLOBAL,,Phoenix Overseas,Commercial Services & Supplies,Trading & Distributors
-INE0Y5H01014,TECHD,,TechD Cybersec.,IT - Services,IT Enabled Services
+INE0S1D01010,INNOMET,,Innomet Advanced,Diversified Metals,Diversified Metals
+INE0SHE01019,THESL,,Thinking Hats,Other Consumer Services,Other Consumer Services
+INE0UCN01017,SAVY,,Savy Infra,Construction,Civil Construction
+INE0VTV01012,ANONDITA,,Anondita Medi.,Personal Products,Personal Care
+INE0LAA01017,ASHALOG,,Ashapura Logi.,Transport Services,Logistics Solution Provider
 INE1V4601019,SHRIKANHA,,Shri Kanha Stain,Industrial Products,Iron & Steel Products
 INE1H7V01011,PARTH,,Parth Electrical,Electrical Equipment,Other Electrical Equipment
 INE0DHF01018,IPHL,,Indian Phosphate,Chemicals & Petrochemicals,Specialty Chemicals
+INE0SYV01018,TROM,,Trom Industries,Electrical Equipment,Heavy Electrical Equipment
+INE1DV401010,MONOLITH,,Monolithisch Ind,Industrial Products,Electrodes & Refractories
 INE113601012,REXPRO,,Rexpro Enter.,Consumer Durables,"Furniture, Home Furnishing"
 INE0WVU01018,ONYX,,Onyx Biotec,Pharmaceuticals & Biotechnology,Pharmaceuticals
 INE0TO501019,HVAX,,HVAX Technolog.,Construction,Civil Construction
@@ -2699,171 +2690,176 @@ INE1KEC01023,EPWINDIA,,EPW India,IT - Hardware,Computers Hardware & Equipments
 INE0RHD01013,ETML,,Emerald Tyre,Auto Components,Tyres & Rubber Products
 INE10VS01016,SAWALIYA,,Sawaliya Food,Agricultural Food & other Products,Other Agricultural Products
 INE0XWS01018,TAURIAN,,Taurian MPS,Industrial Manufacturing,Industrial Products
+INE0UOY01019,MEDISTEP,,Medistep Health.,Personal Products,Personal Care
 INE0QX901013,RAPIDFLEET,,Rapid Fleet,Transport Services,Logistics Solution Provider
 INE16VK01010,TSC,,TSC India,Leisure Services,"Tour, Travel Related Services"
-INE13ZD01013,KAYTEX,,Kaytex Fabrics,Textiles & Apparels,Garments & Apparels
-INE1CW901027,SPEB,,SPEB Adhesives,Chemicals & Petrochemicals,Specialty Chemicals
+INE17WC01013,TEJASCARGO,,Tejas Cargo,Transport Services,Logistics Solution Provider
 INE0VZS01015,LAKSHYA,,Lakshya Powertec,Construction,Civil Construction
+INE0VCK01011,FLYSBS,,FlySBS Aviation,Transport Services,Airline
+INE17CQ01015,BAGDIGITAL,,B.A.G. Converge.,Entertainment,Digital Entertainment
+INE0Y5H01014,TECHD,,TechD Cybersec.,IT - Services,IT Enabled Services
+INE0FPO01018,PHOGLOBAL,,Phoenix Overseas,Commercial Services & Supplies,Trading & Distributors
 INE0SN801015,SILKY,,Silky Overseas,Textiles & Apparels,Other Textile Products
-INE0H9F01037,SAIPARENT,544742.0,,,
-INE12F801023,KISSHT,544754.0,,,
-INE0T0L01014,KALANA,,Kalana Ispat,Industrial Products,Iron & Steel Products
-INE217K01011,RHFL,540709.0,Reliance Home,Finance,Housing Finance Company
-INE0SFW01015,FRESHARA,,Freshara Agro,Food Products,Other Food Products
-INE156901014,NEPTUNE,,Neptune Pet.,Chemicals & Petrochemicals,Petrochemicals
-INE0SVO01019,SIDDHICOTS,,Siddhi Cotspin,Textiles & Apparels,Other Textile Products
-INE00C501018,AMBANIORGO,,Ambani Orgochem,Chemicals & Petrochemicals,Specialty Chemicals
-INE0UOY01019,MEDISTEP,,Medistep Health.,Personal Products,Personal Care
-INE1DV401010,MONOLITH,,Monolithisch Ind,Industrial Products,Electrodes & Refractories
-INE0SYV01018,TROM,,Trom Industries,Electrical Equipment,Heavy Electrical Equipment
-INE0VJG01014,PRANIK,,Pranik Logistics,Transport Services,Logistics Solution Provider
-INE1DLF01018,SHIVASHRIT,,Shivashrit Foods,Food Products,Other Food Products
-INE0PXC01024,ETL,,Emkay Tools,Industrial Manufacturing,Industrial Products
-INE0PLX01017,GREENLEAF,,Greenleaf Envi.,Other Utilities,Waste Management
-INE0SI601032,ANYA,,Anya Polytech &,Fertilizers & Agrochemicals,Fertilizers
-INE0TZX01019,ARMOUR,,Armour Security,Commercial Services & Supplies,Diversified Commercial Services
 INE0XUS01012,PSRAJ,,P S Raj Steels,Industrial Products,Iron & Steel Products
 INE0ZTO01018,MAYASHEEL,,Mayasheel Vent.,Construction,Civil Construction
 INE09A801015,GML,,Galaxy Medicare,Healthcare Equipment & Supplies,Medical Equipment & Supplies
 INE1MTV01019,KRMAYURVED,,KRM Ayurveda,Pharmaceuticals & Biotechnology,Pharmaceuticals
+INE0SI601032,ANYA,,Anya Polytech &,Fertilizers & Agrochemicals,Fertilizers
 INE0VRH01015,VGINFOTECH,,Virtual Galaxy,IT - Software,Software Products
 INE0SA001017,RNFI,,RNFI Services,Finance,Other Financial Services
+INE0PLX01017,GREENLEAF,,Greenleaf Envi.,Other Utilities,Waste Management
 INE1ARD01016,SACHEEROME,,Sacheerome,Chemicals & Petrochemicals,Specialty Chemicals
 INE0TTG01017,ARUNAYA,,Arunaya Organics,Chemicals & Petrochemicals,Dyes And Pigments
-INE17WC01013,TEJASCARGO,,Tejas Cargo,Transport Services,Logistics Solution Provider
-INE0VTV01012,ANONDITA,,Anondita Medi.,Personal Products,Personal Care
-INE0VCK01011,FLYSBS,,FlySBS Aviation,Transport Services,Airline
-INE0RFP01011,SSEGL,,Sathlokhar Sys.,Construction,Civil Construction
-INE0UL701015,SHUBHSHREE,,Shubhshree Bio.,Industrial Products,Other Industrial Products
-INE0U2N01013,SUNLITE,,Sunlite Recycli.,Industrial Products,"Aluminium, Copper & Zinc Products"
-INE0QNI01012,BOSS,,Boss Packaging,Industrial Manufacturing,Industrial Products
-INE1KU201016,AVANA,,Avana Electrosystems,Electrical Equipment,Heavy Electrical Equipment
-INE14GK01016,SMARTEN,,Smarten Power,Electrical Equipment,Other Electrical Equipment
-INE2HJL01019,DHARARAIL,,Dhara Rail Pro.,Commercial Services & Supplies,Diversified Commercial Services
-INE691G01015,IMPEXFERRO,532614.0,Impex Ferro Tech,Ferrous Metals,Ferro & Silica Manganese
-INE15DO01012,KEN,,Ken Enter.,Textiles & Apparels,Other Textile Products
-INE0ZRC01017,BHADORA,,Bhadora Indust.,Industrial Products,Cables - Electricals
-INE10QL01011,READYMIX,,Readymix Cons.,Construction,Civil Construction
-INE14DW01018,SATTVAENGG,,Sattva Eng.,Other Utilities,Water Supply & Management
-INE0TVT01024,GANESHIN,,Ganesh Infra.,Construction,Civil Construction
+INE0PXC01024,ETL,,Emkay Tools,Industrial Manufacturing,Industrial Products
+INE0X3M01010,BLUEWATER,,Blue Water,Transport Services,Logistics Solution Provider
+INE1CW901027,SPEB,,SPEB Adhesives,Chemicals & Petrochemicals,Specialty Chemicals
+INE0P8X01016,AGARWALTUF,,Agarwal Toughene,Industrial Products,Glass - Industrial
+INE1DLF01018,SHIVASHRIT,,Shivashrit Foods,Food Products,Other Food Products
+INE13ZD01013,KAYTEX,,Kaytex Fabrics,Textiles & Apparels,Garments & Apparels
+INE17VO01028,STUDIOLSD,,Studio LSD,Entertainment,Media & Entertainment
+INE14W901010,RTL,,Rama Telecom,Telecom - Services,Telecom - Infrastructure
+INE0JQS01019,TECHERA,,Techera Enginee.,Aerospace & Defense,Aerospace & Defense
+INE0PCU01012,RAJINDLTD,,Rajputana Indu.,Industrial Products,"Aluminium, Copper & Zinc Products"
+INE0SUH01015,ENVIRO,,Envirotech Sys.,Industrial Products,Other Industrial Products
+INE0VJG01014,PRANIK,,Pranik Logistics,Transport Services,Logistics Solution Provider
+INE1AE401014,JAYESH,,Jayesh Logistics,Transport Services,Logistics Solution Provider
+INE0TZX01019,ARMOUR,,Armour Security,Commercial Services & Supplies,Diversified Commercial Services
+INE0YHV01011,OBSCP,,OBSC Perfection,Auto Components,Auto Components & Equipments
+INE156901014,NEPTUNE,,Neptune Pet.,Chemicals & Petrochemicals,Petrochemicals
+INE0SFW01015,FRESHARA,,Freshara Agro,Food Products,Other Food Products
 INE0L2Y01011,ARHAM,,Arham Tech,Consumer Durables,Consumer Electronics
 INE0RVQ01016,MYMUDRA,,My Mudra Fin.,Finance,Other Financial Services
-INE12E301017,GCHOTELS,,Grand Continent,Leisure Services,Hotels & Resorts
-INE0RQZ01017,ESCONET,,Esconet,IT - Hardware,Computers Hardware & Equipments
-INE0RBQ01018,SAHASRA,,Sahasra Electro.,Industrial Products,Other Industrial Products
-INE0QR801013,SPPPOLY,,SPP Polymer,Industrial Products,Packaging
-INE0YDV01010,ARCIIL,,ARC Insulation,Industrial Products,Other Industrial Products
-INE0YHV01011,OBSCP,,OBSC Perfection,Auto Components,Auto Components & Equipments
-INE0CTB01014,SOCL,,Sundrex Oil,Petroleum Products,Lubricants
-INE0LAA01017,ASHALOG,,Ashapura Logi.,Transport Services,Logistics Solution Provider
+INE00C501018,AMBANIORGO,,Ambani Orgochem,Chemicals & Petrochemicals,Specialty Chemicals
+INE217K01011,RHFL,540709.0,Reliance Home,Finance,Housing Finance Company
+INE0T0L01014,KALANA,,Kalana Ispat,Industrial Products,Iron & Steel Products
+INE0ZRC01017,BHADORA,,Bhadora Indust.,Industrial Products,Cables - Electricals
+INE0UYG01015,ABHAPOWER,,Abha Power,Industrial Products,Castings & Forgings
 INE0VJT01017,PROFX,,Pro FX,Consumer Durables,Consumer Electronics
 INE0R0J01010,MACOBSTECH,,Macobs Technolo.,Personal Products,Personal Care
-INE0UYG01015,ABHAPOWER,,Abha Power,Industrial Products,Castings & Forgings
+INE0CTB01014,SOCL,,Sundrex Oil,Petroleum Products,Lubricants
+INE0YDV01010,ARCIIL,,ARC Insulation,Industrial Products,Other Industrial Products
+INE0TVT01024,GANESHIN,,Ganesh Infra.,Construction,Civil Construction
+INE0QR801013,SPPPOLY,,SPP Polymer,Industrial Products,Packaging
+INE12F801023,KISSHT,544754.0,,,
 INE0X6F01017,SDREAMS,,S D Retail,Textiles & Apparels,Garments & Apparels
-INE1AE401014,JAYESH,,Jayesh Logistics,Transport Services,Logistics Solution Provider
+INE14DW01018,SATTVAENGG,,Sattva Eng.,Other Utilities,Water Supply & Management
+INE691G01015,IMPEXFERRO,532614.0,Impex Ferro Tech,Ferrous Metals,Ferro & Silica Manganese
+INE2HJL01019,DHARARAIL,,Dhara Rail Pro.,Commercial Services & Supplies,Diversified Commercial Services
+INE0H9F01037,SAIPARENT,544742.0,,,
 INE0M1F01011,PREMIUM,,Premium Plast,Auto Components,Auto Components & Equipments
-INE17CQ01015,BAGDIGITAL,,B.A.G. Converge.,Entertainment,Digital Entertainment
-INE452O01016,FLFL,536507.0,Future Lifestyle,Retailing,Diversified Retail
-INE106I01010,ANKITMETAL,532870.0,Ankit Met.Power,Ferrous Metals,Iron & Steel
+INE10QL01011,READYMIX,,Readymix Cons.,Construction,Civil Construction
+INE0RQZ01017,ESCONET,,Esconet,IT - Hardware,Computers Hardware & Equipments
+INE1KU201016,AVANA,,Avana Electrosystems,Electrical Equipment,Heavy Electrical Equipment
+INE0RFP01011,SSEGL,,Sathlokhar Sys.,Construction,Civil Construction
+INE0QNI01012,BOSS,,Boss Packaging,Industrial Manufacturing,Industrial Products
+INE0U2N01013,SUNLITE,,Sunlite Recycli.,Industrial Products,"Aluminium, Copper & Zinc Products"
+INE0UL701015,SHUBHSHREE,,Shubhshree Bio.,Industrial Products,Other Industrial Products
+INE14GK01016,SMARTEN,,Smarten Power,Electrical Equipment,Other Electrical Equipment
+INE12E301017,GCHOTELS,,Grand Continent,Leisure Services,Hotels & Resorts
+INE15DO01012,KEN,,Ken Enter.,Textiles & Apparels,Other Textile Products
+INE0RBQ01018,SAHASRA,,Sahasra Electro.,Industrial Products,Other Industrial Products
+INE0SVO01019,SIDDHICOTS,,Siddhi Cotspin,Textiles & Apparels,Other Textile Products
 INE973A01010,GOLDENTOBC,500151.0,Golden Tobacco,Realty,"Residential, Commercial Projects"
+INE452O01016,FLFL,536507.0,Future Lifestyle,Retailing,Diversified Retail
 INE161G01027,MORARJEE,532621.0,Morarjee Text.,Textiles & Apparels,Other Textile Products
-INE689O01013,MERCANTILE,538942.0,,,
-INE555P01013,KIRANVYPAR,537750.0,,,
-INE064A01026,TIMEX,500414.0,,,
+INE106I01010,ANKITMETAL,532870.0,Ankit Met.Power,Ferrous Metals,Iron & Steel
+INE934C01018,DRAGARWQ,526783.0,,,
+INE1AII01014,IWARE,,Iware Supplych.,Transport Services,Logistics Solution Provider
+INE201B01022,MAJESAUT,500267.0,,,
+INE746D01014,PIONRINV,507864.0,,,
+INE155E01016,INVPRECQ,504786.0,,,
+INE116C01012,ZFSTEERING,505163.0,,,
+INE704G01024,BAJAJST,507944.0,,,
+INE0SMX01019,CKKRETAIL,,C K K Retail,Agricultural Food & other Products,Sugar
+INE765D01022,WPIL,505872.0,,,
+INE967G01019,ZSARACOM,512020.0,,,
+INE631R01026,MADHAVIPL,539894.0,,,
+INE318C01014,SAYAJIHOTL,523710.0,,,
+INE338F01015,KLBRENG-B,522101.0,,,
+INE0WL901019,VIJAYPD,,Vijaypd Ceutical,Electrical Equipment,Heavy Electrical Equipment
+INE314H01012,TECHNVISN,501421.0,,,
+INE177C01022,BATLIBOI,522004.0,,,
+INE616F01022,RSDFIN,539875.0,,,
+INE552U01010,KPL,539997.0,,,
+INE185C01017,SAPPL,538795.0,,,
+INE972A01020,KOTIC,509732.0,,,
 INE085D01033,METROGLOBL,500159.0,,,
 INE200D01020,MMWL,512267.0,,,
-INE155E01016,INVPRECQ,504786.0,,,
-INE864J01012,TAMBOLIIN,533170.0,,,
-INE366C01021,ACSTECH,530745.0,,,
-INE185C01017,SAPPL,538795.0,,,
-INE731F01037,WELSPLSOL,500365.0,,,
-INE552U01010,KPL,539997.0,,,
-INE746D01014,PIONRINV,507864.0,,,
-INE687A01016,TRANSPEK,506687.0,,,
-INE524T01011,TAALTECH,539956.0,,,
 INE015B01018,WIMPLAST,526586.0,,,
-INE270B01035,MAFATIND,500264.0,,,
-INE094B01013,ASHIKA,543766.0,,,
-INE1AII01014,IWARE,,Iware Supplych.,Transport Services,Logistics Solution Provider
-INE166R01015,NATIONSTD,504882.0,,,
-INE951M01037,RRIL,531307.0,,,
-INE314H01012,TECHNVISN,501421.0,,,
-INE338F01015,KLBRENG-B,522101.0,,,
-INE967G01019,ZSARACOM,512020.0,,,
-INE265B01019,NITTAGELA,506532.0,,,
-INE201B01022,MAJESAUT,500267.0,,,
-INE116C01012,ZFSTEERING,505163.0,,,
-INE934C01018,DRAGARWQ,526783.0,,,
-INE365O01028,ABANSENT,512165.0,,,
-INE620D01011,INDPRUD,501298.0,,,
-INE986A01012,BI,526853.0,,,
-INE25E901019,OMPOWER,544750.0,,,
-INE0NA501011,DIVINEHIRA,,Divine Hira Jew.,Consumer Durables,"Gems, Jewellery And Watches"
+INE555P01013,KIRANVYPAR,537750.0,,,
+INE689O01013,MERCANTILE,538942.0,,,
+INE864J01012,TAMBOLIIN,533170.0,,,
 INE291E01019,PML,539113.0,,,
-INE469A01019,BIMETAL,505681.0,,,
-INE0SMX01019,CKKRETAIL,,C K K Retail,Agricultural Food & other Products,Sugar
+INE731F01037,WELSPLSOL,500365.0,,,
+INE0NA501011,DIVINEHIRA,,Divine Hira Jew.,Consumer Durables,"Gems, Jewellery And Watches"
+INE928C01010,DAICHI,526821.0,,,
+INE25E901019,OMPOWER,544750.0,,,
+INE166R01015,NATIONSTD,504882.0,,,
+INE620D01011,INDPRUD,501298.0,,,
+INE524T01011,TAALTECH,539956.0,,,
+INE365O01028,ABANSENT,512165.0,,,
+INE094B01013,ASHIKA,543766.0,,,
+INE951M01037,RRIL,531307.0,,,
 INE00HZ01011,BNAGROCHEM,526125.0,,,
-INE0WL901019,VIJAYPD,,Vijaypd Ceutical,Electrical Equipment,Heavy Electrical Equipment
-INE972A01020,KOTIC,509732.0,,,
-INE506D01020,HALDYNGL,515147.0,,,
-INE765D01022,WPIL,505872.0,,,
-INE704G01024,BAJAJST,507944.0,,,
-INE616F01022,RSDFIN,539875.0,,,
-INE910A01012,NIRLON,500307.0,,,
-INE372E01025,BIRLAPREC,522105.0,,,
-INE631R01026,MADHAVIPL,539894.0,,,
-INE177C01022,BATLIBOI,522004.0,,,
-INE077P01034,THACKER,509945.0,,,
-INE605D01012,NEAGI,508670.0,,,
-INE296E01026,RAJPALAYAM,532503.0,,,
-INE586E01020,IWP,540954.0,,,
-INE232E01013,VELJAN,505232.0,,,
-INE194D01017,ASTAR,531847.0,,,
-INE669R01026,ELITECON,539533.0,,,
-INE213D01015,BEEKAY,539018.0,,,
-INE515A01019,COCKERILL,500147.0,,,
-INE701G01012,AKCAPIT,530499.0,,,
-INE579B01039,ELPROINTL,504000.0,,,
-INE997I01012,SHRIKRISH,531080.0,,,
-INE819A01049,COMFINTE,531216.0,,,
-INE411F01010,KAMAHOLD,532468.0,,,
-INE405A01021,ULTRAMAR,506685.0,,,
-INE037B01020,SHARDUL,512393.0,,,
-INE641R01017,QUINT,539515.0,,,
-INE926B01016,GRANDOAK,523862.0,,,
-INE083K01017,BENGALASM,533095.0,,,
-INE489D01011,BNALTD,508136.0,,,
-INE402H01015,SHBAJRG,526981.0,,,
-INE945F01025,DECNGOLD,512068.0,,,
+INE270B01035,MAFATIND,500264.0,,,
+INE850B01026,ABMKNO,531161.0,,,
+INE770A01010,PRADPME,513532.0,,,
+INE099G01011,SCANSTL,511672.0,,,
 INE994E01018,3BBLACKBIO,532067.0,,,
 INE220Z01013,SHINDL,519397.0,,,
 INE214F01026,GRAVISSHO,509546.0,,,
-INE850B01026,ABMKNO,531161.0,,,
+INE405A01021,ULTRAMAR,506685.0,,,
+INE997I01012,SHRIKRISH,531080.0,,,
+INE296E01026,RAJPALAYAM,532503.0,,,
+INE077P01034,THACKER,509945.0,,,
 INE403F01017,THAKDEV,526654.0,,,
 INE515C01023,LAHOTIOV,531842.0,,,
+INE225B01021,FERMENTA,506414.0,,,
+INE525F01025,BLIL,532485.0,,,
+INE438E01032,SIKA,523606.0,,,
+INE640B01021,HBESD,532334.0,,,
+INE321M01017,SONAL,538943.0,,,
 INE979B01015,HAWKINCOOK,508486.0,,,
-INE318C01014,SAYAJIHOTL,523710.0,,,
-INE928C01010,DAICHI,526821.0,,,
-INE770A01010,PRADPME,513532.0,,,
-INE099G01011,SCANSTL,511672.0,,,
-INE722B01019,PRAVEG,531637.0,,,
 INE417D01020,FEDDERSHOL,511628.0,,,
-INE132C01027,SURYALA,514138.0,,,
-INE761G01016,BLACKROSE,514183.0,,,
-INE207H01018,GNRL,513536.0,,,
 INE650G01029,MENNPIS,531727.0,,,
+INE761G01016,BLACKROSE,514183.0,,,
+INE372E01025,BIRLAPREC,522105.0,,,
+INE910A01012,NIRLON,500307.0,,,
+INE064A01026,TIMEX,500414.0,,,
+INE687A01016,TRANSPEK,506687.0,,,
+INE366C01021,ACSTECH,530745.0,,,
+INE506D01020,HALDYNGL,515147.0,,,
+INE469A01019,BIMETAL,505681.0,,,
+INE986A01012,BI,526853.0,,,
+INE265B01019,NITTAGELA,506532.0,,,
+INE945F01025,DECNGOLD,512068.0,,,
+INE489D01011,BNALTD,508136.0,,,
+INE402H01015,SHBAJRG,526981.0,,,
+INE605D01012,NEAGI,508670.0,,,
+INE722B01019,PRAVEG,531637.0,,,
+INE132C01027,SURYALA,514138.0,,,
+INE207H01018,GNRL,513536.0,,,
 INE001E01012,PREMCO,530331.0,,,
 INE572D01014,FRONTSP,522195.0,,,
-INE225B01021,FERMENTA,506414.0,,,
-INE321M01017,SONAL,538943.0,,,
-INE640B01021,HBESD,532334.0,,,
-INE432A01017,AMBALALSA,500009.0,,,
 INE435D01014,MCCHRLS-B,507836.0,,,
-INE438E01032,SIKA,523606.0,,,
+INE432A01017,AMBALALSA,500009.0,,,
 INE440T01028,SEIL,539921.0,,,
 INE280B01018,ELANTAS,500123.0,,,
 INE274K01012,BTTL,533108.0,,,
-INE525F01025,BLIL,532485.0,,,
 INE927X01018,ELCIDIN,503681.0,,,
 INE131C01011,DISAQ,500068.0,,,
+INE586E01020,IWP,540954.0,,,
+INE083K01017,BENGALASM,533095.0,,,
+INE232E01013,VELJAN,505232.0,,,
+INE194D01017,ASTAR,531847.0,,,
+INE213D01015,BEEKAY,539018.0,,,
+INE669R01026,ELITECON,539533.0,,,
+INE515A01019,COCKERILL,500147.0,,,
+INE701G01012,AKCAPIT,530499.0,,,
+INE579B01039,ELPROINTL,504000.0,,,
+INE411F01010,KAMAHOLD,532468.0,,,
+INE819A01049,COMFINTE,531216.0,,,
+INE037B01020,SHARDUL,512393.0,,,
+INE926B01016,GRANDOAK,523862.0,,,
+INE641R01017,QUINT,539515.0,,,
 INE445D01013,NILE,530129.0,,,
